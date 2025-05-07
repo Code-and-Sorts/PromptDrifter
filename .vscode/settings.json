@@ -1,0 +1,14 @@
+{
+    "cSpell.words": [
+        "delenv",
+        "excinfo",
+        "isort",
+        "OLLAMA",
+        "promptdrifter",
+        "pycodestyle",
+        "Pyflakes",
+        "pytestmark",
+        "pyupgrade",
+        "Timm"
+    ]
+}
