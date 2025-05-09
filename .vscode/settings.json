@@ -4,11 +4,13 @@
         "excinfo",
         "isort",
         "OLLAMA",
+        "promptdrifer",
         "promptdrifter",
         "pycodestyle",
         "Pyflakes",
         "pytestmark",
         "pyupgrade",
         "Timm"
-    ]
+    ],
+    "python.defaultInterpreterPath": ".venv/bin/python"
 }
