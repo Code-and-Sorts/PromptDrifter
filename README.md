@@ -5,15 +5,20 @@
 <br />
 
 <p align="center">
-  <img alt="PRs Welcome" src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=shields" />
+  <img alt="MIT License" src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" />
+  <img alt="PRs welcome" src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square" />
   <img alt="Python" src="https://img.shields.io/badge/-Python-3776AB?style=flat-square&logo=python&logoColor=white" />
 </p>
 
 <p align="center">
-  <a href="#-why-promptdrifter">Why PromptDrifter?</a> - <a href="#-quickstart">Quickstart</a> - <a href="#-docs">Docs</a> - <a href="https://github.com/Code-and-Sorts/PromptDrifter/issues/new?assignees=&template=bug_report.md">Bug Reports</a> - <a href="https://github.com/Code-and-Sorts/PromptDrifter/issues/new?assignees=&template=feature_request.md">Feature Request</a>
+  <a href="#-why-promptdrifter">❓ Why PromptDrifter?</a> - <a href="#-quickstart">🏃 Quickstart</a> - <a href="#-docs">📚 Docs</a> - <a href="https://github.com/Code-and-Sorts/PromptDrifter/issues/new?assignees=&template=bug_report.md">🐛 Bug Report</a> - <a href="https://github.com/Code-and-Sorts/PromptDrifter/issues/new?assignees=&template=feature_request.md">✨ Feature Request</a>
 </p>
 
 ### PromptDrifter is a one-command CI guardrail, open source platform for catching prompt drift and fails if your LLM answers change.
+
+> [!IMPORTANT]
+> ⚠️ **Development Notice**: This project is under active development. Breaking changes may occur between versions. Please check the changelog and release notes before updating.
+
 
 ## ❓ Why PromptDrifter?
 
@@ -21,22 +26,45 @@ The landscape of Large Language Models (LLMs) is one of rapid evolution. While e
 
 Over time, updates to LLM versions, or even subtle shifts in their training data or internal architecture, can cause their responses to identical prompts to change. These changes can range from minor formatting differences to significant alterations in content or structure, potentially breaking downstream processes causing issues with the integrity of your application.
 
-**Undetected prompt drift can lead to**
+---
 
-- 🚨 **Unexpected Failures:** Applications or CI/CD pipelines may break silently or with cryptic errors when LLM outputs deviate from expected formats or content.
-- 📉 **Degraded User Experience:** Features relying on consistent LLM responses can malfunction, leading to user frustration.
-- ⏱️ **Increased Maintenance:** Engineers spend valuable time diagnosing issues, tracing them back to changed LLM behavior rather addressing features and bugs in code.
-- 🚧 **Blocked Deployments:** Uncertainty about LLM stability can slow down development cycles and deployment frequency.
+### Undetected prompt drift can lead to:
 
-**PromptDrifter tackles these challenges head-on by providing**
+#### 🚨 Unexpected Failures
+Applications or CI/CD pipelines may break silently or with cryptic errors when LLM outputs deviate from expected formats or content.
 
-- 🛡️ **Automated Guardrails:** A simple, command-line driven tool to integrate LLM response validation directly into your development and CI/CD workflows.
-- 🔍 **Early Drift Detection:** By comparing LLM outputs against version-controlled expected responses or predefined patterns (like regex), **PromptDrifter** catches deviations as soon as they occur.
-- ⚙️ **Consistent and Reliable Applications:** Ensures that your LLM-powered features behave predictably by failing builds when significant response changes are detected, *before* they impact users or production systems.
-- 🔌 **Model Agnostic Design:** Through a flexible adapter system, PromptDrifter can interact with various LLM providers and models (e.g., OpenAI, Ollama, and more to come).
-- 📝 **Declarative Test Suites:** Define your prompt tests in easy-to-understand YAML files, making them simple to create, manage, and version alongside your codebase.
-- 😌 **Developer Peace of Mind:** Build with greater confidence, knowing you have a safety net that monitors the stability of your critical prompt interactions.
+#### 📉 Degraded User Experience
+Features relying on consistent LLM responses can malfunction, leading to user frustration.
 
+#### ⏱️ Increased Maintenance
+Engineers spend valuable time diagnosing issues, tracing them back to changed LLM behavior rather addressing features and bugs in code.
+
+#### 🚧 Blocked Deployments
+Uncertainty about LLM stability can slow down development cycles and deployment frequency.
+
+---
+
+### PromptDrifter tackles these challenges head-on by providing:
+
+#### 🛡️ Automated Guardrails
+A simple, command-line driven tool to integrate LLM response validation directly into your development and CI/CD workflows.
+
+#### 🔍 Early Drift Detection
+By comparing LLM outputs against version-controlled expected responses or predefined patterns (like regex), **PromptDrifter** catches deviations as soon as they occur.
+
+#### ⚙️ Consistent and Reliable Applications
+Ensures that your LLM-powered features behave predictably by failing builds when significant response changes are detected, *before* they impact users or production systems.
+
+#### 🔌 Model Agnostic Design
+Through a flexible adapter system, PromptDrifter can interact with various LLM providers and models (e.g., OpenAI, Ollama, and more to come).
+
+#### 📝 Declarative Test Suites
+Define your prompt tests in easy-to-understand YAML files, making them simple to create, manage, and version alongside your codebase.
+
+#### 😌 Developer Peace of Mind
+Build with greater confidence, knowing you have a safety net that monitors the stability of your critical prompt interactions.
+
+// TODO: make note
 By making prompt-response testing a straightforward and automated part of your workflow, **PromptDrifter** helps you harness the power of LLMs while mitigating the risks associated with their dynamic nature.
 
 ## 🏃 Quickstart
@@ -48,12 +76,18 @@ PromptDrifter is designed to be extensible to various Large Language Models thro
 
 | Provider / Model Family | Adapter Status | Details / Model Examples                                  | Linked Issue |
 | :---------------------- | :------------- | :-------------------------------------------------------- | :------------------------------------- |
-| **OpenAI**              | ✅ Available   | `gpt-3.5-turbo`, `gpt-4`, `gpt-4o`, etc.                  | N/A                                    |
+| **GPT (OpenAI)**              | ✅ Available   | `gpt-3.5-turbo`, `gpt-4`, `gpt-4o`, etc.                  | N/A                                    |
 | **Ollama**              | ✅ Available   | Supports self-hosted models like `llama3`, `mistral`, `gemma` | N/A                                |
-| **Anthropic (Claude)**  | ⏳ Coming Soon | `claude-3-opus`, `claude-3-sonnet`, `claude-3-haiku`      | `[Track Issue](#)` Placeholder         |
-| **Google (Gemini)**     | ⏳ Coming Soon | `gemini-1.5-pro`, `gemini-1.0-pro`                        | `[Track Issue](#)` Placeholder         |
+| **Claude (Anthropic)**  | ⏳ Coming Soon | `claude-3-7-sonnet`, `claude-3-5-sonnet`, `claude-3-opus`      | `[Track Issue](#)` Placeholder         |
+| **Gemini (Google)**     | ⏳ Coming Soon | `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-2.0-flash-thinking`                        | `[Track Issue](#)` Placeholder         |
+| **DeepSeek**     | ⏳ Coming Soon | `deepseek-r1`, `deepseek-v3-0324`                        | `[Track Issue](#)` Placeholder         |
+| **Grok (xAI)**     | ⏳ Coming Soon | `grok-3`, `grok-2`                        | `[Track Issue](#)` Placeholder         |
+| **Llama (Meta)**     | ⏳ Coming Soon | `llama-4-maverick`, `llama-4-scout`                        | `[Track Issue](#)` Placeholder         |
+| **Mistral**     | ⏳ Coming Soon | `mistral-small-24b-instruct-2501`, `mistral-small-3.1-24b-instruct-2503`                        | `[Track Issue](#)` Placeholder         |
+| **Qwen**     | ⏳ Coming Soon | `qwen3-30b-a3b`, `qwq-32b`                        | `[Track Issue](#)` Placeholder         |
 
-If there's a model or provider you'd like to see supported, please [open a feature request](https://github.com/Code-and-Sorts/promptdrifter/issues/new/choose) or consider contributing an adapter!
+
+If there's a model or provider you'd like to see supported, please [open a feature request](https://github.com/Code-and-Sorts/PromptDrifter/issues/new?assignees=&template=feature_request.md) or consider contributing an adapter!
 
 ## 📚 Docs
 
