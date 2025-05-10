@@ -11,7 +11,9 @@
 </p>
 
 <p align="center">
-  <a href="#-why-promptdrifter">❓ Why PromptDrifter?</a> - <a href="#-quickstart">🏃 Quickstart</a> - <a href="#-docs">📚 Docs</a> - <a href="https://github.com/Code-and-Sorts/PromptDrifter/issues/new?assignees=&template=bug_report.md">🐛 Bug Report</a> - <a href="https://github.com/Code-and-Sorts/PromptDrifter/issues/new?assignees=&template=feature_request.md">✨ Feature Request</a>
+  <a href="#-quick-start">🏃 Quick-Start</a> - <a href="#-why-promptdrifter">❓ Why PromptDrifter?</a> - <a href="#-demo">🎬 Demo</a> - <a href="#-docs">📚 Docs</a>
+  <br />
+  <a href="https://github.com/Code-and-Sorts/PromptDrifter/issues/new?assignees=&template=bug_report.md">🐛 Bug Report</a> - <a href="https://github.com/Code-and-Sorts/PromptDrifter/issues/new?assignees=&template=feature_request.md">✨ Feature Request</a>
 </p>
 
 ### PromptDrifter is a one-command CI guardrail, open source platform for catching prompt drift and fails if your LLM answers change.
@@ -19,6 +21,9 @@
 > [!IMPORTANT]
 > ⚠️ **Development Notice**: This project is under active development. Breaking changes may occur between versions. Please check the changelog and release notes before updating.
 
+## 🏃 Quick-Start
+
+TODO: add quick-start
 
 ## ❓ Why PromptDrifter?
 
@@ -64,11 +69,12 @@ Define your prompt tests in easy-to-understand YAML files, making them simple to
 #### 😌 Developer Peace of Mind
 Build with greater confidence, knowing you have a safety net that monitors the stability of your critical prompt interactions.
 
-// TODO: make note
-By making prompt-response testing a straightforward and automated part of your workflow, **PromptDrifter** helps you harness the power of LLMs while mitigating the risks associated with their dynamic nature.
+> [!NOTE]
+> By making prompt-response testing a straightforward and automated part of your workflow, **PromptDrifter** helps you harness the power of LLMs while mitigating the risks associated with their dynamic nature.
 
-## 🏃 Quickstart
+## 🎬 Demo
 
+TODO: add demo with screenshots and GIFs
 
 ## 🤖 Supported LLM Adapters
 
