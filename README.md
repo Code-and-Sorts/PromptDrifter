@@ -10,10 +10,10 @@
 </p>
 
 <p align="center">
-  <a href="#why-promptdrifter">Why PromptDrifter?</a> - <a href="#quickstart">Quickstart</a> - <a href="#docs">Docs</a> - <a href="https://github.com/Code-and-Sorts/PromptDrifter/issues/new?assignees=&labels=bug&template=bug_report.md">Bug Reports</a>
+  <a href="#-why-promptdrifter">Why PromptDrifter?</a> - <a href="#-quickstart">Quickstart</a> - <a href="#-docs">Docs</a> - <a href="https://github.com/Code-and-Sorts/PromptDrifter/issues/new?assignees=&template=bug_report.md">Bug Reports</a> - <a href="https://github.com/Code-and-Sorts/PromptDrifter/issues/new?assignees=&template=feature_request.md">Feature Request</a>
 </p>
 
-## 🧭 PromptDrifter is a one-command CI guardrail, open source platform for catching prompt drift and fails if your LLM answers change.
+### PromptDrifter is a one-command CI guardrail, open source platform for catching prompt drift and fails if your LLM answers change.
 
 ## ❓ Why PromptDrifter?
 
