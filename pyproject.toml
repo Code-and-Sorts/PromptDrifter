@@ -21,6 +21,17 @@ dependencies = [
     "jsonschema (>=4.23.0,<5.0.0)",
 ]
 
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project.scripts]
+promptdrifter = "promptdrifter.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/promptdrifter"]
+include = ["src/promptdrifter/schema/*.json"]
+
 [dependency-groups]
 dev = [
     "pytest-mock>=3.14.0",

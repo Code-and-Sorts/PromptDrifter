@@ -276,7 +276,7 @@ wheels = [
 [[package]]
 name = "promptdrifter"
 version = "0.0.1"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "coverage" },
     { name = "httpx" },
