@@ -99,16 +99,24 @@ PromptDrifter is designed to be extensible to various Large Language Models thro
 
 If there's a model or provider you'd like to see supported, please [open a feature request](https://github.com/Code-and-Sorts/PromptDrifter/issues/new?assignees=&template=feature_request.md) or consider contributing an adapter!
 
-## 
+## Supported Drift Tests
+
+| Name | Config key | Description | Implementation Status|
+| :---------------------- | :------------- | :-------------------------------------------------------- | :------------------------------------- |
+| **Exact Match** | `expect_exact` | Output should match be an exact match | ✅ Available |
+| **Regex** | `expect_regex` | Output should match regex pattern  | ✅ Available |
+| **Substring** | `expect_substring` | Output should contain the substring  | ✅ Available |
+| **Substring Case Insensitive** | `expect_substring_case_insensitive` | Output should contain the substring that is case insensitive (e.g. "hElLO" === "hello")  | ✅ Available |
+
 
 ## 📚 Docs
 
-// TODO: Link to docs
+// TODO: Link to docs. In docs, add references.
 
 ## 🧑‍💻 Contributing
 
-Follow the [contributing guide](CONTRIBUTING.md).
+Follow the [contributing guide](./.github/CONTRIBUTING.md).
 
 ## 🔖 Code of Conduct
 
-Please make sure you read the [Code of Conduct guide](CODE-OF-CONDUCT.md).
+Please make sure you read the [Code of Conduct guide](./.github/CODE-OF-CONDUCT.md).
