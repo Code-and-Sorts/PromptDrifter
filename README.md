@@ -7,7 +7,11 @@
 <p align="center">
   <img alt="MIT License" src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" />
   <img alt="PRs welcome" src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square" />
-  <img alt="Python" src="https://img.shields.io/badge/-Python-3776AB?style=flat-square&logo=python&logoColor=white" />
+  <img alt="Python" src="https://img.shields.io/badge/Made with-Python-3776AB?style=flat-square&logo=python&logoColor=white" />
+</p>
+
+<p align="center">
+  <img alt="Build and Test CI" src="https://img.shields.io/github/actions/workflow/status/Code-and-Sorts/PromptDrifter/main-ci.yaml?branch=main&label=Build%20and%20Test&style=flat-square" />
 </p>
 
 <p align="center">
@@ -19,7 +23,7 @@
 ### PromptDrifter is a one-command CI guardrail, open source platform for catching prompt drift and fails if your LLM answers change.
 
 > [!IMPORTANT]
-> ⚠️ **Development Notice**: This project is under active development. Breaking changes may occur between versions. Please check the changelog and release notes before updating.
+> **Development Notice**: This project is under active development. Breaking changes may occur between versions. Please check the changelog and release notes before updating.
 
 ## 🏃 Quick-Start
 
@@ -94,6 +98,8 @@ PromptDrifter is designed to be extensible to various Large Language Models thro
 
 
 If there's a model or provider you'd like to see supported, please [open a feature request](https://github.com/Code-and-Sorts/PromptDrifter/issues/new?assignees=&template=feature_request.md) or consider contributing an adapter!
+
+## 
 
 ## 📚 Docs
 
