@@ -1,0 +1,9 @@
+version: "0.1"
+adapters:
+  - id: "test-example-invalid-type"
+    prompt: "A prompt."
+    expect_exact: "An exact output."
+    adapter:
+      - type: "openai"
+        model: "gpt-3.5-turbo"
+        max_tokens: "not-an-integer" # This is intentionally the wrong type

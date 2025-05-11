@@ -1,0 +1,4 @@
+version: "0.1"
+id: test-example-malformed
+  prompt: "This indentation is wrong."
+expect_exact: "An output."

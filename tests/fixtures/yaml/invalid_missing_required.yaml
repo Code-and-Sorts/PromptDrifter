@@ -1,0 +1,8 @@
+version: "0.1"
+adapters:
+  - id: "test-example-invalid-missing"
+    # prompt is intentionally missing
+    expect_exact: "This output won't be checked due to schema validation failure."
+    adapter:
+      - type: "openai" # Provide a minimal valid adapter config
+        model: "gpt-3.5-turbo"
