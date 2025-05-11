@@ -24,38 +24,13 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
-    - name: 🚀 Install uv
-      run: |
-        curl -LsSf https://astral.sh/uv/install.sh | sh
-        echo "$HOME/.cargo/bin" >> $GITHUB_PATH # For Linux/macOS
-        if [ "${{ runner.os }}" == "Windows" ]; then
-          echo "$USERPROFILE\.cargo\bin" >> $GITHUB_PATH # For Windows
-        fi
-      shell: bash
-
-    - name: ✅ Verify uv installation
-      run: uv --version
-
-    # https://github.com/actions/cache/blob/main/examples.md#python---uv
-    - name: 📂 Get uv cache directory
-      id: get-uv-cache-dir
-      run: echo "UV_CACHE_DIR=$(uv cache dir)" >> "$GITHUB_OUTPUT"
-      shell: bash
-
-    - name: 🗂️ Cache uv global dependencies
-      uses: actions/cache@v4
+    - name: 🚀 Install uv with caching
+      uses: astral-sh/setup-uv@v5
       with:
-        path: ${{ steps.get-uv-cache-dir.outputs.UV_CACHE_DIR }}
-        key: ${{ runner.os }}-uv-${{ hashFiles('pyproject.toml') }}-${{ hashFiles('uv.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-uv-${{ hashFiles('pyproject.toml') }}-
-          ${{ runner.os }}-uv-
+        enable-cache: true
 
     - name: 🔗 Check lock file consistency (uv.lock)
       run: uv lock --check
-
-    # - name: 📦 Install dependencies using uv
-    #   run: uv pip sync pyproject.toml --all-extras
 
     - name: ♻️ Cache .venv
       uses: actions/cache@v4
