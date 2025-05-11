@@ -1,16 +1,28 @@
 {
     "cSpell.words": [
+        "asyncio",
+        "capsys",
+        "deepseek",
         "delenv",
         "excinfo",
+        "httpx",
         "isort",
+        "jsonschema",
         "OLLAMA",
         "promptdrifer",
         "promptdrifter",
         "pycodestyle",
         "Pyflakes",
+        "pyproject",
+        "pytest",
         "pytestmark",
         "pyupgrade",
-        "Timm"
+        "pyyaml",
+        "qwen",
+        "Timm",
+        "typer",
+        "USERPROFILE",
+        "venv"
     ],
     "python.defaultInterpreterPath": ".venv/bin/python"
 }
