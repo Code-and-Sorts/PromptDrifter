@@ -76,7 +76,7 @@ class YamlFileLoader:
                 "Please ensure the schema file exists in the correct location."
             )
         except json.JSONDecodeError as e:
-            raise ValueError(f"Error decoding schema JSON from {self.schema_path}: {e}")
+            raise ValueError(f"Error decoding schema JSON from {self.schema_path}: {e}") from e
 
     def load_and_validate_yaml(self, yaml_path: Path) -> dict:
         if not yaml_path.is_file():
