@@ -1,6 +1,7 @@
 import asyncio
 import importlib.resources
 import json
+import sys
 from pathlib import Path
 from typing import List, Optional
 
@@ -38,6 +39,7 @@ def init(
     ),
 ):
     """Initialize a new promptdrifter project with a sample config."""
+    print("cli.init: starting", file=sys.stderr)
     target_path = Path(target_path_str).resolve()
     config_file_path = target_path / "promptdrifter.yaml"
 
