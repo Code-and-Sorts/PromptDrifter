@@ -101,10 +101,11 @@ def test_load_non_existent_yaml(loader):
 
 
 def test_schema_not_found():
+    schema_input_path = Path("non_existent_schema_dir/schema.json")
     with pytest.raises(FileNotFoundError) as excinfo:
-        YamlFileLoader(schema_path=Path("non_existent_schema_dir/schema.json"))
+        YamlFileLoader(schema_path=schema_input_path)
     assert "Schema file not found" in str(excinfo.value)
-    assert "non_existent_schema_dir/schema.json" in str(excinfo.value)
+    assert str(schema_input_path) in str(excinfo.value)
 
 
 def test_auto_detect_latest_schema_single_file(mocker, tmp_path):
