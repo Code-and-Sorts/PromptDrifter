@@ -45,7 +45,7 @@ jobs:
       run: uv build
 
     - name: 🧪 Run tests with uv
-      run: uv run pytest
+      run: uv run pytest --cov=src/promptdrifter
 
     - name: ✨ Lint with Ruff using uv
       run: uv run ruff check .

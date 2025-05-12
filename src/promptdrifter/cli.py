@@ -1,7 +1,6 @@
 import asyncio
 import importlib.resources
 import json
-import sys
 from pathlib import Path
 from typing import List, Optional
 
@@ -39,15 +38,14 @@ def init(
     ),
 ):
     """Initialize a new promptdrifter project with a sample config."""
-    print("cli.init: starting", file=sys.stderr)
     target_path = Path(target_path_str).resolve()
     config_file_path = target_path / "promptdrifter.yaml"
 
     if not target_path.exists():
         target_path.mkdir(parents=True, exist_ok=True)
         message = Text("Created directory: ", style="green")
-        path_segment = Text(str(target_path), style="green", no_wrap=True)
-        message.append(path_segment)
+        path_text = Text(str(target_path), style="green", no_wrap=True, overflow="ignore")
+        message.append(path_text)
         console.print(message)
     elif not target_path.is_dir():
         console.print(
@@ -62,7 +60,6 @@ def init(
         return
 
     try:
-        # Access the sample configuration file using importlib.resources
         sample_config_content = (
             importlib.resources.files("promptdrifter")
             .joinpath("schema", "sample", "v0.1.yaml")
@@ -81,14 +78,14 @@ def init(
         with open(config_file_path, "w") as f:
             f.write(sample_config_content)
         message = Text("Successfully created sample configuration: ", style="green")
-        path_segment = Text(str(config_file_path), style="green", no_wrap=True)
-        message.append(path_segment)
+        path_text = Text(str(config_file_path), style="green", no_wrap=True, overflow="ignore")
+        message.append(path_text)
         console.print(message)
         console.print("You can now edit this file and run 'promptdrifter run'.")
     except IOError as e:
         message = Text("Error writing configuration file to '", style="bold red")
-        path_segment = Text(str(config_file_path), style="bold red", no_wrap=True)
-        message.append(path_segment)
+        path_text = Text(str(config_file_path), style="bold red", no_wrap=True, overflow="ignore")
+        message.append(path_text)
         message.append(f"': {e}", style="bold red")
         console.print(message)
         raise typer.Exit(code=1)
