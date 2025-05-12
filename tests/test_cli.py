@@ -177,8 +177,7 @@ def test_init_command_default_path(mocker, tmp_path):
     result = cli_runner.invoke(app, ["init", str(tmp_path)])
 
     assert result.exit_code == 0, strip_ansi(result.stdout)
-    stripped_stdout = strip_ansi(result.stdout)
-    normalized_stdout = " ".join(stripped_stdout.replace('\n', ' ').split())
+    normalized_stdout = " ".join(strip_ansi(result.stdout).replace('\n', ' ').split())
     assert "Successfully created sample configuration:" in normalized_stdout
     assert config_file.name in normalized_stdout
     assert "You can now edit this file and run 'promptdrifter run'." in normalized_stdout
@@ -234,8 +233,7 @@ def test_init_new_directory_success(mocker, tmp_path):
     result = cli_runner.invoke(app, ["init", str(base_dir)])
 
     assert result.exit_code == 0, strip_ansi(result.stdout)
-    stripped_stdout = strip_ansi(result.stdout)
-    normalized_stdout = " ".join(stripped_stdout.replace('\n', ' ').split())
+    normalized_stdout = " ".join(strip_ansi(result.stdout).replace('\n', ' ').split())
     assert "Created directory:" in normalized_stdout
     assert base_dir.name in normalized_stdout
     assert "Successfully created sample configuration:" in normalized_stdout
@@ -276,8 +274,7 @@ def test_init_target_path_is_file(mocker, tmp_path):
     result = cli_runner.invoke(app, ["init", str(target_file_path)])
 
     assert result.exit_code == 1, strip_ansi(result.stdout)
-    stripped_stdout = strip_ansi(result.stdout)
-    normalized_stdout = " ".join(stripped_stdout.replace('\n', ' ').split())
+    normalized_stdout = " ".join(strip_ansi(result.stdout).replace('\n', ' ').split())
     assert "Error: Target path" in normalized_stdout
     assert target_file_path.name in normalized_stdout
     assert "exists but is not a directory." in normalized_stdout
@@ -296,8 +293,7 @@ def test_init_config_already_exists(mocker, tmp_path):
     result = cli_runner.invoke(app, ["init", str(target_dir)])
 
     assert result.exit_code == 0, strip_ansi(result.stdout)
-    stripped_stdout = strip_ansi(result.stdout)
-    normalized_stdout = " ".join(stripped_stdout.replace('\n', ' ').split())
+    normalized_stdout = " ".join(strip_ansi(result.stdout).replace('\n', ' ').split())
     assert "Warning: Configuration file" in normalized_stdout
     assert config_file.name in normalized_stdout
     assert "already exists. Skipping." in normalized_stdout
@@ -320,8 +316,7 @@ def test_init_io_error_writing_config(mocker, tmp_path):
     result = cli_runner.invoke(app, ["init", str(target_dir)])
 
     assert result.exit_code == 1, strip_ansi(result.stdout)
-    stripped_stdout = strip_ansi(result.stdout)
-    normalized_stdout = " ".join(stripped_stdout.replace('\n', ' ').split())
+    normalized_stdout = " ".join(strip_ansi(result.stdout).replace('\n', ' ').split())
     assert "Created directory:" in normalized_stdout
     assert target_dir.name in normalized_stdout
     assert "Error writing configuration file to" in normalized_stdout

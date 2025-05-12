@@ -46,7 +46,8 @@ def init(
     if not target_path.exists():
         target_path.mkdir(parents=True, exist_ok=True)
         message = Text("Created directory: ", style="green")
-        message.append(str(target_path), style="green")
+        path_segment = Text(str(target_path), style="green", no_wrap=True)
+        message.append(path_segment)
         console.print(message)
     elif not target_path.is_dir():
         console.print(
@@ -80,12 +81,14 @@ def init(
         with open(config_file_path, "w") as f:
             f.write(sample_config_content)
         message = Text("Successfully created sample configuration: ", style="green")
-        message.append(str(config_file_path), style="green")
+        path_segment = Text(str(config_file_path), style="green", no_wrap=True)
+        message.append(path_segment)
         console.print(message)
         console.print("You can now edit this file and run 'promptdrifter run'.")
     except IOError as e:
         message = Text("Error writing configuration file to '", style="bold red")
-        message.append(str(config_file_path), style="bold red")
+        path_segment = Text(str(config_file_path), style="bold red", no_wrap=True)
+        message.append(path_segment)
         message.append(f"': {e}", style="bold red")
         console.print(message)
         raise typer.Exit(code=1)
