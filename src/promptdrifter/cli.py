@@ -6,7 +6,6 @@ from typing import List, Optional
 
 import typer
 from rich.console import Console
-from rich.markup import escape as escape_markup
 from rich.text import Text
 
 from promptdrifter.runner import Runner
