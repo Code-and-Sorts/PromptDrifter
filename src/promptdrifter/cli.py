@@ -7,6 +7,7 @@ from typing import List, Optional
 import typer
 from rich.console import Console
 from rich.markup import escape as escape_markup
+from rich.text import Text
 
 from promptdrifter.runner import Runner
 
@@ -38,13 +39,14 @@ def init(
     ),
 ):
     """Initialize a new promptdrifter project with a sample config."""
-    console = Console()
     target_path = Path(target_path_str).resolve()
     config_file_path = target_path / "promptdrifter.yaml"
 
     if not target_path.exists():
         target_path.mkdir(parents=True, exist_ok=True)
-        console.print(f"[green]Created directory: {escape_markup(str(target_path))}[/green]")
+        message = Text("Created directory: ", style="green")
+        message.append(str(target_path), style="green")
+        console.print(message)
     elif not target_path.is_dir():
         console.print(
             f"[bold red]Error: Target path '{target_path}' exists but is not a directory.[/bold red]"
@@ -76,14 +78,15 @@ def init(
     try:
         with open(config_file_path, "w") as f:
             f.write(sample_config_content)
-        console.print(
-            f"[green]Successfully created sample configuration: {escape_markup(str(config_file_path))}[/green]"
-        )
+        message = Text("Successfully created sample configuration: ", style="green")
+        message.append(str(config_file_path), style="green")
+        console.print(message)
         console.print("You can now edit this file and run 'promptdrifter run'.")
     except IOError as e:
-        console.print(
-            f"[bold red]Error writing configuration file to '{escape_markup(str(config_file_path))}': {e}[/bold red]"
-        )
+        message = Text("Error writing configuration file to '", style="bold red")
+        message.append(str(config_file_path), style="bold red")
+        message.append(f"': {e}", style="bold red")
+        console.print(message)
         raise typer.Exit(code=1)
 
 
