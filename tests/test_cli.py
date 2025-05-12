@@ -147,8 +147,10 @@ async def test_cli_run_logic_file_not_found(mocker, capsys):
         )
     assert exc_info.value.exit_code == 1
     mock_class_for_safety.assert_not_called()
-    captured = capsys.readouterr()
-    assert "non_existent_file.yaml: File not found" in strip_ansi(captured.out)
+    captured_out_content = strip_ansi(capsys.readouterr().out)
+    normalized_captured_out = " ".join(captured_out_content.replace('\n', ' ').split())
+    expected_string_in_output = "• non_existent_file.yaml: File not found"
+    assert expected_string_in_output in normalized_captured_out
 
 
 @pytest.mark.asyncio

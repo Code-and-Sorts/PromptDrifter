@@ -41,21 +41,25 @@ def init(
     target_path = Path(target_path_str).resolve()
     config_file_path = target_path / "promptdrifter.yaml"
 
+    # Sanitize path strings before use with Rich
+    sane_target_path_str = str(target_path).replace("\u00A0", " ")
+    sane_config_file_path_str = str(config_file_path).replace("\u00A0", " ")
+
     if not target_path.exists():
         target_path.mkdir(parents=True, exist_ok=True)
         message = Text("Created directory: ", style="green")
-        path_text = Text(str(target_path), style="green", no_wrap=True, overflow="ignore")
+        path_text = Text(sane_target_path_str, style="green", no_wrap=True, overflow="ignore")
         message.append(path_text)
         console.print(message)
     elif not target_path.is_dir():
         console.print(
-            f"[bold red]Error: Target path '{target_path}' exists but is not a directory.[/bold red]"
+            f"[bold red]Error: Target path '{sane_target_path_str}' exists but is not a directory.[/bold red]"
         )
         raise typer.Exit(code=1)
 
     if config_file_path.exists():
         console.print(
-            f"[yellow]Warning: Configuration file '{config_file_path}' already exists. Skipping.[/yellow]"
+            f"[yellow]Warning: Configuration file '{sane_config_file_path_str}' already exists. Skipping.[/yellow]"
         )
         return
 
@@ -78,13 +82,13 @@ def init(
         with open(config_file_path, "w") as f:
             f.write(sample_config_content)
         message = Text("Successfully created sample configuration: ", style="green")
-        path_text = Text(str(config_file_path), style="green", no_wrap=True, overflow="ignore")
+        path_text = Text(sane_config_file_path_str, style="green", no_wrap=True, overflow="ignore")
         message.append(path_text)
         console.print(message)
         console.print("You can now edit this file and run 'promptdrifter run'.")
     except IOError as e:
         message = Text("Error writing configuration file to '", style="bold red")
-        path_text = Text(str(config_file_path), style="bold red", no_wrap=True, overflow="ignore")
+        path_text = Text(sane_config_file_path_str, style="bold red", no_wrap=True, overflow="ignore")
         message.append(path_text)
         message.append(f"': {e}", style="bold red")
         console.print(message)
@@ -127,8 +131,9 @@ async def _run_async(
 
     if invalid_files:
         console.print("[bold red]Error: Invalid file(s) provided:[/bold red]")
-        for file, reason in invalid_files:
-            console.print(f"  • {file}: {reason}")
+        for file_path_obj, reason in invalid_files:
+            sane_file_path_str = str(file_path_obj).replace("\u00A0", " ")
+            console.print(f"  • {sane_file_path_str}: {reason}")
         console.print("\n[bold]Please provide valid YAML test files.[/bold]")
         raise typer.Exit(code=1)
 
