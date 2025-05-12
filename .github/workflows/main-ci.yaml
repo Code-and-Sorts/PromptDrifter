@@ -42,6 +42,14 @@ jobs:
           ${{ runner.os }}-python-${{ matrix.python-version }}-venv-${{ hashFiles('pyproject.toml') }}-
           ${{ runner.os }}-python-${{ matrix.python-version }}-venv-
 
+    - name: Display CLI source
+      run: |
+        echo "--- Contents of src/promptdrifter/cli.py (around sanitization points) ---"
+        grep -C 7 "sane_target_path_str =" src/promptdrifter/cli.py || echo "sane_target_path_str not found"
+        grep -C 5 "sane_file_path_str =" src/promptdrifter/cli.py || echo "sane_file_path_str not found for invalid_files"
+        grep -C 3 "sane_output_file_str =" src/promptdrifter/cli.py || echo "sane_output_file_str not found for record command"
+        echo "--- End of CLI source display ---"
+
     - name: 🧱 Build project with uv
       run: uv build
 
@@ -50,11 +58,3 @@ jobs:
 
     - name: ✨ Lint with Ruff using uv
       run: uv run ruff check .
-
-    - name: Display CLI source
-      run: |
-        echo "--- Contents of src/promptdrifter/cli.py (around sanitization points) ---"
-        grep -C 7 "sane_target_path_str =" src/promptdrifter/cli.py || echo "sane_target_path_str not found"
-        grep -C 5 "sane_file_path_str =" src/promptdrifter/cli.py || echo "sane_file_path_str not found for invalid_files"
-        grep -C 3 "sane_output_file_str =" src/promptdrifter/cli.py || echo "sane_output_file_str not found for record command"
-        echo "--- End of CLI source display ---"
