@@ -227,8 +227,10 @@ def record(
         try:
             with open(output_file, "w") as f:
                 json.dump(interactions, f, indent=2)
+            # Sanitize output_file path string before use with Rich
+            sane_output_file_str = str(output_file).replace("\u00A0", " ")
             console.print(
-                f"[green]Recorded {len(interactions)} interactions to {output_file}[/green]"
+                f"[green]Recorded {len(interactions)} interactions to {sane_output_file_str}[/green]"
             )
             console.print("\n[bold]Next steps:[/bold]")
             console.print("1. Review the recorded interactions")
