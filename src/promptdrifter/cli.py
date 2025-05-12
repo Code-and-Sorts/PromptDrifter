@@ -1,7 +1,6 @@
 import asyncio
 import importlib.resources
 import json
-import sys
 from pathlib import Path
 from typing import List, Optional
 
@@ -44,7 +43,6 @@ def init(
 
     if not target_path.exists():
         target_path.mkdir(parents=True, exist_ok=True)
-        print(f"DEBUG cli.py path: {repr(str(target_path))}", file=sys.stderr)
         message = Text("Created directory: ", style="green")
         message.append(str(target_path), style="green")
         console.print(message)
@@ -79,13 +77,11 @@ def init(
     try:
         with open(config_file_path, "w") as f:
             f.write(sample_config_content)
-        print(f"DEBUG cli.py path: {repr(str(config_file_path))}", file=sys.stderr)
         message = Text("Successfully created sample configuration: ", style="green")
         message.append(str(config_file_path), style="green")
         console.print(message)
         console.print("You can now edit this file and run 'promptdrifter run'.")
     except IOError as e:
-        print(f"DEBUG cli.py path: {repr(str(config_file_path))}", file=sys.stderr)
         message = Text("Error writing configuration file to '", style="bold red")
         message.append(str(config_file_path), style="bold red")
         message.append(f"': {e}", style="bold red")
