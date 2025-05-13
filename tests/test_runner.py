@@ -83,8 +83,10 @@ async def test_run_single_test_case_pass_exact_match(
     test_data = {
         "id": "exact-pass-001",
         "prompt": "Say hello",
-        "adapter": "mocked_adapter",
-        "model": "test_model",
+        "adapter": [{
+            "type": "mocked_adapter",
+            "model": "test_model"
+        }],
         "expect_exact": "Hello there",
     }
     mock_adapter.execute.return_value = {
@@ -112,7 +114,9 @@ async def test_run_single_test_case_fail_exact_match(
     test_data = {
         "id": "exact-fail-001",
         "prompt": "Say hello",
-        "adapter": "mocked_adapter",
+        "adapter": [{
+            "type": "mocked_adapter"
+        }],
         "expect_exact": "Hello",
     }
 
@@ -136,7 +140,9 @@ async def test_run_single_test_case_pass_regex_match(
     test_data = {
         "id": "regex-pass-001",
         "prompt": "What number?",
-        "adapter": "mocked_adapter",
+        "adapter": [{
+            "type": "mocked_adapter"
+        }],
         "expect_regex": r"number is \d+",
     }
 
@@ -155,7 +161,9 @@ async def test_run_single_test_case_cache_hit(
     test_data = {
         "id": "cache-hit-001",
         "prompt": "Cached prompt",
-        "adapter": "cached_adapter",
+        "adapter": [{
+            "type": "cached_adapter"
+        }],
         "expect_exact": "Cached response",
     }
     cached_llm_response = {
@@ -187,7 +195,9 @@ async def test_run_single_test_case_adapter_error(
     test_data = {
         "id": "adapter-err-001",
         "prompt": "Trigger error",
-        "adapter": "error_adapter",
+        "adapter": [{
+            "type": "error_adapter"
+        }],
         "expect_exact": "N/A",
     }
 
@@ -207,7 +217,9 @@ async def test_run_single_test_case_no_text_response(
     test_data = {
         "id": "no-text-001",
         "prompt": "No text",
-        "adapter": "no_text_adapter",
+        "adapter": [{
+            "type": "no_text_adapter"
+        }],
         "expect_exact": "Something",
     }
 
@@ -221,7 +233,7 @@ async def test_run_single_test_case_skipped_no_prompt(
     test_runner: Runner, runner_dependencies_setup
 ):
     test_file = Path("test_skip_prompt.yaml")
-    test_data = {"id": "skip-prompt", "adapter": "any", "expect_exact": "any"}
+    test_data = {"id": "skip-prompt", "adapter": [{"type": "any"}], "expect_exact": "any"}
     result = await test_runner._run_single_test_case(test_file, test_data)
     assert result["status"] == "SKIPPED"
     assert result["reason"] == "No prompt defined."
@@ -241,10 +253,12 @@ async def test_run_single_test_case_skipped_no_assertion(
     test_runner: Runner, runner_dependencies_setup
 ):
     test_file = Path("test_skip_assertion.yaml")
-    test_data = {"id": "skip-assertion", "prompt": "A prompt", "adapter": "any"}
+    test_data = {"id": "skip-assertion", "prompt": "A prompt", "adapter": [{"type": "any"}]}
     result = await test_runner._run_single_test_case(test_file, test_data)
     assert result["status"] == "SKIPPED"
-    assert result["reason"] == "No assertion (expect_exact or expect_regex) defined."
+    assert result["reason"] == (
+        "No assertion (expect_exact, expect_regex, expect_substring, or expect_substring_case_insensitive) defined."
+    )
 
 
 async def test_run_single_test_case_unknown_adapter(
@@ -255,7 +269,9 @@ async def test_run_single_test_case_unknown_adapter(
     test_data = {
         "id": "unknown-adapter",
         "prompt": "Hello",
-        "adapter": "non_existent_adapter",
+        "adapter": [{
+            "type": "non_existent_adapter"
+        }],
         "expect_exact": "Hi",
     }
     result = await test_runner._run_single_test_case(test_file, test_data)
@@ -276,12 +292,14 @@ async def test_run_suite_overall_success_and_failure(
 
     test_file_2 = tmp_path / "test2.yaml"
     test_file_2.write_text(
-        "id: suite-fail-1\nprompt: P2\nadapter: mocked\nexpect_exact: R2-expected"
+        "id: suite-fail-1\nprompt: P2\nadapter:\n  - type: mocked\nexpect_exact: R2-expected"
     )
     test_data_2 = {
         "id": "suite-fail-1",
         "prompt": "P2",
-        "adapter": "mocked",
+        "adapter": [{
+            "type": "mocked"
+        }],
         "expect_exact": "R2-expected",
     }
 

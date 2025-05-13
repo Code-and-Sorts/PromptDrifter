@@ -81,7 +81,7 @@
                 "type": {
                     "type": "string",
                     "description": "Backend adapter name (e.g. openai, azure, ollama).",
-                    "enum": ["openai", "ollama"]
+                    "enum": ["openai", "ollama", "gemini"]
                 },
                 "model": {
                     "type": "string",

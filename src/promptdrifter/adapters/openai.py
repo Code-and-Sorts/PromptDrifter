@@ -3,24 +3,23 @@ from typing import Any, Dict, Optional
 
 import httpx
 
+from ..config.adapter_settings import (
+    API_KEY_ENV_VAR_OPENAI,
+    DEFAULT_OPENAI_MODEL,
+    OPENAI_API_BASE_URL,
+)
 from .base import Adapter
-
-# Default OpenAI API endpoint
-OPENAI_API_BASE_URL = "https://api.openai.com/v1"
-# Environment variable for the API key
-API_KEY_ENV_VAR = "OPENAI_API_KEY"
-# Default model if not specified
-DEFAULT_OPENAI_MODEL = "gpt-3.5-turbo"
 
 
 class OpenAIAdapter(Adapter):
     """Adapter for interacting with OpenAI API."""
 
     def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None):
-        self.api_key = api_key or os.getenv(API_KEY_ENV_VAR)
+        # Use imported constants for defaults
+        self.api_key = api_key or os.getenv(API_KEY_ENV_VAR_OPENAI)
         if not self.api_key:
             raise ValueError(
-                f"OpenAI API key not provided. Set the {API_KEY_ENV_VAR} environment variable "
+                f"OpenAI API key not provided. Set the {API_KEY_ENV_VAR_OPENAI} environment variable "
                 f"or pass it to the adapter constructor."
             )
         self.base_url = base_url or OPENAI_API_BASE_URL
@@ -37,6 +36,7 @@ class OpenAIAdapter(Adapter):
         **kwargs: Any,
     ) -> Dict[str, Any]:
         """Makes a request to the OpenAI Chat Completions API."""
+        # Use imported constant for default model
         effective_model = model or DEFAULT_OPENAI_MODEL
 
         payload = {

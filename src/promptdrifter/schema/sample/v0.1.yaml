@@ -4,7 +4,7 @@ adapters:
     prompt: 'You are a helpful assistant. Please help me with: {{task}}'
     inputs:
       task: Write a hello world program in Python
-    expect_substring: "print('Hello, World!')"
+    expect_substring: "print(\"Hello, World!\")"
     adapter:
       - type: openai
         model: gpt-3.5-turbo

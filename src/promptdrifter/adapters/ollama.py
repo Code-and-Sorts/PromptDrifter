@@ -3,21 +3,23 @@ from typing import Any, AsyncGenerator, Dict, Optional
 
 import httpx
 
+from ..config.adapter_settings import (
+    DEFAULT_OLLAMA_BASE_URL,
+    DEFAULT_OLLAMA_MODEL,
+)
 from .base import Adapter
-
-# Default Ollama API endpoint
-DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434"
-# Default model if not specified (user should specify a model they have pulled)
-DEFAULT_OLLAMA_MODEL = "llama3"
 
 
 class OllamaAdapter(Adapter):
     """Adapter for interacting with a local Ollama API."""
 
     def __init__(
-        self, base_url: Optional[str] = None, default_model: Optional[str] = None
+        self,
+        base_url: Optional[str] = None,
+        default_model: Optional[str] = None # Allow overriding default model at instantiation
     ):
         self.base_url = base_url or DEFAULT_OLLAMA_BASE_URL
+        # Allow instance-specific default model, falling back to global default
         self.default_model = default_model or DEFAULT_OLLAMA_MODEL
         self.client = httpx.AsyncClient(base_url=self.base_url)
 
@@ -56,6 +58,7 @@ class OllamaAdapter(Adapter):
         **kwargs: Any,
     ) -> Dict[str, Any]:
         """Makes a request to the Ollama /api/generate endpoint."""
+        # effective_model will use instance's default_model if model arg is None
         effective_model = model or self.default_model
 
         payload = {

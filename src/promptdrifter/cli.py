@@ -10,7 +10,7 @@ from rich.text import Text
 
 from promptdrifter.runner import Runner
 
-app = typer.Typer()
+app = typer.Typer(no_args_is_help=True)
 console = Console()
 
 
