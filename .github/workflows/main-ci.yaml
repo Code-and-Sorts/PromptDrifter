@@ -42,11 +42,11 @@ jobs:
           ${{ runner.os }}-python-${{ matrix.python-version }}-venv-${{ hashFiles('pyproject.toml') }}-
           ${{ runner.os }}-python-${{ matrix.python-version }}-venv-
 
+    - name: ✨ Lint with Ruff using uv
+      run: uv run ruff check .
+
     - name: 🧱 Build project with uv
       run: uv build
 
     - name: 🧪 Run tests with uv
       run: uv run pytest --cov=src/promptdrifter
-
-    - name: ✨ Lint with Ruff using uv
-      run: uv run ruff check .
