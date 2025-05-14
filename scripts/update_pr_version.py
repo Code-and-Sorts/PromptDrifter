@@ -1,6 +1,7 @@
 import os
-import tomlkit
 import pathlib
+
+import tomlkit
 
 
 def main():
