@@ -69,8 +69,8 @@ class Runner:
 
     async def _run_single_test_case(
         self, test_case_path: Path, test_case_data: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        """Runs a single test case definition."""
+    ) -> List[Dict[str, Any]]:
+        """Runs a single test case definition for all its adapters."""
         case_id = test_case_data.get("id", "unknown_id")
         prompt_template = test_case_data.get("prompt", "")
         inputs = test_case_data.get("inputs", {})
@@ -80,50 +80,77 @@ class Runner:
         expect_substring = test_case_data.get("expect_substring")
         expect_substring_case_insensitive = test_case_data.get("expect_substring_case_insensitive")
 
-        result_details = {
+        base_result_details = {
             "file": str(test_case_path.name),
             "id": case_id,
             "prompt_template": prompt_template,
             "inputs": inputs,
-            "status": "SKIPPED",  # Default status
-            "reason": "",
-            "actual_response": None,
         }
 
-        if not prompt_template:
-            result_details["reason"] = "No prompt defined."
-            return result_details
-        if not adapter_configs:
-            result_details["reason"] = "No adapter specified."
-            return result_details
-        if not (expect_exact or expect_regex or expect_substring or expect_substring_case_insensitive):
-            result_details["reason"] = (
-                "No assertion (expect_exact, expect_regex, expect_substring, or expect_substring_case_insensitive) defined."
-            )
-            return result_details
+        all_adapter_results: List[Dict[str, Any]] = []
 
-        # Substitute inputs into prompt
+        if not prompt_template:
+            all_adapter_results.append({
+                **base_result_details,
+                "status": "SKIPPED",
+                "reason": "No prompt defined.",
+                "adapter": "N/A",
+                "model": "N/A",
+            })
+            return all_adapter_results
+        if not adapter_configs:
+            all_adapter_results.append({
+                **base_result_details,
+                "status": "SKIPPED",
+                "reason": "No adapter specified.",
+                "adapter": "N/A",
+                "model": "N/A",
+            })
+            return all_adapter_results
+        if not (expect_exact or expect_regex or expect_substring or expect_substring_case_insensitive):
+            all_adapter_results.append({
+                **base_result_details,
+                "status": "SKIPPED",
+                "reason": "No assertion defined.",
+                "adapter": "N/A",
+                "model": "N/A",
+            })
+            return all_adapter_results
+
         prompt_text = prompt_template
         for var, value in inputs.items():
             prompt_text = prompt_text.replace(f"{{{{{var}}}}}", str(value))
-        result_details["rendered_prompt"] = prompt_text
 
-        # Process each adapter configuration
         for adapter_config in adapter_configs:
+            current_run_details = {
+                **base_result_details,
+                "rendered_prompt": prompt_text,
+                "status": "SKIPPED",
+                "reason": "",
+                "actual_response": None,
+                "cache_status": "N/A",
+            }
+
             adapter_name = adapter_config.get("type")
             model = adapter_config.get("model")
             temperature = adapter_config.get("temperature")
             max_tokens = adapter_config.get("max_tokens")
+            additional_adapter_kwargs = {
+                k: v for k, v in adapter_config.items() if k not in ["type", "model", "temperature", "max_tokens"]
+            }
 
-            result_details["adapter"] = adapter_name if adapter_name else "N/A"
-            result_details["model"] = model if model else "N/A"
+            current_run_details["adapter"] = adapter_name if adapter_name else "N/A"
+            current_run_details["model"] = model if model else "N/A"
 
             adapter_instance = self._get_adapter_instance(adapter_name)
             if not adapter_instance:
-                result_details["reason"] = (
+                current_run_details["status"] = "ERROR"
+                current_run_details["reason"] = (
                     f"Adapter '{adapter_name}' could not be initialized or found."
                 )
-                return result_details
+                all_adapter_results.append(current_run_details)
+                self.overall_success = False
+                continue
 
             adapter_options = {
                 k: v
@@ -133,21 +160,22 @@ class Runner:
                 }.items()
                 if v is not None
             }
+            adapter_options.update(additional_adapter_kwargs)
 
             llm_response_data: Optional[Dict[str, Any]] = None
 
-            # Cache lookup
             if self.cache:
+                cache_options_key = frozenset(adapter_options.items())
                 cached_response = self.cache.get(
-                    prompt_text, adapter_name, model, adapter_options
+                    prompt_text, adapter_name, model, cache_options_key
                 )
                 if cached_response:
                     llm_response_data = cached_response
-                    result_details["cache_status"] = "HIT"
+                    current_run_details["cache_status"] = "HIT"
 
             if not llm_response_data:
                 if self.cache:
-                    result_details["cache_status"] = "MISS"
+                    current_run_details["cache_status"] = "MISS"
                 try:
                     llm_response_data = await adapter_instance.execute(
                         prompt_text,
@@ -159,76 +187,79 @@ class Runner:
                         and llm_response_data
                         and not llm_response_data.get("error")
                     ):
+                        cache_options_key_put = frozenset(adapter_options.items())
                         self.cache.put(
                             prompt_text,
                             adapter_name,
                             model,
-                            adapter_options,
+                            cache_options_key_put,
                             llm_response_data,
                         )
                 except Exception as e:
-                    result_details["status"] = "ERROR"
-                    result_details["reason"] = f"Adapter execution error: {e}"
+                    current_run_details["status"] = "ERROR"
+                    current_run_details["reason"] = f"Adapter execution error: {e}"
+                    all_adapter_results.append(current_run_details)
+                    self.overall_success = False
                     if hasattr(adapter_instance, "close"):
                         await adapter_instance.close()
-                    return result_details
+                    continue
 
             if hasattr(adapter_instance, "close"):
                 await adapter_instance.close()
 
             if not llm_response_data:
-                result_details["status"] = "ERROR"
-                result_details["reason"] = "No response from adapter."
-                return result_details
+                current_run_details["status"] = "ERROR"
+                current_run_details["reason"] = "No response from adapter."
+                all_adapter_results.append(current_run_details)
+                self.overall_success = False
+                continue
 
             if llm_response_data.get("error"):
-                result_details["status"] = "ERROR"
-                result_details["reason"] = f"Adapter error: {llm_response_data['error']}"
-                result_details["actual_response"] = llm_response_data.get("raw_response")
-                return result_details
+                current_run_details["status"] = "ERROR"
+                current_run_details["reason"] = f"Adapter error: {llm_response_data['error']}"
+                current_run_details["actual_response"] = llm_response_data.get("raw_response")
+                all_adapter_results.append(current_run_details)
+                self.overall_success = False
+                continue
 
             actual_text_response = llm_response_data.get("text_response")
-            result_details["actual_response"] = actual_text_response
-            result_details["raw_adapter_response"] = llm_response_data.get("raw_response")
+            current_run_details["actual_response"] = actual_text_response
+            current_run_details["raw_adapter_response"] = llm_response_data.get("raw_response")
 
             if actual_text_response is None:
-                result_details["status"] = "FAIL"
-                result_details["reason"] = "Adapter returned no text_response."
-                return result_details
+                current_run_details["status"] = "FAIL"
+                current_run_details["reason"] = "Adapter returned no text_response."
+                all_adapter_results.append(current_run_details)
+                self.overall_success = False
+                continue
 
-            # Perform assertions
             passed = False
+            assertion_reason = ""
             if expect_exact:
                 passed = exact_match(expect_exact, actual_text_response)
                 if not passed:
-                    result_details["reason"] = (
-                        f"Exact match failed. Expected: '{expect_exact}'"
-                    )
+                    assertion_reason = f"Exact match failed. Expected: '{expect_exact}'"
             elif expect_regex:
                 passed = regex_match(expect_regex, actual_text_response)
                 if not passed:
-                    result_details["reason"] = (
-                        f"Regex match failed. Pattern: '{expect_regex}'"
-                    )
+                    assertion_reason = f"Regex match failed. Pattern: '{expect_regex}'"
             elif expect_substring:
                 passed = expect_substring in actual_text_response
                 if not passed:
-                    result_details["reason"] = (
-                        f"Substring match failed. Expected to find: '{expect_substring}'"
-                    )
+                    assertion_reason = f"Substring match failed. Expected to find: '{expect_substring}'"
             elif expect_substring_case_insensitive:
                 passed = expect_substring_case_insensitive.lower() in actual_text_response.lower()
                 if not passed:
-                    result_details["reason"] = (
-                        f"Case-insensitive substring match failed. Expected to find: '{expect_substring_case_insensitive}'"
-                    )
+                    assertion_reason = f"Case-insensitive substring match failed. Expected to find: '{expect_substring_case_insensitive}'"
 
-            result_details["status"] = "PASS" if passed else "FAIL"
+            current_run_details["status"] = "PASS" if passed else "FAIL"
             if not passed:
+                current_run_details["reason"] = assertion_reason
                 self.overall_success = False
-                return result_details
 
-        return result_details
+            all_adapter_results.append(current_run_details)
+
+        return all_adapter_results
 
     async def run_suite(self, test_file_paths: List[Path]):
         """Loads YAML files from a directory and runs all test cases defined within them."""
@@ -256,16 +287,16 @@ class Runner:
                 # If adapters key exists and is a list, treat each as a test case
                 if isinstance(test_suite_data, dict) and isinstance(test_suite_data.get("adapters"), list):
                     for test_case in test_suite_data["adapters"]:
-                        result = await self._run_single_test_case(
+                        results = await self._run_single_test_case(
                             test_file_path, test_case
                         )
-                        self.results.append(result)
+                        self.results.extend(results)
                         ran_any_test = True
                 else:
-                    result = await self._run_single_test_case(
+                    results = await self._run_single_test_case(
                         test_file_path, test_suite_data
                     )
-                    self.results.append(result)
+                    self.results.extend(results)
                     ran_any_test = True
             except ValueError as e:
                 if str(e).startswith("[bold red]Schema Validation Error"):

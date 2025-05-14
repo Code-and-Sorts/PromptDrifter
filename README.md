@@ -84,22 +84,22 @@ TODO: add demo with screenshots and GIFs
 
 PromptDrifter is designed to be extensible to various Large Language Models through its adapter system. Here's a current list of supported and planned adapters:
 
-| Provider / Model Family | Adapter Status | Details / Model Examples                                  | Linked Issue |
-| :---------------------- | :------------- | :-------------------------------------------------------- | :------------------------------------- |
-| **GPT (OpenAI)**              | ✅ Available   | `gpt-3.5-turbo`, `gpt-4`, `gpt-4o`, etc.                  | N/A                                    |
-| **Ollama**              | ✅ Available   | Supports self-hosted models like `llama3`, `mistral`, `gemma` | N/A                                |
-| **Claude (Anthropic)**  | ⏳ Coming Soon | `claude-3-7-sonnet`, `claude-3-5-sonnet`, `claude-3-opus`      | `[Track Issue](#)` Placeholder         |
-| **Gemini (Google)**     | ⏳ Coming Soon | `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-2.0-flash-thinking`                        | `[Track Issue](#)` Placeholder         |
-| **DeepSeek**     | ⏳ Coming Soon | `deepseek-r1`, `deepseek-v3-0324`                        | `[Track Issue](#)` Placeholder         |
-| **Grok (xAI)**     | ⏳ Coming Soon | `grok-3`, `grok-2`                        | `[Track Issue](#)` Placeholder         |
-| **Llama (Meta)**     | ⏳ Coming Soon | `llama-4-maverick`, `llama-4-scout`                        | `[Track Issue](#)` Placeholder         |
-| **Mistral**     | ⏳ Coming Soon | `mistral-small-24b-instruct-2501`, `mistral-small-3.1-24b-instruct-2503`                        | `[Track Issue](#)` Placeholder         |
-| **Qwen**     | ⏳ Coming Soon | `qwen3-30b-a3b`, `qwq-32b`                        | `[Track Issue](#)` Placeholder         |
+| Provider / Model Family | Adapter Status | Details / Model Examples | Linked Issue |
+| :---------------------- | :------------- | :----------------------- | :----------- |
+| **GPT (OpenAI)**        | ✅ Available   | `gpt-3.5-turbo`, `gpt-4`, `gpt-4o`, etc.                         | N/A                            |
+| **Ollama**              | ✅ Available   | `llama3`, `mistral`, `gemma`, etc.                               | N/A                            |
+| **Claude (Anthropic)**  | ⏳ Coming Soon | `claude-3-7-sonnet`, `claude-3-5-sonnet`, `claude-3-opus`        | N/A                            |
+| **Gemini (Google)**     | ✅ Available   | `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-2.0-flash-thinking`| N/A                            |
+| **DeepSeek**            | ⏳ Coming Soon | `deepseek-r1`, `deepseek-v3-0324`, etc.                          | `[Track Issue](#)` Placeholder |
+| **Grok (xAI)**          | ⏳ Coming Soon | `grok-3`, `grok-2`, etc.                                         | `[Track Issue](#)` Placeholder |
+| **Llama (Meta)**        | ⏳ Coming Soon | `llama-4-maverick`, `llama-4-scout`, etc.                        | `[Track Issue](#)` Placeholder |
+| **Mistral**             | ⏳ Coming Soon | `mistral-small-24b-instruct-2501`, `mistral-small-3.1-24b-instruct-2503` | `[Track Issue](#)` Placeholder |
+| **Qwen**                | ⏳ Coming Soon | `qwen3-30b-a3b`, `qwq-32b`                                        | `[Track Issue](#)` Placeholder         |
 
 
 If there's a model or provider you'd like to see supported, please [open a feature request](https://github.com/Code-and-Sorts/PromptDrifter/issues/new?assignees=&template=feature_request.md) or consider contributing an adapter!
 
-## Supported Drift Tests
+## 🧪 Supported Drift Tests
 
 | Name | Config key | Description | Implementation Status|
 | :---------------------- | :------------- | :-------------------------------------------------------- | :------------------------------------- |
@@ -108,6 +108,20 @@ If there's a model or provider you'd like to see supported, please [open a featu
 | **Substring** | `expect_substring` | Output should contain the substring  | ✅ Available |
 | **Substring Case Insensitive** | `expect_substring_case_insensitive` | Output should contain the substring that is case insensitive (e.g. "hElLO" === "hello")  | ✅ Available |
 
+## ⚙️ GitHub Action
+
+Automate your prompt drift detection by integrating PromptDrifter directly into your GitHub workflows!
+
+We provide a reusable GitHub Action that makes it easy to run your PromptDrifter tests on every push or pull request.
+
+➡️ **Find the PromptDrifter GitHub Action and usage instructions here: [CodeAndSorts/promptdrifter-action](https://github.com/CodeAndSorts/promptdrifter-action)** (Replace this URL with the actual one once the action is published in its own repository or on the GitHub Marketplace).
+
+This action allows you to:
+*   Install a specific version of PromptDrifter or use the latest.
+*   Specify your test files and configurations.
+*   Control caching behavior.
+
+By using the action, you can ensure that any changes to your LLM's responses that violate your defined tests will automatically flag your CI builds, preventing unexpected issues from reaching production.
 
 ## 📚 Docs
 

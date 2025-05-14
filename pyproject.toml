@@ -18,6 +18,23 @@ dependencies = [
     "coverage (>=7.8.0,<8.0.0)",
     "jsonschema (>=4.23.0,<5.0.0)",
 ]
+keywords = ["llm", "prompt engineering", "testing", "ci", "developer tools", "cli", "prompt drift"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Testing",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Utilities",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/Code-and-Sorts/PromptDrifter"
+Repository = "https://github.com/Code-and-Sorts/PromptDrifter"
+"Bug Tracker" = "https://github.com/Code-and-Sorts/PromptDrifter/issues"
 
 [build-system]
 requires = ["hatchling"]

@@ -3,8 +3,6 @@ name: PromptDrifter CI
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
 
 jobs:
   build-lint-test:
@@ -26,7 +24,7 @@ jobs:
         python-version: ${{ matrix.python-version }}
 
     - name: 🚀 Install uv with caching
-      uses: astral-sh/setup-uv@v5
+      uses: astral-sh/setup-uv@v6
       with:
         enable-cache: true
 
