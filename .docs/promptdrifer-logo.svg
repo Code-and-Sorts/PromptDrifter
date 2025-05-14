@@ -2,9 +2,9 @@
 <!-- Created with Inkscape (http://www.inkscape.org/) -->
 
 <svg
-   width="152.13564mm"
+   width="156.89818mm"
    height="68.845398mm"
-   viewBox="0 0 152.13564 68.845398"
+   viewBox="0 0 156.89818 68.845398"
    version="1.1"
    id="svg1"
    xml:space="preserve"
@@ -12,14 +12,14 @@
    xmlns:svg="http://www.w3.org/2000/svg"><defs
      id="defs1" /><g
      id="layer1"
-     transform="translate(-72.432191,-31.006157)"><text
+     transform="translate(-70.050909,-31.006157)"><text
        xml:space="preserve"
-       style="font-size:22.5778px;font-family:'Madesta Brush';-inkscape-font-specification:'Madesta Brush';text-align:center;letter-spacing:-1.5875px;writing-mode:lr-tb;direction:ltr;text-anchor:middle;fill:#9f4cf2;stroke:#5d5d5d;stroke-width:0;stroke-miterlimit:0"
+       style="font-size:22.5778px;font-family:'Madesta Brush';-inkscape-font-specification:'Madesta Brush';text-align:center;letter-spacing:-1.19062px;writing-mode:lr-tb;direction:ltr;text-anchor:middle;fill:#9f4cf2;stroke:#5d5d5d;stroke-width:0;stroke-miterlimit:0"
        x="147.55632"
        y="96.094467"
        id="text1"><tspan
-         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Krungthep;-inkscape-font-specification:Krungthep;letter-spacing:-1.5875px;stroke-width:0"
-         x="146.76257"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Krungthep;-inkscape-font-specification:Krungthep;letter-spacing:-1.19062px;stroke-width:0"
+         x="146.96101"
          y="96.094467"
          id="tspan2">PromptDrifter</tspan></text><path
        style="fill:#4bcbf1;fill-opacity:1;stroke-width:0.339531"
