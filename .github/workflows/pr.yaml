@@ -44,7 +44,7 @@ jobs:
       env:
         PR_NUMBER: ${{ github.event.pull_request.number }}
         RUN_NUMBER: ${{ github.run_number }}
-      run: cd scripts && uv run update-pr-version
+      run: cd scripts && uv run python update_pr_version.py
 
     - name: ✨ Lint with Ruff using uv
       run: uv run ruff check .
