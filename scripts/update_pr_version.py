@@ -30,13 +30,13 @@ def main():
         if '+' in base_version:
             base_version = base_version.split('+', 1)[0]
 
-        if f"pr{pr_number}.run{run_number}" in base_version.split('+', 1)[-1]:
-            print(f"Version already seems to contain +pr{pr_number}.run{run_number}. Assuming already updated: {data['project']['version']}")
+        if f"pr{pr_number}run{run_number}" in data['project']['version'].split('+', 1)[-1]:
+            print(f"Version already seems to contain +pr{pr_number}run{run_number}. Assuming already updated: {data['project']['version']}")
             exit(0)
 
-        new_version = f"{base_version}+pr{pr_number}.run{run_number}"
+        new_version = f"{base_version}+pr{pr_number}run{run_number}"
 
-        print(f"Original version in {pyproject_path}: {data['project']['version']}") # Print original before modification
+        print(f"Original version in {pyproject_path}: {data['project']['version']}")
         print(f"Base version for new construction: {base_version}")
         print(f"Updating to PR version: {new_version}")
         data['project']['version'] = new_version
