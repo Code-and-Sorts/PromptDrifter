@@ -1,0 +1,9 @@
+[project]
+name = "promptdrifter-scripts"
+version = "0.1.0"
+dependencies = [
+    "tomlkit>=0.12.0,<1.0.0"
+]
+
+[project.scripts]
+update-pr-version = "update_pr_version:main"

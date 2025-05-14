@@ -19,7 +19,9 @@
         "pyupgrade",
         "pyyaml",
         "qwen",
+        "testpypi",
         "Timm",
+        "tomlkit",
         "typer",
         "USERPROFILE",
         "venv"

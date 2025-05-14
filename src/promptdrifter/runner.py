@@ -256,7 +256,7 @@ class Runner:
             if not passed:
                 current_run_details["reason"] = assertion_reason
                 self.overall_success = False
-            
+
             all_adapter_results.append(current_run_details)
 
         return all_adapter_results

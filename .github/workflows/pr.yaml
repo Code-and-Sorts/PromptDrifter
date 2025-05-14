@@ -1,0 +1,93 @@
+name: PR Checks and TestPyPI Publish
+
+on:
+  pull_request:
+    branches: [ main ]
+    types: [opened, synchronize, reopened]
+
+jobs:
+  build-and-test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+        python-version: ['3.13']
+
+    steps:
+    - name: ⤵️ Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🐍 Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: 🚀 Install uv with caching
+      uses: astral-sh/setup-uv@v5
+      with:
+        enable-cache: true
+
+    - name: 🔗 Check lock file consistency (uv.lock)
+      run: uv lock --check
+
+    - name: ♻️ Cache .venv
+      uses: actions/cache@v4
+      with:
+        path: .venv
+        key: ${{ runner.os }}-python-${{ matrix.python-version }}-venv-${{ hashFiles('pyproject.toml', 'scripts/pyproject.toml') }}-${{ hashFiles('uv.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-python-${{ matrix.python-version }}-venv-${{ hashFiles('pyproject.toml', 'scripts/pyproject.toml') }}-
+          ${{ runner.os }}-python-${{ matrix.python-version }}-venv-
+
+    - name: ⬆️ Update version in pyproject.toml for PR
+      env:
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        RUN_NUMBER: ${{ github.run_number }}
+      run: cd scripts && uv run update-pr-version
+
+    - name: ✨ Lint with Ruff using uv
+      run: uv run ruff check .
+
+    - name: 🧱 Build project with uv (PR version)
+      run: uv build
+
+    - name: 🧪 Run tests with uv
+      run: uv run pytest --cov=src/promptdrifter
+
+    - name: ⬆️ Upload dist artifacts (from macOS only)
+      if: matrix.os == 'macos-latest'
+      uses: actions/upload-artifact@v4
+      with:
+        name: python-package-dist
+        path: dist/
+
+  publish-to-testpypi:
+    needs: build-and-test
+    runs-on: macos-latest
+    environment: testpypi
+    if: github.event_name == 'pull_request'
+
+    steps:
+    - name: 🐍 Set up Python 3.13
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+
+    - name: 🚀 Install uv
+      uses: astral-sh/setup-uv@v5
+
+    - name: ⤵️ Download dist artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: python-package-dist
+        path: dist/
+
+    - name: Install Twine
+      run: uv pip install twine
+
+    - name: 📦 Publish to TestPyPI
+      env:
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}
+      run: uv run twine upload --repository testpypi dist/*

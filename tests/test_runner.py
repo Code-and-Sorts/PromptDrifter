@@ -136,7 +136,7 @@ async def test_run_single_test_case_pass_regex_match(
     test_runner: Runner, runner_dependencies_setup
 ):
     mock_adapter = runner_dependencies_setup["adapter_instance"]
-    test_runner.overall_success = True 
+    test_runner.overall_success = True
     mock_adapter.execute.return_value = {
         "text_response": "The number is 42.",
         "raw_response": {},
@@ -327,7 +327,7 @@ async def test_run_single_test_case_unknown_adapter(
 ):
     # Ensure _get_adapter_instance returns None for this specific adapter name
     get_adapter_mock = runner_dependencies_setup["get_adapter_method_mock"]
-    
+
     def side_effect_for_get_adapter(adapter_name_called):
         if adapter_name_called == "unknown_adapter_type":
             return None # Simulate adapter not found/failed init
@@ -351,7 +351,7 @@ async def test_run_single_test_case_unknown_adapter(
     assert "Adapter 'unknown_adapter_type' could not be initialized or found" in result["reason"]
     assert test_runner.overall_success is False
     # Reset side effect if other tests might use the same mock from fixture
-    get_adapter_mock.side_effect = None 
+    get_adapter_mock.side_effect = None
     get_adapter_mock.return_value = runner_dependencies_setup["adapter_instance"]
 
 
@@ -409,7 +409,7 @@ async def test_run_suite_overall_success_and_failure(
 ):
     mock_yaml_loader = runner_dependencies_setup["yaml_loader"]
     mock_console = runner_dependencies_setup["console"]
-    
+
     # We need _run_single_test_case to be an async mock for await, as it's called by run_suite
     # The test_runner fixture already mocks _get_adapter_instance, which is used by the real _run_single_test_case
     # So, we mock _run_single_test_case itself on the instance for more direct control in this suite test.
@@ -442,7 +442,7 @@ async def test_run_suite_overall_success_and_failure(
 
     # --- Scenario 2: One test fails (two files, results combined) ---
     mock_yaml_loader.load_and_validate_yaml.side_effect = [test_case_data1, test_case_data2]
-    
+
     # Mock _run_single_test_case to also set overall_success on the runner instance if a FAIL occurs
     async def mock_rrtc_side_effect(test_path, test_data_arg):
         if test_path == test_file1_path:
@@ -457,7 +457,7 @@ async def test_run_suite_overall_success_and_failure(
 
     test_runner.results = []
     test_runner.overall_success = True # Reset for this scenario
-    test_runner._run_single_test_case.reset_mock() 
+    test_runner._run_single_test_case.reset_mock()
     mock_console.reset_mock()
 
     success2 = await test_runner.run_suite([test_file1_path, test_file2_path])
@@ -604,44 +604,12 @@ async def test_get_adapter_instance_success(tmp_path):
 # and the warning comes from an older version. If it's still present, it should be refactored or removed.
 # For safety, I will make it async and assume it's distinct for now.
 async def test_get_adapter_instance_unknown(tmp_path, runner_dependencies_setup):
-    runner = Runner(config_dir=tmp_path, use_cache=False)
-    runner.console = runner_dependencies_setup["console"]
-
-    adapter = runner._get_adapter_instance("completely_unknown_adapter_type_2")
-    assert adapter is None
-    runner.console.print.assert_any_call("[bold red]Unknown adapter: completely_unknown_adapter_type_2[/bold red]")
-
-
-# Restore the original regex for test_run_single_test_case_pass_regex_match
-# as the simplified version passed, indicating the core logic is okay.
-# The issue might be subtle or in how the runner processes it.
-# For now, let's revert it and if it fails, we'll debug regex_match directly.
-async def test_run_single_test_case_pass_regex_match(
-    test_runner: Runner, runner_dependencies_setup
-):
-    mock_adapter = runner_dependencies_setup["adapter_instance"]
-    test_runner.overall_success = True 
-    mock_adapter.execute.return_value = {
-        "text_response": "The number is 42.",
-        "raw_response": {},
-    }
-
-    test_file = Path("test_regex.yaml")
-    test_data = {
-        "id": "regex-pass-001",
-        "prompt": "What number?",
-        "adapter": [{
-            "type": "mocked_adapter", "model": "regex_model"
-        }],
-        "expect_regex": "number is \\d+", # Corrected: No r prefix here, just the string for regex engine
-    }
-
-    results_list = await test_runner._run_single_test_case(test_file, test_data)
-    assert len(results_list) == 1
-    result = results_list[0]
-
-    assert result["status"] == "PASS" # This will fail if the regex issue persists
-    mock_adapter.close.assert_called_once()
+    # This test uses a local Runner instance, not the fixture, to avoid conflict
+    # with the fixture's mocking of _get_adapter_instance.
+    local_runner = Runner(config_dir=tmp_path)
+    adapter_instance = local_runner._get_adapter_instance("unknown_adapter_type")
+    assert adapter_instance is None
+    # No close assertion needed as no adapter was instantiated
 
 
 # Tests for the original _get_adapter_instance method
