@@ -10,8 +10,6 @@ def main():
     if pr_number is None or run_number is None:
         print("Error: PR_NUMBER or RUN_NUMBER environment variables not set.")
         print("This script is intended for PR contexts. Skipping version update.")
-        # Exiting gracefully if not in the intended PR context
-        # This prevents the job from failing if somehow triggered without these vars
         exit(0)
 
     pyproject_path = 'pyproject.toml'
@@ -28,7 +26,6 @@ def main():
             exit(1)
 
         base_version = str(data['project']['version'])
-        # Prevent re-appending if the script runs multiple times on the same checkout with an already modified version
         if f".pr{pr_number}.run{run_number}" in base_version:
             print(f"Version already contains .pr{pr_number}.run{run_number}. Assuming already updated: {base_version}")
             exit(0)
