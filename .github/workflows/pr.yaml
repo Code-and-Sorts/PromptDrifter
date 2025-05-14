@@ -90,7 +90,7 @@ jobs:
       env:
         TWINE_USERNAME: __token__
         TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}
-      run: twine upload --verbose --repository testpypi dist/*
+      run: twine upload --verbose --repository testpypi dist/*.whl dist/*.tar.gz
 
     - name: Read version for comment
       id: version_reader
