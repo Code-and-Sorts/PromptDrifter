@@ -12,8 +12,8 @@ def main():
         print("This script is intended for PR contexts. Skipping version update.")
         exit(0)
 
-    pyproject_path = 'pyproject.toml'
-    print(f"Attempting to update version in {pyproject_path}")
+    pyproject_path = '../pyproject.toml'
+    print(f"Attempting to update version in {pyproject_path} (from {os.getcwd()})")
 
     try:
         with open(pyproject_path, 'r', encoding='utf-8') as f:
@@ -32,7 +32,7 @@ def main():
 
         new_version = f"{base_version}.pr{pr_number}.run{run_number}"
 
-        print(f"Original version: {base_version}")
+        print(f"Original version in {pyproject_path}: {base_version}")
         print(f"Updating to PR version: {new_version}")
         data['project']['version'] = new_version
 

@@ -32,9 +32,9 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/CodeAndSorts/PromptDrifter"
-Repository = "https://github.com/CodeAndSorts/PromptDrifter"
-"Bug Tracker" = "https://github.com/CodeAndSorts/PromptDrifter/issues"
+Homepage = "https://github.com/Code-and-Sorts/PromptDrifter"
+Repository = "https://github.com/Code-and-Sorts/PromptDrifter"
+"Bug Tracker" = "https://github.com/Code-and-Sorts/PromptDrifter/issues"
 
 [build-system]
 requires = ["hatchling"]
