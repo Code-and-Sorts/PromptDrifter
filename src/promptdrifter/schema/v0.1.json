@@ -80,8 +80,8 @@
             "properties": {
                 "type": {
                     "type": "string",
-                    "description": "Backend adapter name (e.g. openai, azure, ollama).",
-                    "enum": ["openai", "ollama", "gemini"]
+                    "description": "Backend adapter name (e.g. openai, azure, ollama, qwen).",
+                    "enum": ["openai", "ollama", "gemini", "qwen"]
                 },
                 "model": {
                     "type": "string",

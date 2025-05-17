@@ -36,7 +36,9 @@ def mock_httpx_client_instance():
     mock_response_for_stream.aiter_bytes = MagicMock()
     mock_response_for_stream.raise_for_status = MagicMock()
 
-    async_context_manager_mock.__aenter__ = AsyncMock(return_value=mock_response_for_stream)
+    async_context_manager_mock.__aenter__ = AsyncMock(
+        return_value=mock_response_for_stream
+    )
     async_context_manager_mock.__aexit__ = AsyncMock(return_value=None)
     client.stream.return_value = async_context_manager_mock
     return client
@@ -44,14 +46,19 @@ def mock_httpx_client_instance():
 
 @pytest.fixture
 def patch_httpx_client(mock_httpx_client_instance):
-    with patch("promptdrifter.adapters.ollama.httpx.AsyncClient", return_value=mock_httpx_client_instance) as patched_class_mock:
+    with patch(
+        "promptdrifter.adapters.ollama.httpx.AsyncClient",
+        return_value=mock_httpx_client_instance,
+    ) as patched_class_mock:
         yield patched_class_mock
 
 
 @pytest.fixture
 def ollama_adapter(patch_httpx_client):
     adapter_instance = OllamaAdapter()
-    patch_httpx_client.assert_called_once_with(base_url=adapter_instance.config.base_url)
+    patch_httpx_client.assert_called_once_with(
+        base_url=adapter_instance.config.base_url
+    )
     return adapter_instance
 
 
@@ -61,6 +68,7 @@ async def test_ollama_adapter_init_default(patch_httpx_client):
     assert adapter.config.default_model == config_DEFAULT_OLLAMA_MODEL
     patch_httpx_client.assert_called_once_with(base_url=config_DEFAULT_OLLAMA_BASE_URL)
 
+
 async def test_ollama_adapter_init_custom_params(patch_httpx_client):
     custom_url = "http://customhost:11435"
     custom_model = "customollamamodel"
@@ -68,6 +76,7 @@ async def test_ollama_adapter_init_custom_params(patch_httpx_client):
     assert adapter.config.base_url == custom_url
     assert adapter.config.default_model == custom_model
     patch_httpx_client.assert_called_once_with(base_url=custom_url)
+
 
 async def test_ollama_adapter_init_with_config_object(patch_httpx_client):
     custom_url = "http://confighost:11433"
@@ -135,16 +144,22 @@ def mock_streaming_byte_chunks():
         {"response": "!", "done": False},
         {"response": "", "done": True, "context": [1, 2, 3]},
     ]
+
     async def byte_stream():
         for chunk_data in chunks_data:
             yield json.dumps(chunk_data).encode("utf-8") + b"\n"
+
     return byte_stream()
 
 
-async def test_execute_streaming_successful(ollama_adapter, patch_httpx_client, mock_streaming_byte_chunks):
+async def test_execute_streaming_successful(
+    ollama_adapter, patch_httpx_client, mock_streaming_byte_chunks
+):
     mock_client_instance = patch_httpx_client.return_value
 
-    mock_response_for_stream = await mock_client_instance.stream.return_value.__aenter__()
+    mock_response_for_stream = (
+        await mock_client_instance.stream.return_value.__aenter__()
+    )
     mock_response_for_stream.aiter_bytes.return_value = mock_streaming_byte_chunks
 
     prompt = "Stream this!"
@@ -167,7 +182,9 @@ async def test_execute_streaming_successful(ollama_adapter, patch_httpx_client, 
     mock_client_instance.aclose.assert_called_once()
 
 
-async def test_execute_http_status_error_non_streaming(ollama_adapter, patch_httpx_client):
+async def test_execute_http_status_error_non_streaming(
+    ollama_adapter, patch_httpx_client
+):
     mock_client_instance = patch_httpx_client.return_value
     error_response_content = '{"error": "model not found"}'
     mock_client_instance.post.return_value = httpx.Response(
@@ -181,6 +198,7 @@ async def test_execute_http_status_error_non_streaming(ollama_adapter, patch_htt
     await ollama_adapter.close()
     mock_client_instance.aclose.assert_called_once()
 
+
 async def test_execute_http_status_error_streaming(ollama_adapter, patch_httpx_client):
     mock_client_instance = patch_httpx_client.return_value
     error_response_content = '{"error": "streaming model not found"}'
@@ -188,12 +206,18 @@ async def test_execute_http_status_error_streaming(ollama_adapter, patch_httpx_c
     bad_stream_response = MagicMock(spec=httpx.Response)
     bad_stream_response.status_code = 500
     bad_stream_response.text = error_response_content
-    bad_stream_response.aiter_bytes = MagicMock(return_value = (b for b in []))
+    bad_stream_response.aiter_bytes = MagicMock(return_value=(b for b in []))
+
     def raise_http_error(*args, **kwargs):
-        raise httpx.HTTPStatusError("Error", request=MagicMock(), response=bad_stream_response)
+        raise httpx.HTTPStatusError(
+            "Error", request=MagicMock(), response=bad_stream_response
+        )
+
     bad_stream_response.raise_for_status = MagicMock(side_effect=raise_http_error)
 
-    mock_client_instance.stream.return_value.__aenter__ = AsyncMock(return_value=bad_stream_response)
+    mock_client_instance.stream.return_value.__aenter__ = AsyncMock(
+        return_value=bad_stream_response
+    )
 
     result = await ollama_adapter.execute("A prompt", stream=True)
     assert "error" in result
@@ -211,9 +235,12 @@ async def test_execute_request_error_non_streaming(ollama_adapter, patch_httpx_c
     await ollama_adapter.close()
     mock_client_instance.aclose.assert_called_once()
 
+
 async def test_execute_request_error_streaming(ollama_adapter, patch_httpx_client):
     mock_client_instance = patch_httpx_client.return_value
-    mock_client_instance.stream.side_effect = httpx.ConnectError("Stream connection failed")
+    mock_client_instance.stream.side_effect = httpx.ConnectError(
+        "Stream connection failed"
+    )
     result = await ollama_adapter.execute("A prompt", stream=True)
     assert "error" in result
     assert "Request error connecting to Ollama" in result["error"]

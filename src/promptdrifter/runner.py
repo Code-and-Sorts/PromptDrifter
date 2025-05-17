@@ -34,11 +34,10 @@ class Runner:
         use_cache: bool = True,
         openai_api_key: Optional[str] = None,
         gemini_api_key: Optional[str] = None,
+        qwen_api_key: Optional[str] = None,
     ):
         self.config_dir = config_dir
-        self.yaml_loader = (
-            YamlFileLoader()
-        )
+        self.yaml_loader = YamlFileLoader()
         if use_cache:
             if cache_db_path is not None:
                 self.cache = PromptCache(db_path=cache_db_path)
@@ -51,6 +50,7 @@ class Runner:
         self.overall_success = True
         self.cli_openai_api_key = openai_api_key
         self.cli_gemini_api_key = gemini_api_key
+        self.cli_qwen_api_key = qwen_api_key
 
     async def close_cache_connection(self):
         """Closes the database connection if cache is enabled and connection exists."""
@@ -67,6 +67,8 @@ class Runner:
                     api_key_to_pass = self.cli_openai_api_key
                 elif adapter_name.lower() == "gemini" and self.cli_gemini_api_key:
                     api_key_to_pass = self.cli_gemini_api_key
+                elif adapter_name.lower() == "qwen" and self.cli_qwen_api_key:
+                    api_key_to_pass = self.cli_qwen_api_key
 
                 if api_key_to_pass:
                     return adapter_class(api_key=api_key_to_pass)
@@ -81,13 +83,15 @@ class Runner:
         return None
 
     async def _run_single_test_case(
-        self, test_case_path: Path, test_case_model: TestCase # Changed type hint
+        self,
+        test_case_path: Path,
+        test_case_model: TestCase,  # Changed type hint
     ) -> List[Dict[str, Any]]:
         all_adapter_results = []
 
         test_id = test_case_model.id
         base_prompt = test_case_model.prompt
-        inputs = test_case_model.inputs # Already defaults to {} if not present
+        inputs = test_case_model.inputs  # Already defaults to {} if not present
 
         prompt_text = base_prompt
         if inputs:
@@ -96,23 +100,27 @@ class Runner:
                 prompt_text = template.render(**inputs)
             except Exception as e:
                 self.console.print(
-                    f"[bold red]Error rendering prompt for test ID \'{test_id}\' in file \'{test_case_path.name}\': {e}[/bold red]"
+                    f"[bold red]Error rendering prompt for test ID '{test_id}' in file '{test_case_path.name}': {e}[/bold red]"
                 )
-                return [{
-                    "file": str(test_case_path.name),
-                    "id": test_id,
-                    "adapter": "N/A",
-                    "model": "N/A",
-                    "status": "ERROR",
-                    "reason": f"Prompt templating error: {e}",
-                    "prompt": base_prompt,
-                    "inputs": inputs,
-                }]
+                return [
+                    {
+                        "file": str(test_case_path.name),
+                        "id": test_id,
+                        "adapter": "N/A",
+                        "model": "N/A",
+                        "status": "ERROR",
+                        "reason": f"Prompt templating error: {e}",
+                        "prompt": base_prompt,
+                        "inputs": inputs,
+                    }
+                ]
 
         expect_exact = test_case_model.expect_exact
         expect_regex = test_case_model.expect_regex
         expect_substring = test_case_model.expect_substring
-        expect_substring_case_insensitive = test_case_model.expect_substring_case_insensitive
+        expect_substring_case_insensitive = (
+            test_case_model.expect_substring_case_insensitive
+        )
 
         for adapter_config_model in test_case_model.adapter_configurations:
             adapter_name = adapter_config_model.adapter_type
@@ -126,7 +134,10 @@ class Runner:
                 "status": "SKIPPED",
                 "reason": "",
                 "prompt": prompt_text,
-                "expected": expect_exact or expect_regex or expect_substring or expect_substring_case_insensitive,
+                "expected": expect_exact
+                or expect_regex
+                or expect_substring
+                or expect_substring_case_insensitive,
                 "inputs": inputs,
                 "cache_status": "N/A",
                 "actual_response": None,
@@ -135,19 +146,27 @@ class Runner:
 
             adapter_instance = self._get_adapter_instance(adapter_name)
             if adapter_instance is None:
-                current_run_details["reason"] = f"Adapter \'{adapter_name}\' not found or failed to initialize."
+                current_run_details["reason"] = (
+                    f"Adapter '{adapter_name}' not found or failed to initialize."
+                )
                 current_run_details["status"] = "ERROR"
                 all_adapter_results.append(current_run_details)
                 self.overall_success = False
                 continue
 
-            all_adapter_params = adapter_config_model.model_dump(by_alias=True, exclude_none=True)
+            all_adapter_params = adapter_config_model.model_dump(
+                by_alias=True, exclude_none=True
+            )
 
             known_options_to_pass = {}
             if "temperature" in all_adapter_params:
-                known_options_to_pass["temperature"] = all_adapter_params.pop("temperature")
+                known_options_to_pass["temperature"] = all_adapter_params.pop(
+                    "temperature"
+                )
             if "max_tokens" in all_adapter_params:
-                known_options_to_pass["max_tokens"] = all_adapter_params.pop("max_tokens")
+                known_options_to_pass["max_tokens"] = all_adapter_params.pop(
+                    "max_tokens"
+                )
 
             all_adapter_params.pop("type", None)
             all_adapter_params.pop("model", None)
@@ -157,11 +176,29 @@ class Runner:
             adapter_options = {**known_options_to_pass, **additional_adapter_kwargs}
 
             llm_response_data: Optional[Dict[str, Any]] = None
+            cache_key_options_component = None
 
             if self.cache:
-                cache_options_key = frozenset(adapter_options.items())
+                assertion_details_for_cache = []
+                if test_case_model.expect_exact is not None:
+                    assertion_details_for_cache.append(("_assertion_type", "exact"))
+                    assertion_details_for_cache.append(("_assertion_value", test_case_model.expect_exact))
+                elif test_case_model.expect_regex is not None:
+                    assertion_details_for_cache.append(("_assertion_type", "regex"))
+                    assertion_details_for_cache.append(("_assertion_value", test_case_model.expect_regex))
+                elif test_case_model.expect_substring is not None:
+                    assertion_details_for_cache.append(("_assertion_type", "substring"))
+                    assertion_details_for_cache.append(("_assertion_value", test_case_model.expect_substring))
+                elif test_case_model.expect_substring_case_insensitive is not None:
+                    assertion_details_for_cache.append(("_assertion_type", "substring_case_insensitive"))
+                    assertion_details_for_cache.append(("_assertion_value", test_case_model.expect_substring_case_insensitive))
+
+                sorted_adapter_options_items = sorted(list(adapter_options.items()), key=lambda item: item[0])
+                combined_options_for_cache_key = sorted_adapter_options_items + assertion_details_for_cache
+                cache_key_options_component = frozenset(combined_options_for_cache_key)
+
                 cached_response = self.cache.get(
-                    prompt_text, adapter_name, model_name, cache_options_key
+                    prompt_text, adapter_name, model_name, cache_key_options_component
                 )
                 if cached_response:
                     llm_response_data = cached_response
@@ -178,15 +215,15 @@ class Runner:
                     )
                     if (
                         self.cache
+                        and cache_key_options_component is not None
                         and llm_response_data
                         and not llm_response_data.get("error")
                     ):
-                        cache_options_key_put = frozenset(adapter_options.items())
                         self.cache.put(
                             prompt_text,
                             adapter_name,
                             model_name,
-                            cache_options_key_put,
+                            cache_key_options_component,
                             llm_response_data,
                         )
                 except Exception as e:
@@ -210,15 +247,21 @@ class Runner:
 
             if llm_response_data.get("error"):
                 current_run_details["status"] = "ERROR"
-                current_run_details["reason"] = f"Adapter error: {llm_response_data['error']}"
-                current_run_details["actual_response"] = llm_response_data.get("raw_response")
+                current_run_details["reason"] = (
+                    f"Adapter error: {llm_response_data['error']}"
+                )
+                current_run_details["actual_response"] = llm_response_data.get(
+                    "raw_response"
+                )
                 all_adapter_results.append(current_run_details)
                 self.overall_success = False
                 continue
 
             actual_text_response = llm_response_data.get("text_response")
             current_run_details["actual_response"] = actual_text_response
-            current_run_details["raw_adapter_response"] = llm_response_data.get("raw_response")
+            current_run_details["raw_adapter_response"] = llm_response_data.get(
+                "raw_response"
+            )
 
             if actual_text_response is None:
                 current_run_details["status"] = "FAIL"
@@ -242,7 +285,10 @@ class Runner:
                 if not passed:
                     assertion_reason = f"Substring match failed. Expected to find: '{expect_substring}'"
             elif expect_substring_case_insensitive:
-                passed = expect_substring_case_insensitive.lower() in actual_text_response.lower()
+                passed = (
+                    expect_substring_case_insensitive.lower()
+                    in actual_text_response.lower()
+                )
                 if not passed:
                     assertion_reason = f"Case-insensitive substring match failed. Expected to find: '{expect_substring_case_insensitive}'"
 
@@ -275,9 +321,7 @@ class Runner:
 
             self.console.print(f"[cyan]Processing test file: {test_file_path}[/cyan]")
             try:
-                config_model = self.yaml_loader.load_and_validate_yaml(
-                    test_file_path
-                )
+                config_model = self.yaml_loader.load_and_validate_yaml(test_file_path)
 
                 if config_model and config_model.tests:
                     for test_case_model in config_model.tests:
@@ -287,7 +331,7 @@ class Runner:
                         self.results.extend(results)
                         ran_any_test = True
                 elif not config_model.tests:
-                     self.console.print(
+                    self.console.print(
                         f"[yellow]Warning: No tests found in {test_file_path} (version: {config_model.version if config_model else 'N/A'}).[/yellow]"
                     )
             except ValueError as e:
@@ -332,7 +376,7 @@ class Runner:
         table.add_column("Adapter", style="magenta", width=10)
         table.add_column("Model", style="blue", width=15)
         table.add_column("Status", justify="center")
-        table.add_column("Reason/Details", width=50)
+        table.add_column("Reason/Details", width=50, overflow="fold")
         table.add_column("Cached", justify="center")
 
         summary = {"PASS": 0, "FAIL": 0, "ERROR": 0, "SKIPPED": 0, "TOTAL": 0}
@@ -348,9 +392,9 @@ class Runner:
 
             reason = str(result.get("reason", ""))
             if status == "FAIL" and result.get("actual_response") is not None:
-                reason += f"\nActual: '{str(result.get('actual_response'))[:100]}...'"
-            elif status == "ERROR" and result.get("actual_response"):
-                reason += f"\nAdapter Raw Response: '{str(result.get('actual_response'))[:100]}...'"
+                reason += f"\n----\nActual: '{str(result.get('actual_response'))}'"
+            elif status == "ERROR" and result.get("raw_adapter_response"):
+                reason += f"\nAdapter Raw Response: '{str(result.get('raw_adapter_response'))}'"
 
             table.add_row(
                 result.get("file", "N/A"),
@@ -359,7 +403,7 @@ class Runner:
                 result.get("model", "N/A"),
                 f"[{status_color}]{status}[/{status_color}]",
                 reason,
-                result.get("cache_status", "N/A")
+                result.get("cache_status", "N/A"),
             )
 
         self.console.print(table)

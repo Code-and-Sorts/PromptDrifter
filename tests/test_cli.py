@@ -15,6 +15,7 @@ def strip_ansi(text: str) -> str:
     ansi_escape = re.compile(r"\x1B(?:[@-Z\\\\-_]|\[[0-?]*[ -/]*[@-~])")
     return ansi_escape.sub("", text)
 
+
 @pytest.mark.asyncio
 async def test_cli_run_logic_success(mocker, tmp_path):
     test_file = tmp_path / "test.yaml"
@@ -30,9 +31,15 @@ async def test_cli_run_logic_success(mocker, tmp_path):
         config_dir=Path("."),
         openai_api_key=None,
         gemini_api_key=None,
+        qwen_api_key=None,
     )
     mock_class.assert_called_once_with(
-        config_dir=Path("."), cache_db_path=None, use_cache=True, openai_api_key=None, gemini_api_key=None
+        config_dir=Path("."),
+        cache_db_path=None,
+        use_cache=True,
+        openai_api_key=None,
+        gemini_api_key=None,
+        qwen_api_key=None,
     )
     mock_instance.run_suite.assert_called_once_with([str(test_file)])
     mock_instance.close_cache_connection.assert_called_once()
@@ -54,10 +61,16 @@ async def test_cli_run_logic_failure_from_suite(mocker, tmp_path):
             config_dir=Path("."),
             openai_api_key=None,
             gemini_api_key=None,
+            qwen_api_key=None,
         )
     assert exc_info.value.exit_code == 1
     mock_class.assert_called_once_with(
-        config_dir=Path("."), cache_db_path=None, use_cache=True, openai_api_key=None, gemini_api_key=None
+        config_dir=Path("."),
+        cache_db_path=None,
+        use_cache=True,
+        openai_api_key=None,
+        gemini_api_key=None,
+        qwen_api_key=None,
     )
     mock_instance.run_suite.assert_called_once_with([str(test_file)])
     mock_instance.close_cache_connection.assert_called_once()
@@ -78,10 +91,16 @@ async def test_cli_run_logic_runner_init_exception(mocker, tmp_path, capsys):
             config_dir=Path("."),
             openai_api_key=None,
             gemini_api_key=None,
+            qwen_api_key=None,
         )
     assert exc_info.value.exit_code == 1
     mock_class_raising.assert_called_once_with(
-        config_dir=Path("."), cache_db_path=None, use_cache=True, openai_api_key=None, gemini_api_key=None
+        config_dir=Path("."),
+        cache_db_path=None,
+        use_cache=True,
+        openai_api_key=None,
+        gemini_api_key=None,
+        qwen_api_key=None,
     )
     captured = capsys.readouterr()
     assert (
@@ -106,10 +125,16 @@ async def test_cli_run_logic_suite_exception(mocker, tmp_path, capsys):
             config_dir=Path("."),
             openai_api_key=None,
             gemini_api_key=None,
+            qwen_api_key=None,
         )
     assert exc_info.value.exit_code == 1
     mock_class.assert_called_once_with(
-        config_dir=Path("."), cache_db_path=None, use_cache=True, openai_api_key=None, gemini_api_key=None
+        config_dir=Path("."),
+        cache_db_path=None,
+        use_cache=True,
+        openai_api_key=None,
+        gemini_api_key=None,
+        qwen_api_key=None,
     )
     mock_instance.run_suite.assert_called_once_with([str(test_file)])
     mock_instance.close_cache_connection.assert_called_once()
@@ -137,9 +162,15 @@ async def test_cli_run_logic_multiple_files(mocker, tmp_path):
         config_dir=Path("."),
         openai_api_key=None,
         gemini_api_key=None,
+        qwen_api_key=None,
     )
     mock_class.assert_called_once_with(
-        config_dir=Path("."), cache_db_path=None, use_cache=True, openai_api_key=None, gemini_api_key=None
+        config_dir=Path("."),
+        cache_db_path=None,
+        use_cache=True,
+        openai_api_key=None,
+        gemini_api_key=None,
+        qwen_api_key=None,
     )
     mock_instance.run_suite.assert_called_once_with([str(file1), str(file2)])
     mock_instance.close_cache_connection.assert_called_once()
@@ -156,11 +187,12 @@ async def test_cli_run_logic_file_not_found(mocker, capsys):
             config_dir=Path("."),
             openai_api_key=None,
             gemini_api_key=None,
+            qwen_api_key=None,
         )
     assert exc_info.value.exit_code == 1
     mock_class_for_safety.assert_not_called()
     captured_out_content = strip_ansi(capsys.readouterr().out)
-    normalized_captured_out = " ".join(captured_out_content.replace('\n', ' ').split())
+    normalized_captured_out = " ".join(captured_out_content.replace("\n", " ").split())
     expected_string_in_output = "• non_existent_file.yaml: File not found"
     assert expected_string_in_output in normalized_captured_out
 
@@ -169,7 +201,15 @@ async def test_cli_run_logic_file_not_found(mocker, capsys):
 async def test_cli_run_logic_no_files_provided(mocker, capsys):
     mock_class_for_safety = mocker.patch("promptdrifter.cli.Runner")
     with pytest.raises(typer.Exit) as exc_info:
-        await _run_async(files=[], no_cache=False, cache_db=None, config_dir=Path("."), openai_api_key=None, gemini_api_key=None)
+        await _run_async(
+            files=[],
+            no_cache=False,
+            cache_db=None,
+            config_dir=Path("."),
+            openai_api_key=None,
+            gemini_api_key=None,
+            qwen_api_key=None,
+        )
     assert exc_info.value.exit_code == 1
     mock_class_for_safety.assert_not_called()
     captured = capsys.readouterr()
@@ -191,13 +231,18 @@ def test_init_command_default_path(mocker, tmp_path):
     result = cli_runner.invoke(app, ["init", str(tmp_path)])
 
     assert result.exit_code == 0, strip_ansi(result.stdout)
-    normalized_stdout = " ".join(strip_ansi(result.stdout).replace('\n', ' ').split())
+    normalized_stdout = " ".join(strip_ansi(result.stdout).replace("\n", " ").split())
     assert "Successfully created sample configuration:" in normalized_stdout
     assert config_file.name in normalized_stdout
-    assert "You can now edit this file and run 'promptdrifter run'." in normalized_stdout
+    assert (
+        "You can now edit this file and run 'promptdrifter run'." in normalized_stdout
+    )
     assert config_file.exists()
-    assert config_file.read_text() == "version: '0.1'\\nsample_content_for_default_init: true"
-    if config_file.exists(): # Clean up
+    assert (
+        config_file.read_text()
+        == "version: '0.1'\\nsample_content_for_default_init: true"
+    )
+    if config_file.exists():  # Clean up
         config_file.unlink()
 
 
@@ -247,12 +292,12 @@ def test_init_new_directory_success(mocker, tmp_path):
     result = cli_runner.invoke(app, ["init", str(base_dir)])
 
     assert result.exit_code == 0, strip_ansi(result.stdout)
-    normalized_stdout = " ".join(strip_ansi(result.stdout).replace('\n', ' ').split())
+    normalized_stdout = " ".join(strip_ansi(result.stdout).replace("\n", " ").split())
     assert "Created directory:" in normalized_stdout
     assert base_dir.name in normalized_stdout
     assert "Successfully created sample configuration:" in normalized_stdout
     assert config_file.name in normalized_stdout
-    assert base_dir.exists() # Should have been created by CLI
+    assert base_dir.exists()  # Should have been created by CLI
     assert base_dir.is_dir()
     assert config_file.exists()
     assert config_file.read_text() == "version: '0.1'\\nsample_content: true"
@@ -261,7 +306,7 @@ def test_init_new_directory_success(mocker, tmp_path):
 def test_init_sample_config_not_found(mocker, tmp_path):
     """Test init command when the sample config file is not found by importlib."""
     target_dir = tmp_path / "project_dir"
-    target_dir.mkdir() # Ensure target_dir exists
+    target_dir.mkdir()  # Ensure target_dir exists
 
     mocker.patch.object(Path, "resolve", return_value=target_dir)
     mock_files = mocker.patch("importlib.resources.files")
@@ -288,7 +333,7 @@ def test_init_target_path_is_file(mocker, tmp_path):
     result = cli_runner.invoke(app, ["init", str(target_file_path)])
 
     assert result.exit_code == 1, strip_ansi(result.stdout)
-    normalized_stdout = " ".join(strip_ansi(result.stdout).replace('\n', ' ').split())
+    normalized_stdout = " ".join(strip_ansi(result.stdout).replace("\n", " ").split())
     assert "Error: Target path" in normalized_stdout
     assert target_file_path.name in normalized_stdout
     assert "exists but is not a directory." in normalized_stdout
@@ -307,7 +352,7 @@ def test_init_config_already_exists(mocker, tmp_path):
     result = cli_runner.invoke(app, ["init", str(target_dir)])
 
     assert result.exit_code == 0, strip_ansi(result.stdout)
-    normalized_stdout = " ".join(strip_ansi(result.stdout).replace('\n', ' ').split())
+    normalized_stdout = " ".join(strip_ansi(result.stdout).replace("\n", " ").split())
     assert "Warning: Configuration file" in normalized_stdout
     assert config_file.name in normalized_stdout
     assert "already exists. Skipping." in normalized_stdout
@@ -330,11 +375,11 @@ def test_init_io_error_writing_config(mocker, tmp_path):
     result = cli_runner.invoke(app, ["init", str(target_dir)])
 
     assert result.exit_code == 1, strip_ansi(result.stdout)
-    normalized_stdout = " ".join(strip_ansi(result.stdout).replace('\n', ' ').split())
+    normalized_stdout = " ".join(strip_ansi(result.stdout).replace("\n", " ").split())
     assert "Created directory:" in normalized_stdout
     assert target_dir.name in normalized_stdout
     assert "Error writing configuration file to" in normalized_stdout
-    assert (target_dir / 'promptdrifter.yaml').name in normalized_stdout
+    assert (target_dir / "promptdrifter.yaml").name in normalized_stdout
     assert "Disk full or something terrible" in normalized_stdout
     assert target_dir.exists()
 
@@ -342,38 +387,32 @@ def test_init_io_error_writing_config(mocker, tmp_path):
 @pytest.mark.asyncio
 async def test_cli_run_prints_security_warning(mocker, tmp_path, capsys):
     test_file = tmp_path / "test.yaml"
-    test_file.write_text("version: 0.1\nid: test\nprompt: hello")
+    test_file.write_text("version: 0.1\\nid: test\\nprompt: hello")
     mock_instance = AsyncMock()
     mock_instance.run_suite = AsyncMock(return_value=True)
     mock_instance.close_cache_connection = AsyncMock()
     mocker.patch("promptdrifter.cli.Runner", return_value=mock_instance)
 
-    # Test with OpenAI key
+    # Test with an API key (e.g., OpenAI key)
     await _run_async(
         files=[Path(str(test_file))],
         no_cache=False,
         cache_db=None,
         config_dir=Path("."),
-        openai_api_key="test_openai_key",
+        openai_api_key="cli_key_here",  # Providing any key should trigger the warning
         gemini_api_key=None,
+        qwen_api_key=None,
     )
-    captured = capsys.readouterr()
-    assert "SECURITY WARNING" in strip_ansi(captured.out)
-    assert "Passing API keys directly via command-line arguments" in strip_ansi(captured.out)
+    captured_output = strip_ansi(capsys.readouterr().out)
+    assert "Warning" in captured_output  # Check for Panel title
+    assert "SECURITY WARNING:" in captured_output  # Check for start of warning content
+    assert (
+        "Passing API keys directly" in captured_output
+    )  # Check for part of the message
+    mock_instance.close_cache_connection.assert_called_once()
+    mock_instance.close_cache_connection.reset_mock()  # Reset for next call
 
-    # Test with Gemini key
-    await _run_async(
-        files=[Path(str(test_file))],
-        no_cache=False,
-        cache_db=None,
-        config_dir=Path("."),
-        openai_api_key=None,
-        gemini_api_key="test_gemini_key",
-    )
-    captured = capsys.readouterr() # Capture output again
-    assert "SECURITY WARNING" in strip_ansi(captured.out)
-
-    # Test with no keys (should not print warning)
+    # Test with no CLI keys (should not print warning)
     await _run_async(
         files=[Path(str(test_file))],
         no_cache=False,
@@ -381,16 +420,22 @@ async def test_cli_run_prints_security_warning(mocker, tmp_path, capsys):
         config_dir=Path("."),
         openai_api_key=None,
         gemini_api_key=None,
+        qwen_api_key=None,
     )
-    captured = capsys.readouterr() # Capture output again
-    assert "SECURITY WARNING" not in strip_ansi(captured.out)
+    captured_output = strip_ansi(capsys.readouterr().out)
+    assert "Warning" not in captured_output
+    assert "SECURITY WARNING:" not in captured_output
+    mock_instance.close_cache_connection.assert_called_once()  # Ensure it was called, but no warning printed
 
 
 def test_run_command_with_api_keys(mocker):
     mock_run_async = mocker.patch("promptdrifter.cli._run_async")
     test_file_path = Path("dummy.yaml")
+    dummy_cache_db = Path("dummy_cache.db")
+    dummy_config_dir = Path("dummy_config")
 
-    cli_runner.invoke(
+    # First call: with specific API keys
+    result = cli_runner.invoke(
         app,
         [
             "run",
@@ -399,17 +444,56 @@ def test_run_command_with_api_keys(mocker):
             "key1",
             "--gemini-api-key",
             "key2",
+            "--qwen-api-key",
+            "test_qwen_key",
+            "--no-cache",
+            "--cache-db",
+            str(dummy_cache_db),
+            "--config-dir",
+            str(dummy_config_dir),
         ],
     )
+    assert result.exit_code == 0, strip_ansi(result.stdout)
 
     mock_run_async.assert_called_once_with(
-        [test_file_path], False, None, Path("."), "key1", "key2"
+        [test_file_path],  # files (positional)
+        True,  # no_cache (positional)
+        dummy_cache_db,  # cache_db (positional)
+        dummy_config_dir,  # config_dir (positional)
+        "key1",  # openai_api_key (positional)
+        "key2",  # gemini_api_key (positional)
+        "test_qwen_key",  # qwen_api_key (positional)
     )
 
     mock_run_async.reset_mock()
-    cli_runner.invoke(app, ["run", str(test_file_path)])
+
+    # Second call: without any API keys (implies defaults or env vars would be used by Runner)
+    # When invoking CLI for the second call, ensure all relevant options are specified if their defaults
+    # are not None and are part of the positional arguments to _run_async.
+    # The original _run_async call structure is:
+    # files, no_cache, cache_db, config_dir, openai_api_key, gemini_api_key, qwen_api_key
+    result = cli_runner.invoke(
+        app,
+        [
+            "run",
+            str(test_file_path),
+            # no_cache defaults to False, not explicitly passed unless True
+            # cache_db defaults to None, not explicitly passed unless a value is given
+            "--config-dir",
+            str(dummy_config_dir),
+            # openai_api_key, gemini_api_key, qwen_api_key default to None, not passed
+        ],
+    )
+    assert result.exit_code == 0, strip_ansi(result.stdout)
+
     mock_run_async.assert_called_once_with(
-        [test_file_path], False, None, Path("."), None, None
+        [test_file_path],  # files
+        False,  # no_cache (default from Typer option)
+        None,  # cache_db (default from Typer option)
+        dummy_config_dir,  # config_dir
+        None,  # openai_api_key (default from Typer option)
+        None,  # gemini_api_key (default from Typer option)
+        None,  # qwen_api_key (default from Typer option)
     )
 
 

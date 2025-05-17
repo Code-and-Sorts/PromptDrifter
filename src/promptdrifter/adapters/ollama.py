@@ -23,16 +23,16 @@ class OllamaAdapter(Adapter):
         self,
         config: Optional[OllamaAdapterConfig] = None,
         base_url: Optional[str] = None,
-        default_model: Optional[str] = None
+        default_model: Optional[str] = None,
     ):
         if config:
             self.config = config
         else:
             config_data = {}
             if base_url:
-                config_data['base_url'] = base_url
+                config_data["base_url"] = base_url
             if default_model:
-                config_data['default_model'] = default_model
+                config_data["default_model"] = default_model
             self.config = OllamaAdapterConfig(**config_data)
 
         self.client = httpx.AsyncClient(base_url=self.config.base_url)

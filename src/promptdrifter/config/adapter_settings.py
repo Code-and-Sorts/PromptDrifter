@@ -12,7 +12,7 @@ API_KEY_ENV_VAR_GEMINI = "GEMINI_API_KEY"
 
 # Qwen (Tongyi Qianwen via DashScope)
 API_KEY_ENV_VAR_QWEN = "QWEN_API_KEY"
-QWEN_API_BASE_URL = "https://dashscope.aliyuncs.com"
+QWEN_API_BASE_URL = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
 DEFAULT_QWEN_MODEL = "qwen-plus"
 
 # Ollama

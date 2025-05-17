@@ -4,12 +4,15 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class AdapterConfig(BaseModel):
-    model_config = ConfigDict(extra='allow', validate_assignment=True, populate_by_name=True)
+    model_config = ConfigDict(
+        extra="allow", validate_assignment=True, populate_by_name=True
+    )
 
-    adapter_type: Literal["openai", "ollama", "gemini"] = Field(..., alias="type")
+    adapter_type: Literal["openai", "ollama", "gemini", "qwen"] = Field(..., alias="type")
     model: str
     temperature: Optional[float] = Field(default=None, ge=0, le=2)
     max_tokens: Optional[int] = Field(default=None, ge=1)
+
 
 class TestCase(BaseModel):
     __test__ = False
@@ -25,8 +28,8 @@ class TestCase(BaseModel):
     tags: Optional[List[str]] = Field(default_factory=list)
     adapter_configurations: List[AdapterConfig] = Field(..., alias="adapter")
 
-    @model_validator(mode='after')
-    def check_one_expectation(self) -> 'TestCase':
+    @model_validator(mode="after")
+    def check_one_expectation(self) -> "TestCase":
         expect_fields = [
             self.expect_exact,
             self.expect_regex,
@@ -36,9 +39,15 @@ class TestCase(BaseModel):
         provided_expects_count = sum(1 for f in expect_fields if f is not None)
 
         if provided_expects_count > 1:
-            field_names = ["expect_exact", "expect_regex", "expect_substring", "expect_substring_case_insensitive"]
+            field_names = [
+                "expect_exact",
+                "expect_regex",
+                "expect_substring",
+                "expect_substring_case_insensitive",
+            ]
             raise ValueError(f"Only one of {', '.join(field_names)} can be provided.")
         return self
+
 
 class PromptDrifterConfig(BaseModel):
     model_config = ConfigDict(validate_assignment=True, populate_by_name=True)

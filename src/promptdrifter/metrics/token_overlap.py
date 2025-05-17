@@ -13,7 +13,9 @@ class TokenOverlapMetric(Metric):
     def __init__(self):
         pass
 
-    def score(self, response: str, reference: Optional[str] = None, **kwargs: Any) -> float:
+    def score(
+        self, response: str, reference: Optional[str] = None, **kwargs: Any
+    ) -> float:
         if reference is None:
             raise ValueError("TokenOverlapMetric requires a reference string.")
 
@@ -21,5 +23,6 @@ class TokenOverlapMetric(Metric):
             return 1.0
 
         return rapidfuzz.fuzz.token_set_ratio(response, reference) / 100.0
+
 
 register_metric(TokenOverlapMetric)

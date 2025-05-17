@@ -110,7 +110,7 @@ async def test_run_single_test_case_fail_exact_match(
     test_data_dict = {
         "id": "exact-fail-001",
         "prompt": "Say hello",
-        "adapter": [{"type": "openai", "model":"test_model_fail"}],
+        "adapter": [{"type": "openai", "model": "test_model_fail"}],
         "expect_exact": "Hello",
     }
     test_case_model = TestCase(**test_data_dict)
@@ -172,17 +172,21 @@ async def test_run_single_test_case_cache_hit(
     }
 
     mock_cache.get.return_value = cached_llm_response
-    expected_cache_options_key = frozenset({})
+    expected_cache_options_key = frozenset({
+        ("_assertion_type", "exact"),
+        ("_assertion_value", "Cached response"),
+    })
 
     results_list = await test_runner._run_single_test_case(test_file, test_case_model)
     assert len(results_list) == 1
     result = results_list[0]
 
-
     assert result["status"] == "PASS"
     assert result["cache_status"] == "HIT"
     mock_adapter.execute.assert_not_called()
-    mock_cache.get.assert_called_once_with("Cached prompt", "openai", "cached_model", expected_cache_options_key)
+    mock_cache.get.assert_called_once_with(
+        "Cached prompt", "openai", "cached_model", expected_cache_options_key
+    )
     mock_adapter.close.assert_called_once()
 
 
@@ -224,7 +228,7 @@ async def test_run_single_test_case_execution_exception(
     test_data_dict = {
         "id": "exec-exception-001",
         "prompt": "Causes exception",
-        "adapter": [{"type": "openai", "model":"exception_model"}],
+        "adapter": [{"type": "openai", "model": "exception_model"}],
         "expect_exact": "Not checked",
     }
     test_case_model = TestCase(**test_data_dict)
@@ -243,13 +247,13 @@ async def test_run_single_test_case_no_text_response(
     test_runner: Runner, runner_dependencies_setup
 ):
     mock_adapter = runner_dependencies_setup["adapter_instance"]
-    mock_adapter.execute.return_value = {"raw_response": {}} # No text_response
+    mock_adapter.execute.return_value = {"raw_response": {}}  # No text_response
 
     test_file = Path("test_no_text.yaml")
     test_data_dict = {
         "id": "no-text-001",
         "prompt": "No text",
-        "adapter": [{"type": "openai", "model":"no_text_model"}],
+        "adapter": [{"type": "openai", "model": "no_text_model"}],
         "expect_exact": "Not checked",
     }
     test_case_model = TestCase(**test_data_dict)
@@ -294,7 +298,7 @@ async def test_run_single_test_case_no_adapter_configs(
         id="no-adapter-configs-test",
         prompt="A prompt",
         adapter_configurations=[],
-        expect_exact="anything"
+        expect_exact="anything",
     )
     results_list = await test_runner._run_single_test_case(test_file, test_case_model)
     assert len(results_list) == 0
@@ -304,7 +308,10 @@ async def test_run_single_test_case_skipped_no_assertion(
     test_runner: Runner, runner_dependencies_setup
 ):
     mock_adapter = runner_dependencies_setup["adapter_instance"]
-    mock_adapter.execute.return_value = {"text_response": "Some response", "raw_response": {}}
+    mock_adapter.execute.return_value = {
+        "text_response": "Some response",
+        "raw_response": {},
+    }
     test_file = Path("test_skip_no_assertion.yaml")
     test_data_dict = {
         "id": "skip-no-assertion",
@@ -324,10 +331,12 @@ async def test_run_single_test_case_unknown_adapter(
     test_runner: Runner, runner_dependencies_setup
 ):
     get_adapter_mock = runner_dependencies_setup["get_adapter_method_mock"]
+
     def side_effect_for_get_adapter(adapter_name_called):
         if adapter_name_called == "gemini":
             return None
         return runner_dependencies_setup["adapter_instance"]
+
     get_adapter_mock.side_effect = side_effect_for_get_adapter
 
     test_file = Path("test_unknown_adapter.yaml")
@@ -335,7 +344,7 @@ async def test_run_single_test_case_unknown_adapter(
         "id": "unknown-adapter-001",
         "prompt": "Test prompt",
         "adapter": [{"type": "gemini", "model": "some_model"}],
-        "expect_exact": "anything"
+        "expect_exact": "anything",
     }
     test_case_model = TestCase(**test_data_dict)
 
@@ -356,24 +365,35 @@ async def test_run_single_test_case_with_adapter_options(
     test_data_dict = {
         "id": "adapter-options-001",
         "prompt": "Prompt with options",
-        "adapter": [{
-            "type": "openai",
-            "model": "options_model",
-            "temperature": 0.77,
-            "max_tokens": 123,
-            "custom_param": "custom_value"
-        }],
+        "adapter": [
+            {
+                "type": "openai",
+                "model": "options_model",
+                "temperature": 0.77,
+                "max_tokens": 123,
+                "custom_param": "custom_value",
+            }
+        ],
         "expect_exact": "Response",
     }
     test_case_model = TestCase(**test_data_dict)
-    mock_adapter.execute.return_value = {"text_response": "Response", "raw_response": {}}
+    mock_adapter.execute.return_value = {
+        "text_response": "Response",
+        "raw_response": {},
+    }
 
     expected_options_to_execute = {
         "temperature": 0.77,
         "max_tokens": 123,
-        "custom_param": "custom_value"
+        "custom_param": "custom_value",
     }
-    expected_cache_options_key = frozenset(expected_options_to_execute.items())
+    expected_cache_options_key_for_put = frozenset(
+        list(expected_options_to_execute.items()) +
+        [
+            ("_assertion_type", "exact"),
+            ("_assertion_value", "Response"),
+        ]
+    )
 
     results_list = await test_runner._run_single_test_case(test_file, test_case_model)
     assert len(results_list) == 1
@@ -381,16 +401,14 @@ async def test_run_single_test_case_with_adapter_options(
 
     assert result["status"] == "PASS"
     mock_adapter.execute.assert_called_once_with(
-        "Prompt with options",
-        model="options_model",
-        **expected_options_to_execute
+        "Prompt with options", model="options_model", **expected_options_to_execute
     )
     runner_dependencies_setup["cache"].put.assert_called_once()
     _, cache_put_args, _ = runner_dependencies_setup["cache"].put.mock_calls[0]
     assert cache_put_args[0] == "Prompt with options"
     assert cache_put_args[1] == "openai"
     assert cache_put_args[2] == "options_model"
-    assert cache_put_args[3] == expected_cache_options_key
+    assert cache_put_args[3] == expected_cache_options_key_for_put
     assert cache_put_args[4] == {"text_response": "Response", "raw_response": {}}
 
 
@@ -398,11 +416,15 @@ async def test_run_single_test_case_multiple_adapters(
     test_runner: Runner, runner_dependencies_setup
 ):
     mock_adapter_1_instance = AsyncMock(spec=Adapter)
-    mock_adapter_1_instance.execute = AsyncMock(return_value={"text_response": "Adapter 1 says PASS"})
+    mock_adapter_1_instance.execute = AsyncMock(
+        return_value={"text_response": "Adapter 1 says PASS"}
+    )
     mock_adapter_1_instance.close = AsyncMock()
 
     mock_adapter_2_instance = AsyncMock(spec=Adapter)
-    mock_adapter_2_instance.execute = AsyncMock(return_value={"text_response": "Adapter 2 says FAIL"})
+    mock_adapter_2_instance.execute = AsyncMock(
+        return_value={"text_response": "Adapter 2 says FAIL"}
+    )
     mock_adapter_2_instance.close = AsyncMock()
 
     def get_adapter_side_effect(adapter_name):
@@ -411,7 +433,10 @@ async def test_run_single_test_case_multiple_adapters(
         elif adapter_name == "gemini":
             return mock_adapter_2_instance
         return None
-    runner_dependencies_setup["get_adapter_method_mock"].side_effect = get_adapter_side_effect
+
+    runner_dependencies_setup[
+        "get_adapter_method_mock"
+    ].side_effect = get_adapter_side_effect
 
     test_file = Path("multi_adapter_test.yaml")
     test_data_dict = {
@@ -419,9 +444,9 @@ async def test_run_single_test_case_multiple_adapters(
         "prompt": "Test all adapters",
         "adapter": [
             {"type": "openai", "model": "model1"},
-            {"type": "gemini", "model": "model2"}
+            {"type": "gemini", "model": "model2"},
         ],
-        "expect_substring": "PASS"
+        "expect_substring": "PASS",
     }
     test_case_model = TestCase(**test_data_dict)
 
@@ -432,20 +457,26 @@ async def test_run_single_test_case_multiple_adapters(
     result_adapter1 = next(r for r in results_list if r["adapter"] == "openai")
     assert result_adapter1["status"] == "PASS"
     assert result_adapter1["model"] == "model1"
-    mock_adapter_1_instance.execute.assert_called_once_with("Test all adapters", model="model1")
+    mock_adapter_1_instance.execute.assert_called_once_with(
+        "Test all adapters", model="model1"
+    )
     mock_adapter_1_instance.close.assert_called_once()
 
     result_adapter2 = next(r for r in results_list if r["adapter"] == "gemini")
     assert result_adapter2["status"] == "FAIL"
     assert result_adapter2["model"] == "model2"
     assert "Substring match failed" in result_adapter2["reason"]
-    mock_adapter_2_instance.execute.assert_called_once_with("Test all adapters", model="model2")
+    mock_adapter_2_instance.execute.assert_called_once_with(
+        "Test all adapters", model="model2"
+    )
     mock_adapter_2_instance.close.assert_called_once()
 
     assert test_runner.overall_success is False
 
     runner_dependencies_setup["get_adapter_method_mock"].side_effect = None
-    runner_dependencies_setup["get_adapter_method_mock"].return_value = runner_dependencies_setup["adapter_instance"]
+    runner_dependencies_setup[
+        "get_adapter_method_mock"
+    ].return_value = runner_dependencies_setup["adapter_instance"]
 
 
 async def test_run_suite_overall_success_and_failure(
@@ -455,26 +486,43 @@ async def test_run_suite_overall_success_and_failure(
     run_single_mock = AsyncMock()
     test_runner._run_single_test_case = run_single_mock
 
-    test_case_data1_dict = {"id": "t1-valid-id", "prompt": "P1", "adapter": [{"type": "openai", "model": "m1"}], "expect_exact": "E1"}
+    test_case_data1_dict = {
+        "id": "t1-valid-id",
+        "prompt": "P1",
+        "adapter": [{"type": "openai", "model": "m1"}],
+        "expect_exact": "E1",
+    }
     config_model1 = PromptDrifterConfig(
-        version="0.1",
-        tests=[TestCase(**test_case_data1_dict)]
+        version="0.1", tests=[TestCase(**test_case_data1_dict)]
     )
     test_file1_path = tmp_path / "suite_test1.yaml"
-    test_file1_path.write_text(f"version: \"0.1\"\\nadapters:\\n  - id: {test_case_data1_dict['id']}\\n    prompt: \"{test_case_data1_dict['prompt']}\"\\n    expect_exact: \"{test_case_data1_dict['expect_exact']}\"\\n    adapter:\\n      - type: {test_case_data1_dict['adapter'][0]['type']}\\n        model: {test_case_data1_dict['adapter'][0]['model']}")
+    test_file1_path.write_text(
+        f'version: "0.1"\\nadapters:\\n  - id: {test_case_data1_dict["id"]}\\n    prompt: "{test_case_data1_dict["prompt"]}"\\n    expect_exact: "{test_case_data1_dict["expect_exact"]}"\\n    adapter:\\n      - type: {test_case_data1_dict["adapter"][0]["type"]}\\n        model: {test_case_data1_dict["adapter"][0]["model"]}'
+    )
 
-
-    test_case_data2_dict = {"id": "t2-valid-id", "prompt": "P2", "adapter": [{"type": "gemini", "model": "m2"}], "expect_exact": "E2"}
+    test_case_data2_dict = {
+        "id": "t2-valid-id",
+        "prompt": "P2",
+        "adapter": [{"type": "gemini", "model": "m2"}],
+        "expect_exact": "E2",
+    }
     config_model2 = PromptDrifterConfig(
-        version="0.1",
-        tests=[TestCase(**test_case_data2_dict)]
+        version="0.1", tests=[TestCase(**test_case_data2_dict)]
     )
     test_file2_path = tmp_path / "suite_test2.yaml"
-    test_file2_path.write_text(f"version: \"0.1\"\\nadapters:\\n  - id: {test_case_data2_dict['id']}\\n    prompt: \"{test_case_data2_dict['prompt']}\"\\n    expect_exact: \"{test_case_data2_dict['expect_exact']}\"\\n    adapter:\\n      - type: {test_case_data2_dict['adapter'][0]['type']}\\n        model: {test_case_data2_dict['adapter'][0]['model']}")
+    test_file2_path.write_text(
+        f'version: "0.1"\\nadapters:\\n  - id: {test_case_data2_dict["id"]}\\n    prompt: "{test_case_data2_dict["prompt"]}"\\n    expect_exact: "{test_case_data2_dict["expect_exact"]}"\\n    adapter:\\n      - type: {test_case_data2_dict["adapter"][0]["type"]}\\n        model: {test_case_data2_dict["adapter"][0]["model"]}'
+    )
 
     mock_yaml_loader.load_and_validate_yaml.side_effect = [config_model1]
     run_single_mock.return_value = [
-        {"status": "PASS", "file": "suite_test1.yaml", "id": "t1", "adapter": "a1", "model": "m1"}
+        {
+            "status": "PASS",
+            "file": "suite_test1.yaml",
+            "id": "t1",
+            "adapter": "a1",
+            "model": "m1",
+        }
     ]
     test_runner.results = []
     test_runner.overall_success = True
@@ -490,7 +538,16 @@ async def test_run_suite_overall_success_and_failure(
 
     async def mock_run_single_fail_side_effect(*args, **kwargs):
         test_runner.overall_success = False
-        return [{"status": "FAIL", "file": str(args[0].name), "id": args[1].id, "adapter": "gemini", "model": "m2", "reason": "Failed"}]
+        return [
+            {
+                "status": "FAIL",
+                "file": str(args[0].name),
+                "id": args[1].id,
+                "adapter": "gemini",
+                "model": "m2",
+                "reason": "Failed",
+            }
+        ]
 
     run_single_mock.side_effect = mock_run_single_fail_side_effect
     test_runner.results = []
@@ -537,14 +594,20 @@ async def test_run_suite_empty_or_non_yaml_files(
     empty_dir = tmp_path / "empty_dir"
     empty_dir.mkdir()
 
-    success = await test_runner.run_suite([non_yaml_file, empty_dir / "not_a_file.yaml"])
+    success = await test_runner.run_suite(
+        [non_yaml_file, empty_dir / "not_a_file.yaml"]
+    )
     assert success is True
     assert len(test_runner.results) == 0
     mock_yaml_loader.load_and_validate_yaml.assert_not_called()
-    mock_console.print.assert_any_call(f"[yellow]Skipping non-YAML file: {non_yaml_file}[/yellow]")
+    mock_console.print.assert_any_call(
+        f"[yellow]Skipping non-YAML file: {non_yaml_file}[/yellow]"
+    )
 
 
-@patch.dict(ADAPTER_REGISTRY, {"test_real_adapter": MagicMock(spec=Adapter)}, clear=True)
+@patch.dict(
+    ADAPTER_REGISTRY, {"test_real_adapter": MagicMock(spec=Adapter)}, clear=True
+)
 async def test_get_adapter_instance_success(tmp_path):
     runner = Runner(config_dir=tmp_path)
     ADAPTER_REGISTRY["test_real_adapter"].return_value = MagicMock(spec=Adapter)
@@ -558,10 +621,14 @@ async def test_get_adapter_instance_unknown(tmp_path, runner_dependencies_setup)
     runner.console = runner_dependencies_setup["console"]
     adapter_instance = runner._get_adapter_instance("completely_unknown_adapter")
     assert adapter_instance is None
-    runner.console.print.assert_called_with("[bold red]Unknown adapter: completely_unknown_adapter[/bold red]")
+    runner.console.print.assert_called_with(
+        "[bold red]Unknown adapter: completely_unknown_adapter[/bold red]"
+    )
 
 
-@patch.dict(ADAPTER_REGISTRY, {"real_adapter_type": MagicMock(spec=Adapter)}, clear=True)
+@patch.dict(
+    ADAPTER_REGISTRY, {"real_adapter_type": MagicMock(spec=Adapter)}, clear=True
+)
 async def test_runner_get_adapter_instance_success_original_method(tmp_path):
     runner = Runner(config_dir=tmp_path)
     MockAdapterClass = ADAPTER_REGISTRY["real_adapter_type"]
@@ -572,15 +639,21 @@ async def test_runner_get_adapter_instance_success_original_method(tmp_path):
     MockAdapterClass.assert_called_once()
 
 
-async def test_runner_get_adapter_instance_unknown_original_method(tmp_path, runner_dependencies_setup):
+async def test_runner_get_adapter_instance_unknown_original_method(
+    tmp_path, runner_dependencies_setup
+):
     runner = Runner(config_dir=tmp_path)
     runner.console = runner_dependencies_setup["console"]
     instance = runner._get_adapter_instance("non_existent_adapter_for_real")
     assert instance is None
-    runner.console.print.assert_called_with("[bold red]Unknown adapter: non_existent_adapter_for_real[/bold red]")
+    runner.console.print.assert_called_with(
+        "[bold red]Unknown adapter: non_existent_adapter_for_real[/bold red]"
+    )
 
 
-async def test_runner_get_adapter_instance_init_error_original_method(tmp_path, runner_dependencies_setup):
+async def test_runner_get_adapter_instance_init_error_original_method(
+    tmp_path, runner_dependencies_setup
+):
     MockAdapterWithError = MagicMock(spec=Adapter)
     MockAdapterWithError.side_effect = Exception("Init failed")
     with patch.dict(ADAPTER_REGISTRY, {"error_adapter": MockAdapterWithError}):
@@ -588,7 +661,9 @@ async def test_runner_get_adapter_instance_init_error_original_method(tmp_path, 
         runner.console = runner_dependencies_setup["console"]
         instance = runner._get_adapter_instance("error_adapter")
         assert instance is None
-        runner.console.print.assert_called_with("[bold red]Error initializing adapter 'error_adapter': Init failed[/bold red]")
+        runner.console.print.assert_called_with(
+            "[bold red]Error initializing adapter 'error_adapter': Init failed[/bold red]"
+        )
 
 
 async def test_run_single_test_case_prompt_templating(
@@ -605,8 +680,10 @@ async def test_run_single_test_case_prompt_templating(
         "expect_exact": "Hello Test User from Pytest!",
     }
     test_case_model = TestCase(**test_data_dict)
-    mock_adapter.execute.return_value = {"text_response": "Hello Test User from Pytest!", "raw_response": {}}
-
+    mock_adapter.execute.return_value = {
+        "text_response": "Hello Test User from Pytest!",
+        "raw_response": {},
+    }
 
     results_list = await test_runner._run_single_test_case(test_file, test_case_model)
 
@@ -615,6 +692,5 @@ async def test_run_single_test_case_prompt_templating(
     assert result["status"] == "PASS"
 
     mock_adapter.execute.assert_called_once_with(
-        "Hello Test User from Pytest!",
-        model="template_model"
+        "Hello Test User from Pytest!", model="template_model"
     )

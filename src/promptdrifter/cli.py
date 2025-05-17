@@ -38,14 +38,17 @@ def _print_api_key_security_warning():
         "Passing API keys directly via command-line arguments can expose them in your shell history "
         "or process list. It is recommended to use environment variables for API keys where possible."
     )
-    console.print(Panel(warning_message, title="[bold red]Warning[/bold red]", border_style="red"))
+    console.print(
+        Panel(warning_message, title="[bold red]Warning[/bold red]", border_style="red")
+    )
 
 
 @app.command()
 def init(
     ctx: typer.Context,
     target_path_str: str = typer.Argument(
-        ".", help="The directory to initialize the project in. Defaults to current directory."
+        ".",
+        help="The directory to initialize the project in. Defaults to current directory.",
     ),
 ):
     """Initialize a new promptdrifter project with a sample config."""
@@ -53,13 +56,15 @@ def init(
     # TODO: Check all yaml files in the target path and dynamically determine if they are valid promptdrifter files
     config_file_path = target_path / "promptdrifter.yaml"
 
-    sane_target_path_str = str(target_path).replace("\u00A0", " ")
-    sane_config_file_path_str = str(config_file_path).replace("\u00A0", " ")
+    sane_target_path_str = str(target_path).replace("\u00a0", " ")
+    sane_config_file_path_str = str(config_file_path).replace("\u00a0", " ")
 
     if not target_path.exists():
         target_path.mkdir(parents=True, exist_ok=True)
         message = Text("Created directory: ", style="green")
-        path_text = Text(sane_target_path_str, style="green", no_wrap=True, overflow="ignore")
+        path_text = Text(
+            sane_target_path_str, style="green", no_wrap=True, overflow="ignore"
+        )
         message.append(path_text)
         console.print(message)
     elif not target_path.is_dir():
@@ -93,13 +98,17 @@ def init(
         with open(config_file_path, "w") as f:
             f.write(sample_config_content)
         message = Text("Successfully created sample configuration: ", style="green")
-        path_text = Text(sane_config_file_path_str, style="green", no_wrap=True, overflow="ignore")
+        path_text = Text(
+            sane_config_file_path_str, style="green", no_wrap=True, overflow="ignore"
+        )
         message.append(path_text)
         console.print(message)
         console.print("You can now edit this file and run 'promptdrifter run'.")
     except IOError as e:
         message = Text("Error writing configuration file to '", style="bold red")
-        path_text = Text(sane_config_file_path_str, style="bold red", no_wrap=True, overflow="ignore")
+        path_text = Text(
+            sane_config_file_path_str, style="bold red", no_wrap=True, overflow="ignore"
+        )
         message.append(path_text)
         message.append(f"': {e}", style="bold red")
         console.print(message)
@@ -113,9 +122,10 @@ async def _run_async(
     config_dir: Path,
     openai_api_key: Optional[str],
     gemini_api_key: Optional[str],
+    qwen_api_key: Optional[str],
 ):
     """Async implementation of the run command."""
-    if openai_api_key or gemini_api_key:
+    if openai_api_key or gemini_api_key or qwen_api_key:
         _print_api_key_security_warning()
 
     if not files:
@@ -148,7 +158,7 @@ async def _run_async(
     if invalid_files:
         console.print("[bold red]Error: Invalid file(s) provided:[/bold red]")
         for file_path_obj, reason in invalid_files:
-            sane_file_path_str = str(file_path_obj).replace("\u00A0", " ")
+            sane_file_path_str = str(file_path_obj).replace("\u00a0", " ")
             console.print(f"  • {sane_file_path_str}: {reason}")
         console.print("\n[bold]Please provide valid YAML test files.[/bold]")
         raise typer.Exit(code=1)
@@ -160,7 +170,8 @@ async def _run_async(
             cache_db_path=cache_db,
             use_cache=not no_cache,
             openai_api_key=openai_api_key,
-            gemini_api_key=gemini_api_key
+            gemini_api_key=gemini_api_key,
+            qwen_api_key=qwen_api_key,
         )
         overall_success = await runner_instance.run_suite(yaml_files_str)
         if not overall_success:
@@ -196,24 +207,33 @@ def run(
         None,
         "--openai-api-key",
         help="OpenAI API key. Overrides OPENAI_API_KEY env var. Warning: Exposes key in shell history.",
-        rich_help_panel="API Keys"
+        rich_help_panel="API Keys",
     ),
     gemini_api_key: Optional[str] = typer.Option(
         None,
         "--gemini-api-key",
         help="Google Gemini API key. Overrides GEMINI_API_KEY env var. Warning: Exposes key in shell history.",
-        rich_help_panel="API Keys"
+        rich_help_panel="API Keys",
+    ),
+    qwen_api_key: Optional[str] = typer.Option(
+        None,
+        "--qwen-api-key",
+        help="Qwen API key (DashScope). Overrides QWEN_API_KEY or DASHSCOPE_API_KEY env var. Warning: Exposes key in shell history.",
+        rich_help_panel="API Keys",
     ),
 ):
     """Run a suite of prompt tests from one or more YAML files."""
-    asyncio.run(_run_async(
-        files,
-        no_cache,
-        cache_db,
-        config_dir,
-        openai_api_key,
-        gemini_api_key
-    ))
+    asyncio.run(
+        _run_async(
+            files,
+            no_cache,
+            cache_db,
+            config_dir,
+            openai_api_key,
+            gemini_api_key,
+            qwen_api_key,
+        )
+    )
 
 
 @app.command()
@@ -266,7 +286,7 @@ def record(
         try:
             with open(output_file, "w") as f:
                 json.dump(interactions, f, indent=2)
-            sane_output_file_str = str(output_file).replace("\u00A0", " ")
+            sane_output_file_str = str(output_file).replace("\u00a0", " ")
             console.print(
                 f"[green]Recorded {len(interactions)} interactions to {sane_output_file_str}[/green]"
             )

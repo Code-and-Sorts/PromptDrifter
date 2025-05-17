@@ -22,7 +22,11 @@ class YamlFileLoader:
 
         try:
             if not isinstance(yaml_data, dict):
-                expected_type = "a dictionary" if yaml_data is not None else "data (got None from YAML)"
+                expected_type = (
+                    "a dictionary"
+                    if yaml_data is not None
+                    else "data (got None from YAML)"
+                )
                 user_message = (
                     f"[bold red]Configuration Error in '{yaml_path}':[/bold red]\n"
                     f"Pydantic validation failed:\n"
@@ -41,11 +45,12 @@ class YamlFileLoader:
 
             user_message = (
                 f"[bold red]Configuration Error in '{yaml_path}':[/bold red]\n"
-                f"Pydantic validation failed:\n"
-                + "\n".join(formatted_errors)
+                f"Pydantic validation failed:\n" + "\n".join(formatted_errors)
             )
             raise ValueError(user_message) from e
         except Exception as e:
-            raise ValueError(f"Unexpected error processing YAML data from '{yaml_path}' with Pydantic: {type(e).__name__} - {e}") from e
+            raise ValueError(
+                f"Unexpected error processing YAML data from '{yaml_path}' with Pydantic: {type(e).__name__} - {e}"
+            ) from e
 
         return config_model

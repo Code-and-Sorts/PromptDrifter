@@ -7,5 +7,7 @@ class Metric(ABC):
     higher_is_better: bool
 
     @abstractmethod
-    def score(self, response: str, reference: Optional[str] = None, **kwargs: Any) -> float:
+    def score(
+        self, response: str, reference: Optional[str] = None, **kwargs: Any
+    ) -> float:
         pass

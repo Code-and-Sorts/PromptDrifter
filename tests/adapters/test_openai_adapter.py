@@ -44,7 +44,10 @@ def mock_httpx_client():
 @pytest.fixture(autouse=True)
 def patch_httpx_client(mock_httpx_client):
     """Patches httpx.AsyncClient to return our mock client."""
-    with patch("promptdrifter.adapters.openai.httpx.AsyncClient", return_value=mock_httpx_client) as patched_class_mock:
+    with patch(
+        "promptdrifter.adapters.openai.httpx.AsyncClient",
+        return_value=mock_httpx_client,
+    ) as patched_class_mock:
         yield patched_class_mock
 
 
@@ -55,7 +58,7 @@ def adapter(patch_httpx_client):
         adapter_instance = OpenAIAdapter()
         patch_httpx_client.assert_called_once_with(
             base_url=adapter_instance.config.base_url,
-            headers={"Authorization": f"Bearer {adapter_instance.config.api_key}"}
+            headers={"Authorization": f"Bearer {adapter_instance.config.api_key}"},
         )
         return adapter_instance
 
@@ -67,8 +70,7 @@ async def test_openai_adapter_init_with_direct_key(monkeypatch, patch_httpx_clie
     assert adapter_instance.config.base_url == "custom_url"
     assert adapter_instance.config.default_model == config_DEFAULT_OPENAI_MODEL
     patch_httpx_client.assert_called_once_with(
-        base_url="custom_url",
-        headers={"Authorization": "Bearer direct_key"}
+        base_url="custom_url", headers={"Authorization": "Bearer direct_key"}
     )
 
 
@@ -78,8 +80,7 @@ async def test_openai_adapter_init_with_env_key(monkeypatch, patch_httpx_client)
     assert adapter_instance.config.api_key == "env_key"
     assert adapter_instance.config.base_url == config_OPENAI_API_BASE_URL
     patch_httpx_client.assert_called_once_with(
-        base_url=config_OPENAI_API_BASE_URL,
-        headers={"Authorization": "Bearer env_key"}
+        base_url=config_OPENAI_API_BASE_URL, headers={"Authorization": "Bearer env_key"}
     )
 
 
@@ -92,20 +93,23 @@ async def test_openai_adapter_init_no_key_raises_error(monkeypatch):
 
 async def test_openai_adapter_init_with_config_object(monkeypatch, patch_httpx_client):
     monkeypatch.delenv(config_API_KEY_ENV_VAR_OPENAI, raising=False)
-    config = OpenAIAdapterConfig(api_key="config_key", base_url="config_url", default_model="config_model")
+    config = OpenAIAdapterConfig(
+        api_key="config_key", base_url="config_url", default_model="config_model"
+    )
     adapter_instance = OpenAIAdapter(config=config)
     assert adapter_instance.config is config
     assert adapter_instance.config.api_key == "config_key"
     assert adapter_instance.config.base_url == "config_url"
     assert adapter_instance.config.default_model == "config_model"
     patch_httpx_client.assert_called_once_with(
-        base_url="config_url",
-        headers={"Authorization": "Bearer config_key"}
+        base_url="config_url", headers={"Authorization": "Bearer config_key"}
     )
 
 
 async def test_execute_successful(patch_httpx_client):
-    with patch.dict(os.environ, {config_API_KEY_ENV_VAR_OPENAI: "test_api_key_execute"}):
+    with patch.dict(
+        os.environ, {config_API_KEY_ENV_VAR_OPENAI: "test_api_key_execute"}
+    ):
         adapter_instance = OpenAIAdapter(base_url="execute_custom_url")
 
     mock_client_instance = patch_httpx_client.return_value

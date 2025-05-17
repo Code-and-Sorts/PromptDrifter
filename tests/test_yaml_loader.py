@@ -8,6 +8,7 @@ from promptdrifter.yaml_loader import YamlFileLoader
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures" / "yaml"
 
+
 @pytest.fixture
 def loader() -> YamlFileLoader:
     return YamlFileLoader()
@@ -89,6 +90,7 @@ adapters:
 
     invalid_file.unlink()
 
+
 def test_load_invalid_wrong_type_for_field(loader: YamlFileLoader):
     invalid_content = """
 version: "0.1"
@@ -114,6 +116,7 @@ adapters:
 
     invalid_file.unlink()
 
+
 def test_load_invalid_version(loader: YamlFileLoader):
     invalid_content = 'version: "0.2"\nadapters: []'
     invalid_file = FIXTURES_DIR / "temp_invalid_version.yaml"
@@ -125,6 +128,7 @@ def test_load_invalid_version(loader: YamlFileLoader):
     assert "At 'version'" in error_str
     assert "Input should be '0.1'" in error_str
     invalid_file.unlink()
+
 
 def test_load_multiple_expectations_error(loader: YamlFileLoader):
     yaml_content = """
@@ -144,7 +148,10 @@ adapters:
         loader.load_and_validate_yaml(test_file)
     error_str = str(excinfo.value)
     assert "Configuration Error" in error_str
-    assert "Only one of expect_exact, expect_regex, expect_substring, expect_substring_case_insensitive can be provided." in error_str
+    assert (
+        "Only one of expect_exact, expect_regex, expect_substring, expect_substring_case_insensitive can be provided."
+        in error_str
+    )
     assert "At 'adapters -> 0'" in error_str
     test_file.unlink()
 
@@ -170,7 +177,9 @@ def test_load_empty_yaml(loader: YamlFileLoader):
 
 def test_load_malformed_yaml(loader: YamlFileLoader):
     malformed_file = FIXTURES_DIR / "malformed.yaml"
-    malformed_file.write_text("key: value\n another_key: \n  - subkey_no_value_then_bad_indent\n key3 :val3")
+    malformed_file.write_text(
+        "key: value\n another_key: \n  - subkey_no_value_then_bad_indent\n key3 :val3"
+    )
 
     with pytest.raises(ValueError) as excinfo:
         loader.load_and_validate_yaml(malformed_file)
