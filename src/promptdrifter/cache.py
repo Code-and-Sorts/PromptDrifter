@@ -5,8 +5,8 @@ import time
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-DEFAULT_DB_PATH = Path("prompt_cache.db")  # Or perhaps in a user-specific cache dir
-DEFAULT_TTL_SECONDS = 24 * 60 * 60  # 24 hours
+DEFAULT_DB_PATH = Path("prompt_cache.db")
+DEFAULT_TTL_SECONDS = 24 * 60 * 60
 
 
 class PromptCache:
@@ -20,10 +20,8 @@ class PromptCache:
         self.db_path = db_path
         self.default_ttl_seconds = default_ttl_seconds
         self._conn: Optional[sqlite3.Connection] = (
-            None  # For persistent in-memory connection
+            None
         )
-        # self._ensure_db_and_table() # Call after connection logic is set
-        # Initialize and ensure table with the first connection
         with self._get_connection() as conn:
             self._ensure_db_and_table_with_conn(conn)
 
@@ -31,14 +29,11 @@ class PromptCache:
         """Returns a connection to the SQLite database."""
         if self.db_path == Path(":memory:"):
             if self._conn is None or self._is_connection_closed(self._conn):
-                # For in-memory, create one connection and reuse it.
                 self._conn = sqlite3.connect(
                     self.db_path, check_same_thread=False, isolation_level=None
-                )  # autocommit for :memory: simplicity
+                )
             return self._conn
         else:
-            # For file-based DBs, connect each time.
-            # isolation_level=None for autocommit can simplify some operations if not using explicit transactions widely.
             return sqlite3.connect(
                 self.db_path, check_same_thread=False, isolation_level=None
             )
@@ -48,7 +43,6 @@ class PromptCache:
         if conn is None:
             return True
         try:
-            # Attempt a simplepragma call. If it fails with ProgrammingError, connection is likely closed.
             conn.execute("PRAGMA user_version")
             return False
         except sqlite3.ProgrammingError:
@@ -74,7 +68,7 @@ class PromptCache:
             "CREATE INDEX IF NOT EXISTS idx_timestamp ON prompt_cache (timestamp)"
         )
         if self.db_path != Path(":memory:") or conn.isolation_level is not None:
-            conn.commit()  # Commit only if not in autocommit mode (memory often is by default or by our isolation_level)
+            conn.commit()
 
     def _generate_fingerprint(
         self,
@@ -84,17 +78,18 @@ class PromptCache:
         options: Dict[str, Any],
     ) -> str:
         """Generates a unique fingerprint for a given prompt and its configuration."""
-        # Normalize options by sorting keys to ensure consistent hash
-        # Convert all option values to strings to avoid issues with unhashable types in complex dicts
-        # A more robust solution might involve canonical JSON string representation for options.
-        sorted_options_str = json.dumps(options, sort_keys=True, default=str)
+        if isinstance(options, frozenset):
+            sorted_options_list = sorted(list(options))
+            options_str_for_hash = json.dumps(sorted_options_list, sort_keys=False)
+        else:
+            options_str_for_hash = json.dumps(options, sort_keys=True, default=str)
 
         hasher = hashlib.sha256()
         hasher.update(prompt.encode("utf-8"))
         hasher.update(adapter_name.encode("utf-8"))
         if model_id:
             hasher.update(model_id.encode("utf-8"))
-        hasher.update(sorted_options_str.encode("utf-8"))
+        hasher.update(options_str_for_hash.encode("utf-8"))
         return hasher.hexdigest()
 
     def get(
@@ -124,11 +119,9 @@ class PromptCache:
                     try:
                         return json.loads(response_data_str)
                     except json.JSONDecodeError:
-                        # Cached data is corrupted, treat as miss and potentially remove
-                        self.delete(fingerprint)  # Or just let it expire
+                        self.delete(fingerprint)
                         return None
                 else:
-                    # Cache entry has expired, delete it
                     self.delete(fingerprint)
                     return None
         return None
@@ -154,9 +147,7 @@ class PromptCache:
         try:
             response_data_str = json.dumps(response_data)
         except TypeError:
-            # Handle cases where response_data might not be JSON serializable
-            # print(f"Error serializing response data for caching: {e}")
-            return  # Or raise an error
+            return
 
         with self._get_connection() as conn:
             cursor = conn.cursor()
@@ -189,7 +180,7 @@ class PromptCache:
     def purge_expired(self):
         """Removes all expired cache entries from the database."""
         current_time = int(time.time())
-        with self._get_connection() as conn:  # Ensures conn is open for this operation
+        with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
                 "SELECT fingerprint, timestamp, ttl_seconds FROM prompt_cache"
@@ -201,21 +192,16 @@ class PromptCache:
                     expired_fingerprints.append(fp)
 
             if expired_fingerprints:
-                # Delete in batches or one by one
-                # Using executemany for efficiency if supported and list of tuples for fingerprints
                 placeholders = ",".join(["?"] * len(expired_fingerprints))
                 cursor.execute(
                     f"DELETE FROM prompt_cache WHERE fingerprint IN ({placeholders})",
                     expired_fingerprints,
                 )
                 conn.commit()
-                # print(f"Purged {len(expired_fingerprints)} expired cache entries.")
-            # else:
-            # print("No expired cache entries to purge.")
 
     def clear_all(self):
         """Clears all entries from the cache table."""
-        with self._get_connection() as conn:  # Ensures conn is open
+        with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("DELETE FROM prompt_cache")
             conn.commit()
@@ -225,36 +211,3 @@ class PromptCache:
         if self._conn:
             self._conn.close()
             self._conn = None
-
-
-# Example usage (optional, for quick testing):
-# if __name__ == '__main__':
-#     cache = PromptCache(db_path=Path("test_cache.db"))
-#     cache.clear_all() # Start fresh for example
-
-#     prompt1 = "What is the capital of France?"
-#     options1 = {"temp": 0.7}
-#     response1_data = {"answer": "Paris", "confidence": 0.9}
-#     adapter1 = "openai"
-#     model1 = "gpt-3.5"
-
-#     print(f"Cache GET (miss): {cache.get(prompt1, adapter1, model1, options1)}")
-#     cache.put(prompt1, adapter1, model1, options1, response1_data, ttl_seconds=5) # Short TTL for testing
-#     print(f"Cache GET (hit): {cache.get(prompt1, adapter1, model1, options1)}")
-
-#     print("Waiting for cache to expire...")
-#     time.sleep(6)
-#     print(f"Cache GET (expired): {cache.get(prompt1, adapter1, model1, options1)}")
-#     # At this point, the entry for prompt1 should have been deleted by the get method due to expiry.
-
-#     # Test purge_expired (manually create an expired entry)
-#     prompt2 = "Another prompt"
-#     response2_data = {"answer": "Another answer"}
-#     cache.put(prompt2, adapter1, model1, options1, response2_data, ttl_seconds=1) # Expired almost immediately
-#     time.sleep(2) # Ensure it's expired
-#     print(f"Cache size before purge: {len(cache._get_connection().execute('SELECT * FROM prompt_cache').fetchall())}")
-#     cache.purge_expired()
-#     print(f"Cache size after purge (should be 0 if only prompt2 was left and expired): {len(cache._get_connection().execute('SELECT * FROM prompt_cache').fetchall())}")
-
-#     cache.clear_all()
-#     Path("test_cache.db").unlink() # Clean up test db
