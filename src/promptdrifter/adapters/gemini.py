@@ -2,6 +2,7 @@ import os
 from typing import Any, Dict, Optional
 
 import httpx
+from pydantic import BaseModel, Field, model_validator
 
 from ..config.adapter_settings import (
     API_KEY_ENV_VAR_GEMINI,
@@ -11,18 +12,52 @@ from ..config.adapter_settings import (
 from .base import Adapter
 
 
+class GeminiAdapterConfig(BaseModel):
+    api_key: Optional[str] = Field(default=None, validate_default=True)
+    base_url: str = GEMINI_API_BASE_URL
+    default_model: str = DEFAULT_GEMINI_MODEL
+
+    @model_validator(mode='before')
+    @classmethod
+    def load_api_key(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+        if values.get('api_key'):
+            return values
+
+        api_key_from_env = os.getenv(API_KEY_ENV_VAR_GEMINI)
+        if api_key_from_env:
+            values['api_key'] = api_key_from_env
+        return values
+
+    @model_validator(mode='after')
+    def check_api_key_present(self) -> 'GeminiAdapterConfig':
+        if not self.api_key:
+            raise ValueError(
+                f"Gemini API key not provided. Set the {API_KEY_ENV_VAR_GEMINI} environment variable, "
+                f"or pass 'api_key' to the adapter or its config."
+            )
+        return self
+
+
 class GeminiAdapter(Adapter):
     """Adapter for interacting with Google Gemini API via REST using httpx."""
 
-    def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None):
-        self.api_key = api_key or os.getenv(API_KEY_ENV_VAR_GEMINI)
-        if not self.api_key:
-            raise ValueError(
-                f"Gemini API key not provided. Set the {API_KEY_ENV_VAR_GEMINI} environment variable "
-                f"or pass it to the adapter constructor."
-            )
-        self.base_url = base_url or GEMINI_API_BASE_URL
-        self.client = httpx.AsyncClient(base_url=self.base_url)
+    def __init__(
+        self,
+        config: Optional[GeminiAdapterConfig] = None,
+        api_key: Optional[str] = None,
+        base_url: Optional[str] = None,
+    ):
+        if config:
+            self.config = config
+        else:
+            config_data = {}
+            if api_key:
+                config_data['api_key'] = api_key
+            if base_url:
+                config_data['base_url'] = base_url
+            self.config = GeminiAdapterConfig(**config_data)
+
+        self.client = httpx.AsyncClient(base_url=self.config.base_url)
 
     async def execute(
         self,
@@ -33,9 +68,9 @@ class GeminiAdapter(Adapter):
         **kwargs: Any,
     ) -> Dict[str, Any]:
         """Makes a REST request to the Google Gemini API."""
-        effective_model = model or DEFAULT_GEMINI_MODEL
+        effective_model = model or self.config.default_model
         endpoint = f"/models/{effective_model}:generateContent"
-        params = {"key": self.api_key}
+        params = {"key": self.config.api_key}
 
         payload = {
             "contents": [{"parts": [{"text": prompt}]}]

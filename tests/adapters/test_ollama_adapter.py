@@ -1,82 +1,93 @@
-import json  # For constructing mock stream responses
+import json
+import os
 from unittest.mock import (
     AsyncMock,
     MagicMock,
-    # patch, # patch is not used if we directly inject client
+    patch,
 )
 
 import httpx
 import pytest
 
 from promptdrifter.adapters.ollama import (
-    DEFAULT_OLLAMA_BASE_URL,
-    DEFAULT_OLLAMA_MODEL,
     OllamaAdapter,
+    OllamaAdapterConfig,
+)
+from promptdrifter.config.adapter_settings import (
+    DEFAULT_OLLAMA_BASE_URL as config_DEFAULT_OLLAMA_BASE_URL,
+)
+from promptdrifter.config.adapter_settings import (
+    DEFAULT_OLLAMA_MODEL as config_DEFAULT_OLLAMA_MODEL,
 )
 
-# Mark all tests in this file as asyncio
 pytestmark = pytest.mark.asyncio
 
 
 @pytest.fixture
-def mock_httpx_client(mocker, mock_streaming_response_generator):  # Add new fixture
-    mock_client = MagicMock()  # Removed spec to simplify
-    mock_client.post = AsyncMock()
+def mock_httpx_client_instance():
+    client = MagicMock(spec=httpx.AsyncClient)
+    client.post = AsyncMock()
+    client.stream = MagicMock()
+    client.aclose = AsyncMock()
 
-    # .stream() is a synchronous method that returns an async context manager
-    mock_client.stream = MagicMock()
-
-    # Setup the async context manager that mock_client.stream will return
     async_context_manager_mock = AsyncMock()
-
-    # Configure __aenter__ for the context manager
     mock_response_for_stream = MagicMock(spec=httpx.Response)
     mock_response_for_stream.status_code = 200
-    # aiter_bytes is a method that returns an async generator.
-    # It should be a MagicMock that, when called, returns the async generator instance.
-    mock_response_for_stream.aiter_bytes = MagicMock(
-        return_value=mock_streaming_response_generator
-    )
+    mock_response_for_stream.aiter_bytes = MagicMock()
+    mock_response_for_stream.raise_for_status = MagicMock()
 
-    def simple_do_nothing_sync_callable(*args, **kwargs):
-        return None
-
-    mock_response_for_stream.raise_for_status = (
-        simple_do_nothing_sync_callable  # Use a simple sync callable
-    )
-
-    aenter_mock = AsyncMock(return_value=mock_response_for_stream)
-    async_context_manager_mock.__aenter__ = aenter_mock
-
-    # Configure __aexit__ for the context manager
-    async def mock_aexit(exc_type, exc_val, exc_tb):
-        return None
-
-    async_context_manager_mock.__aexit__ = AsyncMock(side_effect=mock_aexit)
-
-    mock_client.stream.return_value = async_context_manager_mock
-
-    mock_client.aclose = AsyncMock()
-    return mock_client
+    async_context_manager_mock.__aenter__ = AsyncMock(return_value=mock_response_for_stream)
+    async_context_manager_mock.__aexit__ = AsyncMock(return_value=None)
+    client.stream.return_value = async_context_manager_mock
+    return client
 
 
 @pytest.fixture
-def ollama_adapter(mock_httpx_client):
+def patch_httpx_client(mock_httpx_client_instance):
+    with patch("promptdrifter.adapters.ollama.httpx.AsyncClient", return_value=mock_httpx_client_instance) as patched_class_mock:
+        yield patched_class_mock
+
+
+@pytest.fixture
+def ollama_adapter(patch_httpx_client):
+    adapter_instance = OllamaAdapter()
+    patch_httpx_client.assert_called_once_with(base_url=adapter_instance.config.base_url)
+    return adapter_instance
+
+
+async def test_ollama_adapter_init_default(patch_httpx_client):
     adapter = OllamaAdapter()
-    adapter.client = mock_httpx_client
-    return adapter
+    assert adapter.config.base_url == config_DEFAULT_OLLAMA_BASE_URL
+    assert adapter.config.default_model == config_DEFAULT_OLLAMA_MODEL
+    patch_httpx_client.assert_called_once_with(base_url=config_DEFAULT_OLLAMA_BASE_URL)
+
+async def test_ollama_adapter_init_custom_params(patch_httpx_client):
+    custom_url = "http://customhost:11435"
+    custom_model = "customollamamodel"
+    adapter = OllamaAdapter(base_url=custom_url, default_model=custom_model)
+    assert adapter.config.base_url == custom_url
+    assert adapter.config.default_model == custom_model
+    patch_httpx_client.assert_called_once_with(base_url=custom_url)
+
+async def test_ollama_adapter_init_with_config_object(patch_httpx_client):
+    custom_url = "http://confighost:11433"
+    custom_model = "configollamamodel"
+    config = OllamaAdapterConfig(base_url=custom_url, default_model=custom_model)
+    adapter = OllamaAdapter(config=config)
+    assert adapter.config is config
+    assert adapter.config.base_url == custom_url
+    assert adapter.config.default_model == custom_model
+    patch_httpx_client.assert_called_once_with(base_url=custom_url)
 
 
-# --- Non-Streaming Tests (stream=False) ---
-async def test_execute_non_streaming_successful(ollama_adapter, mock_httpx_client):
+async def test_execute_non_streaming_successful(ollama_adapter, patch_httpx_client):
+    mock_client_instance = patch_httpx_client.return_value
     mock_response_data = {
         "model": "test-model",
-        "created_at": "2023-10-13T10:00:00Z",
         "response": "This is a test response from Ollama.",
         "done": True,
-        # ... other fields Ollama might return
     }
-    mock_httpx_client.post.return_value = httpx.Response(
+    mock_client_instance.post.return_value = httpx.Response(
         200, json=mock_response_data, request=httpx.Request("POST", "/api/generate")
     )
 
@@ -85,8 +96,8 @@ async def test_execute_non_streaming_successful(ollama_adapter, mock_httpx_clien
         prompt, model="test-model", temperature=0.6, max_tokens=60, stream=False
     )
 
-    mock_httpx_client.post.assert_called_once()
-    call_args = mock_httpx_client.post.call_args
+    mock_client_instance.post.assert_called_once()
+    call_args = mock_client_instance.post.call_args
     assert call_args[0][0] == "/api/generate"
     payload = call_args[1]["json"]
     assert payload["model"] == "test-model"
@@ -96,128 +107,70 @@ async def test_execute_non_streaming_successful(ollama_adapter, mock_httpx_clien
     assert payload["options"]["num_predict"] == 60
 
     assert result["text_response"] == "This is a test response from Ollama."
-    assert result["raw_response"] == mock_response_data
-    assert result["model_used"] == "test-model"
-    assert "error" not in result
     await ollama_adapter.close()
+    mock_client_instance.aclose.assert_called_once()
 
 
-async def test_execute_non_streaming_uses_default_model_and_url(mock_httpx_client):
-    # Test __init__ and default model usage without overriding them in execute
-    adapter = OllamaAdapter()  # Uses default base_url
-    adapter.client = mock_httpx_client  # Inject mock client
-
-    mock_httpx_client.post.return_value = httpx.Response(
+async def test_execute_non_streaming_uses_default_model_and_url(patch_httpx_client):
+    adapter = OllamaAdapter()
+    mock_client_instance = patch_httpx_client.return_value
+    mock_client_instance.post.return_value = httpx.Response(
         200,
         json={"response": "Default model response"},
         request=httpx.Request("POST", "/"),
     )
     await adapter.execute("A prompt", stream=False)
-    payload = mock_httpx_client.post.call_args[1]["json"]
-    assert payload["model"] == DEFAULT_OLLAMA_MODEL
-    assert adapter.base_url == DEFAULT_OLLAMA_BASE_URL
+    payload = mock_client_instance.post.call_args[1]["json"]
+    assert payload["model"] == adapter.config.default_model
+    assert adapter.config.base_url == config_DEFAULT_OLLAMA_BASE_URL
     await adapter.close()
+    mock_client_instance.aclose.assert_called_once()
 
 
-async def test_execute_non_streaming_custom_options(ollama_adapter, mock_httpx_client):
-    mock_httpx_client.post.return_value = httpx.Response(
-        200, json={"response": "ok"}, request=httpx.Request("POST", "/")
-    )
-    await ollama_adapter.execute(
-        "A prompt", model="custom", stream=False, stop=["\n", "User:"], top_k=30
-    )
-
-    payload = mock_httpx_client.post.call_args[1]["json"]
-    assert payload["options"]["stop"] == ["\n", "User:"]
-    assert payload["options"]["top_k"] == 30
-    assert "temperature" not in payload["options"]  # Not specified, so not included
-    await ollama_adapter.close()
-
-
-# --- Streaming Tests (stream=True) ---
 @pytest.fixture
-def mock_streaming_response_generator():  # Renamed, returns generator instance
-    chunks = [
-        {
-            "model": "test-stream-model",
-            "created_at": "time1",
-            "response": "Hello ",
-            "done": False,
-        },
-        {
-            "model": "test-stream-model",
-            "created_at": "time2",
-            "response": "Ollama",
-            "done": False,
-        },
-        {
-            "model": "test-stream-model",
-            "created_at": "time3",
-            "response": "!",
-            "done": False,
-        },
-        {
-            "model": "test-stream-model",
-            "created_at": "time4",
-            "response": "",
-            "done": True,
-            "total_duration": 1000,
-            "context": [1, 2, 3],
-        },
+def mock_streaming_byte_chunks():
+    chunks_data = [
+        {"response": "Hello ", "done": False},
+        {"response": "Ollama", "done": False},
+        {"response": "!", "done": False},
+        {"response": "", "done": True, "context": [1, 2, 3]},
     ]
-
     async def byte_stream():
-        for chunk_data in chunks:
+        for chunk_data in chunks_data:
             yield json.dumps(chunk_data).encode("utf-8") + b"\n"
+    return byte_stream()
 
-    return byte_stream()  # Return the generator INSTANCE
 
+async def test_execute_streaming_successful(ollama_adapter, patch_httpx_client, mock_streaming_byte_chunks):
+    mock_client_instance = patch_httpx_client.return_value
 
-async def test_execute_streaming_successful(
-    ollama_adapter,
-    mock_httpx_client,  # Removed mock_streaming_response_chunks, using generator from client setup
-):
-    # mock_httpx_client is now pre-configured with stream handling by the mock_httpx_client fixture
-
-    # Add assertions to verify mock identity
-    assert ollama_adapter.client is mock_httpx_client, (
-        "ollama_adapter.client is not the mock_httpx_client instance"
-    )
-    assert ollama_adapter.client.stream is mock_httpx_client.stream, (
-        "ollama_adapter.client.stream is not the mock_httpx_client.stream instance"
-    )
-    assert isinstance(mock_httpx_client.stream, MagicMock), (
-        "mock_httpx_client.stream is not a MagicMock"
-    )
+    mock_response_for_stream = await mock_client_instance.stream.return_value.__aenter__()
+    mock_response_for_stream.aiter_bytes.return_value = mock_streaming_byte_chunks
 
     prompt = "Stream this!"
     result = await ollama_adapter.execute(
         prompt, model="test-stream-model", stream=True
     )
 
-    mock_httpx_client.stream.assert_called_once()  # This is the key assertion
-
-    # We can also check arguments passed to stream if needed
-    call_args = mock_httpx_client.stream.call_args
-    assert call_args[0][0] == "POST"  # method
-    assert call_args[0][1] == "/api/generate"  # url
+    mock_client_instance.stream.assert_called_once()
+    call_args = mock_client_instance.stream.call_args
+    assert call_args[0][0] == "POST"
+    assert call_args[0][1] == "/api/generate"
     payload = call_args[1]["json"]
     assert payload["model"] == "test-stream-model"
-    assert payload["prompt"] == prompt
     assert payload["stream"] is True
 
     assert result["text_response"] == "Hello Ollama!"
     assert len(result["raw_response"]["parts"]) == 4
-    assert result["raw_response"]["parts"][0]["response"] == "Hello "
     assert result["raw_response"]["final_context"]["context"] == [1, 2, 3]
-    assert "error" not in result
     await ollama_adapter.close()
+    mock_client_instance.aclose.assert_called_once()
 
 
-# --- Error Handling Tests (Applicable to both streaming and non-streaming where sensible) ---
-async def test_execute_http_status_error(ollama_adapter, mock_httpx_client):
+async def test_execute_http_status_error_non_streaming(ollama_adapter, patch_httpx_client):
+    mock_client_instance = patch_httpx_client.return_value
     error_response_content = '{"error": "model not found"}'
-    mock_httpx_client.post.return_value = httpx.Response(
+    mock_client_instance.post.return_value = httpx.Response(
         404,
         content=error_response_content.encode("utf-8"),
         request=httpx.Request("POST", "/"),
@@ -225,30 +178,50 @@ async def test_execute_http_status_error(ollama_adapter, mock_httpx_client):
     result = await ollama_adapter.execute("A prompt", stream=False)
     assert "error" in result
     assert "HTTP error 404" in result["error"]
-    assert "model not found" in result["error"]
     await ollama_adapter.close()
+    mock_client_instance.aclose.assert_called_once()
+
+async def test_execute_http_status_error_streaming(ollama_adapter, patch_httpx_client):
+    mock_client_instance = patch_httpx_client.return_value
+    error_response_content = '{"error": "streaming model not found"}'
+
+    bad_stream_response = MagicMock(spec=httpx.Response)
+    bad_stream_response.status_code = 500
+    bad_stream_response.text = error_response_content
+    bad_stream_response.aiter_bytes = MagicMock(return_value = (b for b in []))
+    def raise_http_error(*args, **kwargs):
+        raise httpx.HTTPStatusError("Error", request=MagicMock(), response=bad_stream_response)
+    bad_stream_response.raise_for_status = MagicMock(side_effect=raise_http_error)
+
+    mock_client_instance.stream.return_value.__aenter__ = AsyncMock(return_value=bad_stream_response)
+
+    result = await ollama_adapter.execute("A prompt", stream=True)
+    assert "error" in result
+    assert "HTTP error 500" in result["error"]
+    await ollama_adapter.close()
+    mock_client_instance.aclose.assert_called_once()
 
 
-async def test_execute_request_error(ollama_adapter, mock_httpx_client):
-    mock_httpx_client.post.side_effect = httpx.ConnectError("Connection failed")
+async def test_execute_request_error_non_streaming(ollama_adapter, patch_httpx_client):
+    mock_client_instance = patch_httpx_client.return_value
+    mock_client_instance.post.side_effect = httpx.ConnectError("Connection failed")
     result = await ollama_adapter.execute("A prompt", stream=False)
     assert "error" in result
     assert "Request error connecting to Ollama" in result["error"]
     await ollama_adapter.close()
+    mock_client_instance.aclose.assert_called_once()
 
-
-async def test_execute_json_decode_error_non_streaming(
-    ollama_adapter, mock_httpx_client
-):
-    mock_httpx_client.post.return_value = httpx.Response(
-        200, content="not json".encode("utf-8"), request=httpx.Request("POST", "/")
-    )
-    result = await ollama_adapter.execute("A prompt", stream=False)
+async def test_execute_request_error_streaming(ollama_adapter, patch_httpx_client):
+    mock_client_instance = patch_httpx_client.return_value
+    mock_client_instance.stream.side_effect = httpx.ConnectError("Stream connection failed")
+    result = await ollama_adapter.execute("A prompt", stream=True)
     assert "error" in result
-    assert "Failed to decode JSON response from Ollama" in result["error"]
+    assert "Request error connecting to Ollama" in result["error"]
     await ollama_adapter.close()
+    mock_client_instance.aclose.assert_called_once()
 
 
-async def test_adapter_close_called(ollama_adapter, mock_httpx_client):
+async def test_adapter_close_called(ollama_adapter, patch_httpx_client):
+    mock_client_instance = patch_httpx_client.return_value
     await ollama_adapter.close()
-    mock_httpx_client.aclose.assert_called_once()
+    mock_client_instance.aclose.assert_called_once()

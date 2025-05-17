@@ -11,6 +11,7 @@ from .adapters.base import Adapter
 from .adapters.gemini import GeminiAdapter
 from .adapters.ollama import OllamaAdapter
 from .adapters.openai import OpenAIAdapter
+from .adapters.qwen import QwenAdapter
 from .assertions import exact_match, regex_match
 from .cache import PromptCache
 from .yaml_loader import YamlFileLoader
@@ -19,6 +20,7 @@ ADAPTER_REGISTRY: Dict[str, Type[Adapter]] = {
     "openai": OpenAIAdapter,
     "ollama": OllamaAdapter,
     "gemini": GeminiAdapter,
+    "qwen": QwenAdapter,
 }
 
 

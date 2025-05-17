@@ -2,6 +2,7 @@ import os
 from typing import Any, Dict, Optional
 
 import httpx
+from pydantic import BaseModel, Field, model_validator
 
 from ..config.adapter_settings import (
     API_KEY_ENV_VAR_OPENAI,
@@ -11,19 +12,54 @@ from ..config.adapter_settings import (
 from .base import Adapter
 
 
+class OpenAIAdapterConfig(BaseModel):
+    api_key: Optional[str] = Field(default=None, validate_default=True)
+    base_url: str = OPENAI_API_BASE_URL
+    default_model: str = DEFAULT_OPENAI_MODEL
+
+    @model_validator(mode='before')
+    @classmethod
+    def load_api_key(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+        if values.get('api_key'):
+            return values
+
+        api_key_from_env = os.getenv(API_KEY_ENV_VAR_OPENAI)
+        if api_key_from_env:
+            values['api_key'] = api_key_from_env
+        return values
+
+    @model_validator(mode='after')
+    def check_api_key_present(self) -> 'OpenAIAdapterConfig':
+        if not self.api_key:
+            raise ValueError(
+                f"OpenAI API key not provided. Set the {API_KEY_ENV_VAR_OPENAI} environment variable, "
+                f"or pass 'api_key' to the adapter or its config."
+            )
+        return self
+
+
 class OpenAIAdapter(Adapter):
     """Adapter for interacting with OpenAI API."""
 
-    def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None):
-        self.api_key = api_key or os.getenv(API_KEY_ENV_VAR_OPENAI)
-        if not self.api_key:
-            raise ValueError(
-                f"OpenAI API key not provided. Set the {API_KEY_ENV_VAR_OPENAI} environment variable "
-                f"or pass it to the adapter constructor."
-            )
-        self.base_url = base_url or OPENAI_API_BASE_URL
+    def __init__(
+        self,
+        config: Optional[OpenAIAdapterConfig] = None,
+        api_key: Optional[str] = None,
+        base_url: Optional[str] = None,
+    ):
+        if config:
+            self.config = config
+        else:
+            config_data = {}
+            if api_key:
+                config_data['api_key'] = api_key
+            if base_url:
+                config_data['base_url'] = base_url
+            self.config = OpenAIAdapterConfig(**config_data)
+
         self.client = httpx.AsyncClient(
-            base_url=self.base_url, headers={"Authorization": f"Bearer {self.api_key}"}
+            base_url=self.config.base_url,
+            headers={"Authorization": f"Bearer {self.config.api_key}"}
         )
 
     async def execute(
@@ -35,7 +71,7 @@ class OpenAIAdapter(Adapter):
         **kwargs: Any,
     ) -> Dict[str, Any]:
         """Makes a request to the OpenAI Chat Completions API."""
-        effective_model = model or DEFAULT_OPENAI_MODEL
+        effective_model = model or self.config.default_model
 
         payload = {
             "model": effective_model,

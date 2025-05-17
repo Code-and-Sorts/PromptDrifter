@@ -2,6 +2,7 @@ import json
 from typing import Any, AsyncGenerator, Dict, Optional
 
 import httpx
+from pydantic import BaseModel
 
 from ..config.adapter_settings import (
     DEFAULT_OLLAMA_BASE_URL,
@@ -10,17 +11,31 @@ from ..config.adapter_settings import (
 from .base import Adapter
 
 
+class OllamaAdapterConfig(BaseModel):
+    base_url: str = DEFAULT_OLLAMA_BASE_URL
+    default_model: str = DEFAULT_OLLAMA_MODEL
+
+
 class OllamaAdapter(Adapter):
     """Adapter for interacting with a local Ollama API."""
 
     def __init__(
         self,
+        config: Optional[OllamaAdapterConfig] = None,
         base_url: Optional[str] = None,
         default_model: Optional[str] = None
     ):
-        self.base_url = base_url or DEFAULT_OLLAMA_BASE_URL
-        self.default_model = default_model or DEFAULT_OLLAMA_MODEL
-        self.client = httpx.AsyncClient(base_url=self.base_url)
+        if config:
+            self.config = config
+        else:
+            config_data = {}
+            if base_url:
+                config_data['base_url'] = base_url
+            if default_model:
+                config_data['default_model'] = default_model
+            self.config = OllamaAdapterConfig(**config_data)
+
+        self.client = httpx.AsyncClient(base_url=self.config.base_url)
 
     async def _stream_response(
         self, response: httpx.Response
@@ -52,7 +67,7 @@ class OllamaAdapter(Adapter):
         **kwargs: Any,
     ) -> Dict[str, Any]:
         """Makes a request to the Ollama /api/generate endpoint."""
-        effective_model = model or self.default_model
+        effective_model = model or self.config.default_model
 
         payload = {
             "model": effective_model,

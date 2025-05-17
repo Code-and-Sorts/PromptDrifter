@@ -2,6 +2,7 @@
     "cSpell.words": [
         "asyncio",
         "capsys",
+        "DASHSCOPE",
         "deepseek",
         "delenv",
         "excinfo",
@@ -18,11 +19,13 @@
         "pytestmark",
         "pyupgrade",
         "pyyaml",
+        "Qianwen",
         "qwen",
         "rapidfuzz",
         "testpypi",
         "Timm",
         "tomlkit",
+        "Tongyi",
         "typer",
         "USERPROFILE",
         "venv"

@@ -7,8 +7,13 @@ API_KEY_ENV_VAR_OPENAI = "OPENAI_API_KEY"
 
 # Google Gemini
 GEMINI_API_BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
-DEFAULT_GEMINI_MODEL = "gemini-pro"
+DEFAULT_GEMINI_MODEL = "gemini-1.5-flash-latest"
 API_KEY_ENV_VAR_GEMINI = "GEMINI_API_KEY"
+
+# Qwen (Tongyi Qianwen via DashScope)
+API_KEY_ENV_VAR_QWEN = "QWEN_API_KEY"
+QWEN_API_BASE_URL = "https://dashscope.aliyuncs.com"
+DEFAULT_QWEN_MODEL = "qwen-plus"
 
 # Ollama
 DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434"
