@@ -1,7 +1,5 @@
-from typing import Any, Dict, List, Literal, Optional
-
+from typing import List, Optional, Dict, Any, Literal
 from pydantic import BaseModel, Field, model_validator
-
 
 class AdapterConfig(BaseModel):
     adapter_type: Literal["openai", "ollama", "gemini"] = Field(..., alias="type")
@@ -109,4 +107,4 @@ class PromptDrifterConfig(BaseModel):
 #             for adapter_conf in test_case.adapters:
 #                 print(f"    Adapter: {adapter_conf.adapter}, Model: {adapter_conf.model}")
 #                 if adapter_conf.params:
-#                     print(f"      Params: {adapter_conf.params}")
+#                     print(f"      Params: {adapter_conf.params}") 
