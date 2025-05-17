@@ -6,6 +6,7 @@ from typing import List, Optional
 
 import typer
 from rich.console import Console
+from rich.panel import Panel
 from rich.text import Text
 
 from promptdrifter.runner import Runner
@@ -28,6 +29,16 @@ def get_version():
 def version():
     """Display the current version of PromptDrifter."""
     console.print(f"PromptDrifter version: [bold blue]{get_version()}[/bold blue]")
+
+
+def _print_api_key_security_warning():
+    """Prints a security warning if API keys are passed via CLI."""
+    warning_message = (
+        "[bold yellow]SECURITY WARNING:[/bold yellow]\n"
+        "Passing API keys directly via command-line arguments can expose them in your shell history "
+        "or process list. It is recommended to use environment variables for API keys where possible."
+    )
+    console.print(Panel(warning_message, title="[bold red]Warning[/bold red]", border_style="red"))
 
 
 @app.command()
@@ -100,8 +111,13 @@ async def _run_async(
     no_cache: bool,
     cache_db: Optional[Path],
     config_dir: Path,
+    openai_api_key: Optional[str],
+    gemini_api_key: Optional[str],
 ):
     """Async implementation of the run command."""
+    if openai_api_key or gemini_api_key:
+        _print_api_key_security_warning()
+
     if not files:
         console.print("[bold red]Error: No YAML files provided.[/bold red]")
         console.print("\n[bold]Usage:[/bold]")
@@ -140,7 +156,11 @@ async def _run_async(
     runner_instance: Optional[Runner] = None
     try:
         runner_instance = Runner(
-            config_dir=config_dir, cache_db_path=cache_db, use_cache=not no_cache
+            config_dir=config_dir,
+            cache_db_path=cache_db,
+            use_cache=not no_cache,
+            openai_api_key=openai_api_key,
+            gemini_api_key=gemini_api_key
         )
         overall_success = await runner_instance.run_suite(yaml_files_str)
         if not overall_success:
@@ -172,9 +192,28 @@ def run(
     config_dir: Path = typer.Option(
         Path("."), "--config-dir", "-c", help="Directory containing config files"
     ),
+    openai_api_key: Optional[str] = typer.Option(
+        None,
+        "--openai-api-key",
+        help="OpenAI API key. Overrides OPENAI_API_KEY env var. Warning: Exposes key in shell history.",
+        rich_help_panel="API Keys"
+    ),
+    gemini_api_key: Optional[str] = typer.Option(
+        None,
+        "--gemini-api-key",
+        help="Google Gemini API key. Overrides GEMINI_API_KEY env var. Warning: Exposes key in shell history.",
+        rich_help_panel="API Keys"
+    ),
 ):
     """Run a suite of prompt tests from one or more YAML files."""
-    asyncio.run(_run_async(files, no_cache, cache_db, config_dir))
+    asyncio.run(_run_async(
+        files,
+        no_cache,
+        cache_db,
+        config_dir,
+        openai_api_key,
+        gemini_api_key
+    ))
 
 
 @app.command()

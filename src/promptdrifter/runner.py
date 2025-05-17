@@ -30,6 +30,8 @@ class Runner:
         config_dir: Path,
         cache_db_path: Optional[Path] = None,
         use_cache: bool = True,
+        openai_api_key: Optional[str] = None,
+        gemini_api_key: Optional[str] = None,
     ):
         self.config_dir = config_dir
         self.yaml_loader = (
@@ -45,6 +47,8 @@ class Runner:
         self.console = Console()
         self.results: List[Dict[str, Any]] = []
         self.overall_success = True
+        self.cli_openai_api_key = openai_api_key
+        self.cli_gemini_api_key = gemini_api_key
 
     async def close_cache_connection(self):
         """Closes the database connection if cache is enabled and connection exists."""
@@ -56,7 +60,16 @@ class Runner:
         adapter_class = ADAPTER_REGISTRY.get(adapter_name.lower())
         if adapter_class:
             try:
-                return adapter_class()
+                api_key_to_pass = None
+                if adapter_name.lower() == "openai" and self.cli_openai_api_key:
+                    api_key_to_pass = self.cli_openai_api_key
+                elif adapter_name.lower() == "gemini" and self.cli_gemini_api_key:
+                    api_key_to_pass = self.cli_gemini_api_key
+
+                if api_key_to_pass:
+                    return adapter_class(api_key=api_key_to_pass)
+                else:
+                    return adapter_class()
             except Exception as e:
                 self.console.print(
                     f"[bold red]Error initializing adapter '{adapter_name}': {e}[/bold red]"
@@ -101,13 +114,13 @@ class Runner:
 
         for adapter_config_model in test_case_model.adapter_configurations:
             adapter_name = adapter_config_model.adapter_type
-            model_name = adapter_config_model.model # Renamed for clarity from 'model'
+            model_name = adapter_config_model.model
 
             current_run_details = {
                 "file": str(test_case_path.name),
                 "id": test_id,
                 "adapter": adapter_name,
-                "model": model_name, # Use renamed variable
+                "model": model_name,
                 "status": "SKIPPED",
                 "reason": "",
                 "prompt": prompt_text,
@@ -126,23 +139,17 @@ class Runner:
                 self.overall_success = False
                 continue
 
-            # Prepare adapter options from the Pydantic model
-            # Dump all fields, including extras, respecting aliases and excluding Nones
             all_adapter_params = adapter_config_model.model_dump(by_alias=True, exclude_none=True)
 
-            # Explicitly defined parameters in AdapterConfig that are standard options
-            # (model is passed separately to execute, adapter_type (alias: type) is used to get adapter)
             known_options_to_pass = {}
             if "temperature" in all_adapter_params:
                 known_options_to_pass["temperature"] = all_adapter_params.pop("temperature")
             if "max_tokens" in all_adapter_params:
                 known_options_to_pass["max_tokens"] = all_adapter_params.pop("max_tokens")
 
-            # Remove other known fields not intended for **kwargs in execute
-            all_adapter_params.pop("type", None) # This is adapter_type
-            all_adapter_params.pop("model", None) # This is model_name
+            all_adapter_params.pop("type", None)
+            all_adapter_params.pop("model", None)
 
-            # Remaining all_adapter_params are the "extra" ones from the YAML
             additional_adapter_kwargs = all_adapter_params
 
             adapter_options = {**known_options_to_pass, **additional_adapter_kwargs}
@@ -150,9 +157,9 @@ class Runner:
             llm_response_data: Optional[Dict[str, Any]] = None
 
             if self.cache:
-                cache_options_key = frozenset(adapter_options.items()) # Use the final adapter_options for cache key
+                cache_options_key = frozenset(adapter_options.items())
                 cached_response = self.cache.get(
-                    prompt_text, adapter_name, model_name, cache_options_key # Use model_name
+                    prompt_text, adapter_name, model_name, cache_options_key
                 )
                 if cached_response:
                     llm_response_data = cached_response
@@ -164,19 +171,19 @@ class Runner:
                 try:
                     llm_response_data = await adapter_instance.execute(
                         prompt_text,
-                        model=model_name, # Pass model_name explicitly
-                        **adapter_options, # Pass all other options
+                        model=model_name,
+                        **adapter_options,
                     )
                     if (
                         self.cache
                         and llm_response_data
                         and not llm_response_data.get("error")
                     ):
-                        cache_options_key_put = frozenset(adapter_options.items()) # Use final adapter_options
+                        cache_options_key_put = frozenset(adapter_options.items())
                         self.cache.put(
                             prompt_text,
                             adapter_name,
-                            model_name, # Use model_name
+                            model_name,
                             cache_options_key_put,
                             llm_response_data,
                         )
@@ -324,7 +331,7 @@ class Runner:
         table.add_column("Model", style="blue", width=15)
         table.add_column("Status", justify="center")
         table.add_column("Reason/Details", width=50)
-        # table.add_column("Cached", justify="center")
+        table.add_column("Cached", justify="center")
 
         summary = {"PASS": 0, "FAIL": 0, "ERROR": 0, "SKIPPED": 0, "TOTAL": 0}
 
@@ -341,7 +348,6 @@ class Runner:
             if status == "FAIL" and result.get("actual_response") is not None:
                 reason += f"\nActual: '{str(result.get('actual_response'))[:100]}...'"
             elif status == "ERROR" and result.get("actual_response"):
-                # For ERROR status, result.get("actual_response") contains the raw adapter response if available
                 reason += f"\nAdapter Raw Response: '{str(result.get('actual_response'))[:100]}...'"
 
             table.add_row(
@@ -351,7 +357,7 @@ class Runner:
                 result.get("model", "N/A"),
                 f"[{status_color}]{status}[/{status_color}]",
                 reason,
-                # result.get("cache_status", "N/A")
+                result.get("cache_status", "N/A")
             )
 
         self.console.print(table)

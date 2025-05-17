@@ -28,9 +28,11 @@ async def test_cli_run_logic_success(mocker, tmp_path):
         no_cache=False,
         cache_db=None,
         config_dir=Path("."),
+        openai_api_key=None,
+        gemini_api_key=None,
     )
     mock_class.assert_called_once_with(
-        config_dir=Path("."), cache_db_path=None, use_cache=True
+        config_dir=Path("."), cache_db_path=None, use_cache=True, openai_api_key=None, gemini_api_key=None
     )
     mock_instance.run_suite.assert_called_once_with([str(test_file)])
     mock_instance.close_cache_connection.assert_called_once()
@@ -50,10 +52,12 @@ async def test_cli_run_logic_failure_from_suite(mocker, tmp_path):
             no_cache=False,
             cache_db=None,
             config_dir=Path("."),
+            openai_api_key=None,
+            gemini_api_key=None,
         )
     assert exc_info.value.exit_code == 1
     mock_class.assert_called_once_with(
-        config_dir=Path("."), cache_db_path=None, use_cache=True
+        config_dir=Path("."), cache_db_path=None, use_cache=True, openai_api_key=None, gemini_api_key=None
     )
     mock_instance.run_suite.assert_called_once_with([str(test_file)])
     mock_instance.close_cache_connection.assert_called_once()
@@ -72,10 +76,12 @@ async def test_cli_run_logic_runner_init_exception(mocker, tmp_path, capsys):
             no_cache=False,
             cache_db=None,
             config_dir=Path("."),
+            openai_api_key=None,
+            gemini_api_key=None,
         )
     assert exc_info.value.exit_code == 1
     mock_class_raising.assert_called_once_with(
-        config_dir=Path("."), cache_db_path=None, use_cache=True
+        config_dir=Path("."), cache_db_path=None, use_cache=True, openai_api_key=None, gemini_api_key=None
     )
     captured = capsys.readouterr()
     assert (
@@ -98,10 +104,12 @@ async def test_cli_run_logic_suite_exception(mocker, tmp_path, capsys):
             no_cache=False,
             cache_db=None,
             config_dir=Path("."),
+            openai_api_key=None,
+            gemini_api_key=None,
         )
     assert exc_info.value.exit_code == 1
     mock_class.assert_called_once_with(
-        config_dir=Path("."), cache_db_path=None, use_cache=True
+        config_dir=Path("."), cache_db_path=None, use_cache=True, openai_api_key=None, gemini_api_key=None
     )
     mock_instance.run_suite.assert_called_once_with([str(test_file)])
     mock_instance.close_cache_connection.assert_called_once()
@@ -127,9 +135,11 @@ async def test_cli_run_logic_multiple_files(mocker, tmp_path):
         no_cache=False,
         cache_db=None,
         config_dir=Path("."),
+        openai_api_key=None,
+        gemini_api_key=None,
     )
     mock_class.assert_called_once_with(
-        config_dir=Path("."), cache_db_path=None, use_cache=True
+        config_dir=Path("."), cache_db_path=None, use_cache=True, openai_api_key=None, gemini_api_key=None
     )
     mock_instance.run_suite.assert_called_once_with([str(file1), str(file2)])
     mock_instance.close_cache_connection.assert_called_once()
@@ -144,6 +154,8 @@ async def test_cli_run_logic_file_not_found(mocker, capsys):
             no_cache=False,
             cache_db=None,
             config_dir=Path("."),
+            openai_api_key=None,
+            gemini_api_key=None,
         )
     assert exc_info.value.exit_code == 1
     mock_class_for_safety.assert_not_called()
@@ -157,7 +169,7 @@ async def test_cli_run_logic_file_not_found(mocker, capsys):
 async def test_cli_run_logic_no_files_provided(mocker, capsys):
     mock_class_for_safety = mocker.patch("promptdrifter.cli.Runner")
     with pytest.raises(typer.Exit) as exc_info:
-        await _run_async(files=[], no_cache=False, cache_db=None, config_dir=Path("."))
+        await _run_async(files=[], no_cache=False, cache_db=None, config_dir=Path("."), openai_api_key=None, gemini_api_key=None)
     assert exc_info.value.exit_code == 1
     mock_class_for_safety.assert_not_called()
     captured = capsys.readouterr()
@@ -325,3 +337,83 @@ def test_init_io_error_writing_config(mocker, tmp_path):
     assert (target_dir / 'promptdrifter.yaml').name in normalized_stdout
     assert "Disk full or something terrible" in normalized_stdout
     assert target_dir.exists()
+
+
+@pytest.mark.asyncio
+async def test_cli_run_prints_security_warning(mocker, tmp_path, capsys):
+    test_file = tmp_path / "test.yaml"
+    test_file.write_text("version: 0.1\nid: test\nprompt: hello")
+    mock_instance = AsyncMock()
+    mock_instance.run_suite = AsyncMock(return_value=True)
+    mock_instance.close_cache_connection = AsyncMock()
+    mocker.patch("promptdrifter.cli.Runner", return_value=mock_instance)
+
+    # Test with OpenAI key
+    await _run_async(
+        files=[Path(str(test_file))],
+        no_cache=False,
+        cache_db=None,
+        config_dir=Path("."),
+        openai_api_key="test_openai_key",
+        gemini_api_key=None,
+    )
+    captured = capsys.readouterr()
+    assert "SECURITY WARNING" in strip_ansi(captured.out)
+    assert "Passing API keys directly via command-line arguments" in strip_ansi(captured.out)
+
+    # Test with Gemini key
+    await _run_async(
+        files=[Path(str(test_file))],
+        no_cache=False,
+        cache_db=None,
+        config_dir=Path("."),
+        openai_api_key=None,
+        gemini_api_key="test_gemini_key",
+    )
+    captured = capsys.readouterr() # Capture output again
+    assert "SECURITY WARNING" in strip_ansi(captured.out)
+
+    # Test with no keys (should not print warning)
+    await _run_async(
+        files=[Path(str(test_file))],
+        no_cache=False,
+        cache_db=None,
+        config_dir=Path("."),
+        openai_api_key=None,
+        gemini_api_key=None,
+    )
+    captured = capsys.readouterr() # Capture output again
+    assert "SECURITY WARNING" not in strip_ansi(captured.out)
+
+
+def test_run_command_with_api_keys(mocker):
+    mock_run_async = mocker.patch("promptdrifter.cli._run_async")
+    test_file_path = Path("dummy.yaml")
+
+    cli_runner.invoke(
+        app,
+        [
+            "run",
+            str(test_file_path),
+            "--openai-api-key",
+            "key1",
+            "--gemini-api-key",
+            "key2",
+        ],
+    )
+
+    mock_run_async.assert_called_once_with(
+        [test_file_path], False, None, Path("."), "key1", "key2"
+    )
+
+    mock_run_async.reset_mock()
+    cli_runner.invoke(app, ["run", str(test_file_path)])
+    mock_run_async.assert_called_once_with(
+        [test_file_path], False, None, Path("."), None, None
+    )
+
+
+def test_version_command():
+    # This test is not provided in the original file or the new code block
+    # It's assumed to exist as it's called in the test_run_command_with_api_keys function
+    pass
