@@ -15,7 +15,6 @@ class OpenAIAdapter(Adapter):
     """Adapter for interacting with OpenAI API."""
 
     def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None):
-        # Use imported constants for defaults
         self.api_key = api_key or os.getenv(API_KEY_ENV_VAR_OPENAI)
         if not self.api_key:
             raise ValueError(
@@ -36,7 +35,6 @@ class OpenAIAdapter(Adapter):
         **kwargs: Any,
     ) -> Dict[str, Any]:
         """Makes a request to the OpenAI Chat Completions API."""
-        # Use imported constant for default model
         effective_model = model or DEFAULT_OPENAI_MODEL
 
         payload = {
@@ -48,18 +46,15 @@ class OpenAIAdapter(Adapter):
         if max_tokens is not None:
             payload["max_tokens"] = max_tokens
 
-        # Allow overriding other API parameters if passed via kwargs
         payload.update(kwargs)
 
         try:
             response = await self.client.post(
                 "/chat/completions", json=payload, timeout=60.0
-            )  # Added timeout
-            response.raise_for_status()  # Raise an exception for 4XX/5XX responses
+            )
+            response.raise_for_status()
             response_data = response.json()
 
-            # Extract the text response - structure might vary slightly based on API version or usage
-            # For Chat Completions, it's typically in choices[0].message.content
             text_response = None
             if (
                 response_data.get("choices")
@@ -80,7 +75,6 @@ class OpenAIAdapter(Adapter):
                 "model_used": effective_model,
             }
         except httpx.HTTPStatusError as e:
-            # More specific error handling for HTTP errors
             error_content = e.response.text
             return {
                 "error": f"HTTP error {e.response.status_code} from OpenAI: {error_content}",
@@ -89,7 +83,6 @@ class OpenAIAdapter(Adapter):
                 "model_used": effective_model,
             }
         except httpx.RequestError as e:
-            # Handle network errors or other request issues
             return {
                 "error": f"Request error connecting to OpenAI: {e}",
                 "raw_response": None,
@@ -97,7 +90,6 @@ class OpenAIAdapter(Adapter):
                 "model_used": effective_model,
             }
         except Exception as e:
-            # Catch-all for other unexpected errors
             return {
                 "error": f"An unexpected error occurred: {e}",
                 "raw_response": None,

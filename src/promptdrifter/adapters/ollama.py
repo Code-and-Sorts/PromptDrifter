@@ -1,4 +1,4 @@
-import json  # For parsing streaming JSON responses
+import json
 from typing import Any, AsyncGenerator, Dict, Optional
 
 import httpx
@@ -16,10 +16,9 @@ class OllamaAdapter(Adapter):
     def __init__(
         self,
         base_url: Optional[str] = None,
-        default_model: Optional[str] = None # Allow overriding default model at instantiation
+        default_model: Optional[str] = None
     ):
         self.base_url = base_url or DEFAULT_OLLAMA_BASE_URL
-        # Allow instance-specific default model, falling back to global default
         self.default_model = default_model or DEFAULT_OLLAMA_MODEL
         self.client = httpx.AsyncClient(base_url=self.base_url)
 
@@ -32,55 +31,45 @@ class OllamaAdapter(Adapter):
             buffer += chunk.decode("utf-8", errors="replace")
             while "\n" in buffer:
                 line, buffer = buffer.split("\n", 1)
-                if line.strip():  # Ensure line is not empty
+                if line.strip():
                     try:
                         yield json.loads(line)
                     except json.JSONDecodeError:
-                        # Potentially log this error or handle incomplete JSON lines
-                        # For now, we skip lines that are not valid JSON
-                        # print(f"Skipping non-JSON line: {line}")
                         pass
-        if buffer.strip():  # Process any remaining part of the buffer
+        if buffer.strip():
             try:
                 yield json.loads(buffer)
             except json.JSONDecodeError:
-                # print(f"Skipping non-JSON line from remaining buffer: {buffer}")
                 pass
 
     async def execute(
         self,
         prompt: str,
         model: Optional[str] = None,
-        temperature: Optional[float] = None,  # Ollama uses 'temperature' in options
-        max_tokens: Optional[int] = None,  # Ollama uses 'num_predict' in options
-        stream: bool = False,  # Added stream parameter with default
-        # Ollama specific options can be passed via kwargs, e.g., stop sequences
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+        stream: bool = False,
         **kwargs: Any,
     ) -> Dict[str, Any]:
         """Makes a request to the Ollama /api/generate endpoint."""
-        # effective_model will use instance's default_model if model arg is None
         effective_model = model or self.default_model
 
         payload = {
             "model": effective_model,
             "prompt": prompt,
-            "stream": stream,  # Use the stream parameter from the method arguments
+            "stream": stream,
             "options": {},
         }
 
         if temperature is not None:
             payload["options"]["temperature"] = temperature
         if max_tokens is not None:
-            # Ollama calls this num_predict. Max tokens is a common name, so we adapt.
             payload["options"]["num_predict"] = max_tokens
 
-        # Allow overriding other Ollama options if passed via kwargs
-        # These should be Ollama-specific option names like "stop", "top_k", "top_p" etc.
         for key, value in kwargs.items():
             if key not in ["model", "prompt", "stream", "temperature", "max_tokens"]:
                 payload["options"][key] = value
 
-        # If no options were added, remove the empty dict to avoid sending "options": {}
         if not payload["options"]:
             del payload["options"]
 
@@ -88,9 +77,6 @@ class OllamaAdapter(Adapter):
         raw_response_parts = []
 
         try:
-            # Ollama's /api/generate endpoint for non-streaming
-            # If stream=True, the response format is a stream of JSON objects, one per line.
-            # If stream=False, it's a single JSON object.
             if payload.get("stream") is True:
                 async with self.client.stream(
                     "POST", "/api/generate", json=payload, timeout=120.0
@@ -101,11 +87,7 @@ class OllamaAdapter(Adapter):
                         if part.get("response"):
                             full_response_text += part["response"]
                         if part.get("done") and part.get("done") is True:
-                            # The final part contains context and other summary details
-                            # We capture all parts for the raw_response
                             pass
-                # For streaming, the final collected text is the text_response
-                # and raw_response is the list of all JSON objects received.
                 final_context = (
                     raw_response_parts[-1]
                     if raw_response_parts and raw_response_parts[-1].get("done")
@@ -121,7 +103,7 @@ class OllamaAdapter(Adapter):
                     else None,
                     "model_used": effective_model,
                 }
-            else:  # stream=False
+            else:
                 response = await self.client.post(
                     "/api/generate", json=payload, timeout=120.0
                 )
