@@ -1,4 +1,4 @@
-version: "0.1"
-id: test-example-malformed
-  prompt: "This indentation is wrong."
-expect_exact: "An output."
+key: value
+ another_key: 
+  - subkey_no_value_then_bad_indent
+ key3 :val3

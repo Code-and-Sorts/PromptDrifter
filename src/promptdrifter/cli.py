@@ -39,9 +39,9 @@ def init(
 ):
     """Initialize a new promptdrifter project with a sample config."""
     target_path = Path(target_path_str).resolve()
+    # TODO: Check all yaml files in the target path and dynamically determine if they are valid promptdrifter files
     config_file_path = target_path / "promptdrifter.yaml"
 
-    # Sanitize path strings before use with Rich
     sane_target_path_str = str(target_path).replace("\u00A0", " ")
     sane_config_file_path_str = str(config_file_path).replace("\u00A0", " ")
 
@@ -227,7 +227,6 @@ def record(
         try:
             with open(output_file, "w") as f:
                 json.dump(interactions, f, indent=2)
-            # Sanitize output_file path string before use with Rich
             sane_output_file_str = str(output_file).replace("\u00A0", " ")
             console.print(
                 f"[green]Recorded {len(interactions)} interactions to {sane_output_file_str}[/green]"

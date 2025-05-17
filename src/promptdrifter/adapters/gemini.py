@@ -22,7 +22,6 @@ class GeminiAdapter(Adapter):
                 f"or pass it to the adapter constructor."
             )
         self.base_url = base_url or GEMINI_API_BASE_URL
-        # Initialize httpx.AsyncClient. Headers are not needed as API key is in query params.
         self.client = httpx.AsyncClient(base_url=self.base_url)
 
     async def execute(
@@ -38,7 +37,6 @@ class GeminiAdapter(Adapter):
         endpoint = f"/models/{effective_model}:generateContent"
         params = {"key": self.api_key}
 
-        # Construct the payload based on Gemini REST API structure
         payload = {
             "contents": [{"parts": [{"text": prompt}]}]
         }
@@ -47,46 +45,36 @@ class GeminiAdapter(Adapter):
         if temperature is not None:
             generation_config["temperature"] = temperature
         if max_tokens is not None:
-            # Gemini REST API uses maxOutputTokens
             generation_config["maxOutputTokens"] = max_tokens
 
-        # Allow overriding other generationConfig parameters via kwargs
-        # Example: kwargs = {"generation_config": {"topP": 0.9}}
         generation_config.update(kwargs.get("generation_config", {}))
 
         if generation_config:
-             # Add generationConfig to the payload only if it's not empty
             payload["generationConfig"] = generation_config
 
-        # Allow overriding safetySettings or other top-level parameters via kwargs
-        # Example: kwargs = {"safetySettings": [...]}
         if "safetySettings" in kwargs:
              payload["safetySettings"] = kwargs["safetySettings"]
-        # Add other potential top-level parameters if needed based on API docs
-
 
         try:
             response = await self.client.post(
                 endpoint, params=params, json=payload, timeout=60.0
             )
-            response.raise_for_status()  # Raise HTTPStatusError for bad responses (4xx or 5xx)
+            response.raise_for_status()
             response_data = response.json()
 
-            # Extract text response based on the API documentation structure
             text_response = None
             finish_reason = None
             usage_metadata = response_data.get("usageMetadata")
-            safety_ratings = None # Initialize safety_ratings
+            safety_ratings = None
 
-            parsing_error_message = None # To store a specific parsing error message
+            parsing_error_message = None
 
             try:
-                # Navigate the response structure carefully
                 candidates = response_data.get("candidates")
                 if candidates and isinstance(candidates, list) and len(candidates) > 0:
                     first_candidate = candidates[0]
                     finish_reason = first_candidate.get("finishReason")
-                    safety_ratings = first_candidate.get("safetyRatings") # Get safety_ratings here
+                    safety_ratings = first_candidate.get("safetyRatings")
 
                     content = first_candidate.get("content")
                     if content and isinstance(content, dict):
@@ -102,16 +90,11 @@ class GeminiAdapter(Adapter):
                     else:
                         parsing_error_message = "Content not found in the first candidate."
                 else:
-                    # This case is critical for the failing test
                     parsing_error_message = "Candidates not found, empty, or not a list in the response."
 
             except (KeyError, IndexError, TypeError) as e:
-                # This handles errors during the above navigation if something is unexpectedly not a dict/list or an index is out of bounds
                 parsing_error_message = f"Error parsing Gemini response structure: {e}"
 
-
-            # If text_response is still None after attempting to parse, and no broader HTTP/Request error occurred,
-            # it implies a structural issue with the response payload not caught by the specific exceptions above.
             if text_response is None and parsing_error_message:
                  return {
                     "error": parsing_error_message,
@@ -131,14 +114,13 @@ class GeminiAdapter(Adapter):
         except httpx.HTTPStatusError as e:
             error_detail = "Unknown error"
             try:
-                 # Try to parse error details from response if available
                 error_data = e.response.json()
                 error_detail = error_data.get("error", {}).get("message", e.response.text)
             except Exception:
-                error_detail = e.response.text # Fallback to raw text
+                error_detail = e.response.text
             return {
                 "error": f"HTTP error {e.response.status_code} from Gemini API: {error_detail}",
-                "raw_response": error_detail, # Provide error detail as raw response
+                "raw_response": error_detail,
                 "text_response": None,
                 "model_used": effective_model,
             }
@@ -150,7 +132,6 @@ class GeminiAdapter(Adapter):
                 "model_used": effective_model,
             }
         except Exception as e:
-            # Catch-all for other unexpected errors during the request or processing
             return {
                 "error": f"An unexpected error occurred: {e}",
                 "raw_response": None,

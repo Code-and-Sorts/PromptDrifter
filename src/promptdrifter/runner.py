@@ -1,23 +1,24 @@
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Type
 
+from jinja2 import Template
 from rich.console import Console
 from rich.table import Table
 
+from promptdrifter.models.config import TestCase
+
 from .adapters.base import Adapter
 from .adapters.gemini import GeminiAdapter
-from .adapters.ollama import OllamaAdapter  # Example
-from .adapters.openai import OpenAIAdapter  # Example, dynamically load based on config
+from .adapters.ollama import OllamaAdapter
+from .adapters.openai import OpenAIAdapter
 from .assertions import exact_match, regex_match
 from .cache import PromptCache
 from .yaml_loader import YamlFileLoader
 
-# A mapping from adapter names (as used in YAML) to their classes
 ADAPTER_REGISTRY: Dict[str, Type[Adapter]] = {
     "openai": OpenAIAdapter,
     "ollama": OllamaAdapter,
     "gemini": GeminiAdapter,
-    # Add other adapters here as they are created
 }
 
 
@@ -30,10 +31,10 @@ class Runner:
         cache_db_path: Optional[Path] = None,
         use_cache: bool = True,
     ):
-        self.config_dir = config_dir  # Directory containing YAML test files
+        self.config_dir = config_dir
         self.yaml_loader = (
             YamlFileLoader()
-        )  # Schema path is defaulted in YamlFileLoader
+        )
         if use_cache:
             if cache_db_path is not None:
                 self.cache = PromptCache(db_path=cache_db_path)
@@ -42,8 +43,8 @@ class Runner:
         else:
             self.cache = None
         self.console = Console()
-        self.results: List[Dict[str, Any]] = []  # To store results of each test case
-        self.overall_success = True  # Track if all tests passed
+        self.results: List[Dict[str, Any]] = []
+        self.overall_success = True
 
     async def close_cache_connection(self):
         """Closes the database connection if cache is enabled and connection exists."""
@@ -55,9 +56,6 @@ class Runner:
         adapter_class = ADAPTER_REGISTRY.get(adapter_name.lower())
         if adapter_class:
             try:
-                # Adapters might require specific API keys or configs during __init__
-                # This part may need to be enhanced to pass config to adapters if needed
-                # For now, assuming adapters can be initialized or get config from env vars
                 return adapter_class()
             except Exception as e:
                 self.console.print(
@@ -68,106 +66,93 @@ class Runner:
         return None
 
     async def _run_single_test_case(
-        self, test_case_path: Path, test_case_data: Dict[str, Any]
+        self, test_case_path: Path, test_case_model: TestCase # Changed type hint
     ) -> List[Dict[str, Any]]:
-        """Runs a single test case definition for all its adapters."""
-        case_id = test_case_data.get("id", "unknown_id")
-        prompt_template = test_case_data.get("prompt", "")
-        inputs = test_case_data.get("inputs", {})
-        adapter_configs = test_case_data.get("adapter", [])
-        expect_exact = test_case_data.get("expect_exact")
-        expect_regex = test_case_data.get("expect_regex")
-        expect_substring = test_case_data.get("expect_substring")
-        expect_substring_case_insensitive = test_case_data.get("expect_substring_case_insensitive")
+        all_adapter_results = []
 
-        base_result_details = {
-            "file": str(test_case_path.name),
-            "id": case_id,
-            "prompt_template": prompt_template,
-            "inputs": inputs,
-        }
+        test_id = test_case_model.id
+        base_prompt = test_case_model.prompt
+        inputs = test_case_model.inputs # Already defaults to {} if not present
 
-        all_adapter_results: List[Dict[str, Any]] = []
+        prompt_text = base_prompt
+        if inputs:
+            try:
+                template = Template(base_prompt)
+                prompt_text = template.render(**inputs)
+            except Exception as e:
+                self.console.print(
+                    f"[bold red]Error rendering prompt for test ID \'{test_id}\' in file \'{test_case_path.name}\': {e}[/bold red]"
+                )
+                return [{
+                    "file": str(test_case_path.name),
+                    "id": test_id,
+                    "adapter": "N/A",
+                    "model": "N/A",
+                    "status": "ERROR",
+                    "reason": f"Prompt templating error: {e}",
+                    "prompt": base_prompt,
+                    "inputs": inputs,
+                }]
 
-        if not prompt_template:
-            all_adapter_results.append({
-                **base_result_details,
-                "status": "SKIPPED",
-                "reason": "No prompt defined.",
-                "adapter": "N/A",
-                "model": "N/A",
-            })
-            return all_adapter_results
-        if not adapter_configs:
-            all_adapter_results.append({
-                **base_result_details,
-                "status": "SKIPPED",
-                "reason": "No adapter specified.",
-                "adapter": "N/A",
-                "model": "N/A",
-            })
-            return all_adapter_results
-        if not (expect_exact or expect_regex or expect_substring or expect_substring_case_insensitive):
-            all_adapter_results.append({
-                **base_result_details,
-                "status": "SKIPPED",
-                "reason": "No assertion defined.",
-                "adapter": "N/A",
-                "model": "N/A",
-            })
-            return all_adapter_results
+        expect_exact = test_case_model.expect_exact
+        expect_regex = test_case_model.expect_regex
+        expect_substring = test_case_model.expect_substring
+        expect_substring_case_insensitive = test_case_model.expect_substring_case_insensitive
 
-        prompt_text = prompt_template
-        for var, value in inputs.items():
-            prompt_text = prompt_text.replace(f"{{{{{var}}}}}", str(value))
+        for adapter_config_model in test_case_model.adapter_configurations:
+            adapter_name = adapter_config_model.adapter_type
+            model_name = adapter_config_model.model # Renamed for clarity from 'model'
 
-        for adapter_config in adapter_configs:
             current_run_details = {
-                **base_result_details,
-                "rendered_prompt": prompt_text,
+                "file": str(test_case_path.name),
+                "id": test_id,
+                "adapter": adapter_name,
+                "model": model_name, # Use renamed variable
                 "status": "SKIPPED",
                 "reason": "",
-                "actual_response": None,
+                "prompt": prompt_text,
+                "expected": expect_exact or expect_regex or expect_substring or expect_substring_case_insensitive,
+                "inputs": inputs,
                 "cache_status": "N/A",
+                "actual_response": None,
+                "raw_adapter_response": None,
             }
-
-            adapter_name = adapter_config.get("type")
-            model = adapter_config.get("model")
-            temperature = adapter_config.get("temperature")
-            max_tokens = adapter_config.get("max_tokens")
-            additional_adapter_kwargs = {
-                k: v for k, v in adapter_config.items() if k not in ["type", "model", "temperature", "max_tokens"]
-            }
-
-            current_run_details["adapter"] = adapter_name if adapter_name else "N/A"
-            current_run_details["model"] = model if model else "N/A"
 
             adapter_instance = self._get_adapter_instance(adapter_name)
-            if not adapter_instance:
+            if adapter_instance is None:
+                current_run_details["reason"] = f"Adapter \'{adapter_name}\' not found or failed to initialize."
                 current_run_details["status"] = "ERROR"
-                current_run_details["reason"] = (
-                    f"Adapter '{adapter_name}' could not be initialized or found."
-                )
                 all_adapter_results.append(current_run_details)
                 self.overall_success = False
                 continue
 
-            adapter_options = {
-                k: v
-                for k, v in {
-                    "temperature": temperature,
-                    "max_tokens": max_tokens,
-                }.items()
-                if v is not None
-            }
-            adapter_options.update(additional_adapter_kwargs)
+            # Prepare adapter options from the Pydantic model
+            # Dump all fields, including extras, respecting aliases and excluding Nones
+            all_adapter_params = adapter_config_model.model_dump(by_alias=True, exclude_none=True)
+
+            # Explicitly defined parameters in AdapterConfig that are standard options
+            # (model is passed separately to execute, adapter_type (alias: type) is used to get adapter)
+            known_options_to_pass = {}
+            if "temperature" in all_adapter_params:
+                known_options_to_pass["temperature"] = all_adapter_params.pop("temperature")
+            if "max_tokens" in all_adapter_params:
+                known_options_to_pass["max_tokens"] = all_adapter_params.pop("max_tokens")
+
+            # Remove other known fields not intended for **kwargs in execute
+            all_adapter_params.pop("type", None) # This is adapter_type
+            all_adapter_params.pop("model", None) # This is model_name
+
+            # Remaining all_adapter_params are the "extra" ones from the YAML
+            additional_adapter_kwargs = all_adapter_params
+
+            adapter_options = {**known_options_to_pass, **additional_adapter_kwargs}
 
             llm_response_data: Optional[Dict[str, Any]] = None
 
             if self.cache:
-                cache_options_key = frozenset(adapter_options.items())
+                cache_options_key = frozenset(adapter_options.items()) # Use the final adapter_options for cache key
                 cached_response = self.cache.get(
-                    prompt_text, adapter_name, model, cache_options_key
+                    prompt_text, adapter_name, model_name, cache_options_key # Use model_name
                 )
                 if cached_response:
                     llm_response_data = cached_response
@@ -179,19 +164,19 @@ class Runner:
                 try:
                     llm_response_data = await adapter_instance.execute(
                         prompt_text,
-                        model=model,
-                        **adapter_options,
+                        model=model_name, # Pass model_name explicitly
+                        **adapter_options, # Pass all other options
                     )
                     if (
                         self.cache
                         and llm_response_data
                         and not llm_response_data.get("error")
                     ):
-                        cache_options_key_put = frozenset(adapter_options.items())
+                        cache_options_key_put = frozenset(adapter_options.items()) # Use final adapter_options
                         self.cache.put(
                             prompt_text,
                             adapter_name,
-                            model,
+                            model_name, # Use model_name
                             cache_options_key_put,
                             llm_response_data,
                         )
@@ -281,34 +266,30 @@ class Runner:
 
             self.console.print(f"[cyan]Processing test file: {test_file_path}[/cyan]")
             try:
-                test_suite_data = self.yaml_loader.load_and_validate_yaml(
+                config_model = self.yaml_loader.load_and_validate_yaml(
                     test_file_path
                 )
-                # If adapters key exists and is a list, treat each as a test case
-                if isinstance(test_suite_data, dict) and isinstance(test_suite_data.get("adapters"), list):
-                    for test_case in test_suite_data["adapters"]:
+
+                if config_model and config_model.tests:
+                    for test_case_model in config_model.tests:
                         results = await self._run_single_test_case(
-                            test_file_path, test_case
+                            test_file_path, test_case_model
                         )
                         self.results.extend(results)
                         ran_any_test = True
-                else:
-                    results = await self._run_single_test_case(
-                        test_file_path, test_suite_data
+                elif not config_model.tests:
+                     self.console.print(
+                        f"[yellow]Warning: No tests found in {test_file_path} (version: {config_model.version if config_model else 'N/A'}).[/yellow]"
                     )
-                    self.results.extend(results)
-                    ran_any_test = True
             except ValueError as e:
-                if str(e).startswith("[bold red]Schema Validation Error"):
-                    self.console.print(str(e))
-                else:
-                    self.console.print(
-                        f"[bold red]Error processing {test_file_path}: {e}[/bold red]"
-                    )
+                self.console.print(str(e))
                 self.overall_success = False
                 self.results.append(
                     {
                         "file": str(test_file_path.name),
+                        "id": "YAML_LOAD_ERROR",
+                        "adapter": "N/A",
+                        "model": "N/A",
                         "status": "ERROR",
                         "reason": str(e),
                     }

@@ -1,14 +1,18 @@
 import re
+from typing import Pattern
 
 
 def exact_match(expected_output: str, actual_output: str) -> bool:
     return expected_output == actual_output
 
 
-def regex_match(regex_pattern: str, actual_output: str) -> bool:
+def regex_match(regex_pattern: str | Pattern[str], actual_output: str) -> bool:
     try:
-        compiled_regex = re.compile(regex_pattern)
-        return bool(compiled_regex.search(actual_output))
+        if isinstance(regex_pattern, re.Pattern):
+            return bool(regex_pattern.search(actual_output))
+        else:
+            compiled_regex = re.compile(regex_pattern)
+            return bool(compiled_regex.search(actual_output))
     except re.error:
         return False
 

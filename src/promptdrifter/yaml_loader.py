@@ -18,9 +18,18 @@ class YamlFileLoader:
             with open(yaml_path, "r") as yaml_file:
                 yaml_data = yaml.safe_load(yaml_file)
         except yaml.YAMLError as e:
-            raise ValueError(f"Error parsing YAML file {yaml_path}: {e}")
+            raise ValueError(f"Error parsing YAML file {yaml_path}: {e}") from e
 
         try:
+            if not isinstance(yaml_data, dict):
+                expected_type = "a dictionary" if yaml_data is not None else "data (got None from YAML)"
+                user_message = (
+                    f"[bold red]Configuration Error in '{yaml_path}':[/bold red]\n"
+                    f"Pydantic validation failed:\n"
+                    f"  - At 'root': Input should be {expected_type}, received {type(yaml_data).__name__}."
+                )
+                raise ValueError(user_message)
+
             config_model = PromptDrifterConfig(**yaml_data)
         except PydanticValidationError as e:
             error_details = e.errors()
@@ -37,6 +46,6 @@ class YamlFileLoader:
             )
             raise ValueError(user_message) from e
         except Exception as e:
-            raise ValueError(f"Unexpected error processing YAML data from '{yaml_path}' with Pydantic: {e}") from e
+            raise ValueError(f"Unexpected error processing YAML data from '{yaml_path}' with Pydantic: {type(e).__name__} - {e}") from e
 
         return config_model
