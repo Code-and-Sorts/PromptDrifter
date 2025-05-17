@@ -6,7 +6,7 @@ authors = [
     {name = "Colby Timm"}
 ]
 license = {text = "MIT"}
-readme = "README.md"
+readme = "scripts/pypi-readme.md"
 requires-python = ">=3.13"
 dependencies = [
     "typer (>=0.15.3,<0.16.0)",
