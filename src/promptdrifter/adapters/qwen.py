@@ -141,10 +141,16 @@ class QwenAdapter(Adapter):
             finish_reason = None
             usage_data = None
 
-            if response_data.get("choices") and isinstance(response_data["choices"], list) and len(response_data["choices"]) > 0:
+            if (
+                response_data.get("choices")
+                and isinstance(response_data["choices"], list)
+                and len(response_data["choices"]) > 0
+            ):
                 first_choice = response_data["choices"][0]
                 if isinstance(first_choice, dict):
-                    if first_choice.get("message") and isinstance(first_choice["message"], dict):
+                    if first_choice.get("message") and isinstance(
+                        first_choice["message"], dict
+                    ):
                         text_response = first_choice["message"].get("content")
                     finish_reason = first_choice.get("finish_reason")
 
@@ -156,7 +162,7 @@ class QwenAdapter(Adapter):
                 "text_response": text_response,
                 "model_used": effective_model,
                 "finish_reason": finish_reason,
-                "usage": usage_data
+                "usage": usage_data,
             }
 
         except httpx.HTTPStatusError as e:
@@ -171,10 +177,14 @@ class QwenAdapter(Adapter):
                     api_code = err_dict.get("code")
                     api_message = err_dict.get("message")
                     if api_message:
-                         error_detail_for_message = f" (type: {api_type}, code: {api_code}): {api_message}"
+                        error_detail_for_message = (
+                            f" (type: {api_type}, code: {api_code}): {api_message}"
+                        )
                     else:
                         error_detail_for_message = f": {json_error_content}"
-                elif json_error_content.get("code") and json_error_content.get("message"):
+                elif json_error_content.get("code") and json_error_content.get(
+                    "message"
+                ):
                     api_code = json_error_content.get("code")
                     api_message = json_error_content.get("message")
                     error_detail_for_message = f" (code: {api_code}): {api_message}"

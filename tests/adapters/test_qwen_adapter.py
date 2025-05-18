@@ -22,19 +22,17 @@ SUCCESS_RESPONSE_PAYLOAD = {
     "object": "chat.completion",
     "created": 1677652288,
     "model": DEFAULT_QWEN_MODEL,
-    "choices": [{
-        "index": 0,
-        "message": {
-            "role": "assistant",
-            "content": "This is a test response from Qwen."
-        },
-        "finish_reason": "stop"
-    }],
-    "usage": {
-        "prompt_tokens": 9,
-        "completion_tokens": 12,
-        "total_tokens": 21
-    }
+    "choices": [
+        {
+            "index": 0,
+            "message": {
+                "role": "assistant",
+                "content": "This is a test response from Qwen.",
+            },
+            "finish_reason": "stop",
+        }
+    ],
+    "usage": {"prompt_tokens": 9, "completion_tokens": 12, "total_tokens": 21},
 }
 
 API_ERROR_RESPONSE_PAYLOAD = {
@@ -42,7 +40,7 @@ API_ERROR_RESPONSE_PAYLOAD = {
         "message": "The API key provided is invalid.",
         "type": "invalid_request_error",
         "param": None,
-        "code": "invalid_api_key"
+        "code": "invalid_api_key",
     }
 }
 
@@ -232,17 +230,17 @@ async def test_qwen_adapter_execute_successful(mock_httpx_async_client_class):
     mock_response.raise_for_status = MagicMock()
     mock_client_instance.post.return_value = mock_response
 
-    result = await adapter.execute(prompt=TEST_PROMPT) # No system_prompt, so none sent
+    result = await adapter.execute(prompt=TEST_PROMPT)  # No system_prompt, so none sent
 
     expected_payload = {
         "model": adapter.config.default_model,
         "messages": [
             {"role": "user", "content": TEST_PROMPT},
-        ]
+        ],
         # temperature and max_tokens are not sent if None
     }
     mock_client_instance.post.assert_called_once_with(
-        "/chat/completions", # Updated endpoint
+        "/chat/completions",  # Updated endpoint
         json=expected_payload,
         timeout=180.0,
     )
@@ -252,7 +250,10 @@ async def test_qwen_adapter_execute_successful(mock_httpx_async_client_class):
     )
     assert result["raw_response"] == current_success_payload
     assert result["model_used"] == adapter.config.default_model
-    assert result["finish_reason"] == current_success_payload["choices"][0]["finish_reason"]
+    assert (
+        result["finish_reason"]
+        == current_success_payload["choices"][0]["finish_reason"]
+    )
     assert result["usage"] == current_success_payload["usage"]
     assert "error" not in result
     await adapter.close()
@@ -285,7 +286,7 @@ async def test_qwen_adapter_execute_with_model_and_temp_and_kwargs(
         temperature=0.5,
         max_tokens=test_max_tokens,
         system_prompt=custom_system_prompt,
-        top_p=0.9, # Example of another kwarg
+        top_p=0.9,  # Example of another kwarg
         custom_param="value",
     )
 
@@ -301,14 +302,20 @@ async def test_qwen_adapter_execute_with_model_and_temp_and_kwargs(
         "custom_param": "value",
     }
     mock_client_instance.post.assert_called_once_with(
-        "/chat/completions", # Updated endpoint
+        "/chat/completions",  # Updated endpoint
         json=expected_payload,
         timeout=180.0,
     )
     assert result["model_used"] == TEST_MODEL
     # Add assertions for other extracted fields if necessary, like in the successful test
-    assert result["text_response"] == current_success_payload["choices"][0]["message"]["content"]
-    assert result["finish_reason"] == current_success_payload["choices"][0]["finish_reason"]
+    assert (
+        result["text_response"]
+        == current_success_payload["choices"][0]["message"]["content"]
+    )
+    assert (
+        result["finish_reason"]
+        == current_success_payload["choices"][0]["finish_reason"]
+    )
     await adapter.close()
     mock_client_instance.aclose.assert_called_once()
 
@@ -332,13 +339,13 @@ async def test_qwen_adapter_execute_no_system_prompt(mock_httpx_async_client_cla
     # Check the actual payload sent
     mock_client_instance.post.assert_called_once()
     args, kwargs_call = mock_client_instance.post.call_args
-    assert args[0] == "/chat/completions" # Check endpoint
+    assert args[0] == "/chat/completions"  # Check endpoint
     sent_payload = kwargs_call["json"]
 
     assert len(sent_payload["messages"]) == 1
     assert sent_payload["messages"][0]["role"] == "user"
     assert sent_payload["messages"][0]["content"] == TEST_PROMPT
-    assert "temperature" not in sent_payload # Assuming default behavior
+    assert "temperature" not in sent_payload  # Assuming default behavior
     assert "max_tokens" not in sent_payload  # Assuming default behavior
 
     await adapter.close()
@@ -347,7 +354,7 @@ async def test_qwen_adapter_execute_no_system_prompt(mock_httpx_async_client_cla
 
 @pytest.mark.asyncio
 async def test_qwen_adapter_execute_minimal_call(
-    mock_httpx_async_client_class, # Renamed test for clarity
+    mock_httpx_async_client_class,  # Renamed test for clarity
 ):
     adapter = QwenAdapter(api_key=TEST_API_KEY)
     mock_client_instance = mock_httpx_async_client_class.return_value
@@ -366,7 +373,7 @@ async def test_qwen_adapter_execute_minimal_call(
 
     mock_client_instance.post.assert_called_once()
     args, kwargs_call = mock_client_instance.post.call_args
-    assert args[0] == "/chat/completions" # Check endpoint
+    assert args[0] == "/chat/completions"  # Check endpoint
     sent_payload = kwargs_call["json"]
 
     expected_keys = {"model", "messages"}
@@ -388,9 +395,9 @@ async def test_qwen_adapter_execute_api_error_in_json_response(
     mock_client_instance = mock_httpx_async_client_class.return_value
 
     mock_response = AsyncMock(spec=httpx.Response)
-    mock_response.status_code = 200 # API error is in the JSON body of a 200 response
+    mock_response.status_code = 200  # API error is in the JSON body of a 200 response
     mock_response.json = MagicMock(return_value=API_ERROR_RESPONSE_PAYLOAD)
-    mock_response.raise_for_status = MagicMock() # Does not raise for 200
+    mock_response.raise_for_status = MagicMock()  # Does not raise for 200
     mock_client_instance.post.return_value = mock_response
 
     result = await adapter.execute(prompt=TEST_PROMPT)
@@ -429,8 +436,12 @@ async def test_qwen_adapter_execute_http_status_error_json_body(
     # This mock_error_response is what's passed to the HTTPStatusError
     # and its .raise_for_status() is what gets called by the SUT indirectly.
     # So, this mock_error_response's raise_for_status should throw the http_error.
-    mock_client_instance.post.return_value = mock_error_response # The client's post returns this response
-    mock_error_response.raise_for_status = MagicMock(side_effect=http_error) # This response, when checked, raises the error
+    mock_client_instance.post.return_value = (
+        mock_error_response  # The client's post returns this response
+    )
+    mock_error_response.raise_for_status = MagicMock(
+        side_effect=http_error
+    )  # This response, when checked, raises the error
 
     result = await adapter.execute(prompt=TEST_PROMPT)
     assert "error" in result
@@ -493,7 +504,7 @@ async def test_qwen_adapter_execute_non_json_success_response(
     mock_response.status_code = 200
     mock_response.json = MagicMock(side_effect=json.JSONDecodeError("err", "doc", 0))
     mock_response.text = "This is not JSON but was a 200 OK"
-    mock_response.raise_for_status = MagicMock() # Does not raise for 200 OK
+    mock_response.raise_for_status = MagicMock()  # Does not raise for 200 OK
     mock_client_instance.post.return_value = mock_response
 
     result = await adapter.execute(prompt=TEST_PROMPT)
@@ -579,9 +590,12 @@ async def test_qwen_output_parsing_variations(mock_httpx_async_client_class):
 
     # Case 1: Empty choices list
     response_empty_choices = {
-        "id": "chatcmpl-1", "object": "chat.completion", "created": 123,
-        "model": adapter.config.default_model, "choices": [],
-        "usage": {"prompt_tokens": 1, "completion_tokens": 0, "total_tokens": 1}
+        "id": "chatcmpl-1",
+        "object": "chat.completion",
+        "created": 123,
+        "model": adapter.config.default_model,
+        "choices": [],
+        "usage": {"prompt_tokens": 1, "completion_tokens": 0, "total_tokens": 1},
     }
     mock_response1 = AsyncMock(spec=httpx.Response)
     mock_response1.status_code = 200
@@ -595,10 +609,12 @@ async def test_qwen_output_parsing_variations(mock_httpx_async_client_class):
 
     # Case 2: Choice item exists, but 'message' key is missing
     response_choice_no_message = {
-        "id": "chatcmpl-2", "object": "chat.completion", "created": 124,
+        "id": "chatcmpl-2",
+        "object": "chat.completion",
+        "created": 124,
         "model": adapter.config.default_model,
-        "choices": [{"index": 0, "finish_reason": "stop"}], # No 'message'
-        "usage": {"prompt_tokens": 1, "completion_tokens": 0, "total_tokens": 1}
+        "choices": [{"index": 0, "finish_reason": "stop"}],  # No 'message'
+        "usage": {"prompt_tokens": 1, "completion_tokens": 0, "total_tokens": 1},
     }
     mock_response2 = AsyncMock(spec=httpx.Response)
     mock_response2.status_code = 200
@@ -612,10 +628,14 @@ async def test_qwen_output_parsing_variations(mock_httpx_async_client_class):
 
     # Case 3: Message exists, but 'content' key is missing
     response_message_no_content = {
-        "id": "chatcmpl-3", "object": "chat.completion", "created": 125,
+        "id": "chatcmpl-3",
+        "object": "chat.completion",
+        "created": 125,
         "model": adapter.config.default_model,
-        "choices": [{"index": 0, "message": {"role": "assistant"}, "finish_reason": "stop"}], # No 'content'
-        "usage": {"prompt_tokens": 1, "completion_tokens": 0, "total_tokens": 1}
+        "choices": [
+            {"index": 0, "message": {"role": "assistant"}, "finish_reason": "stop"}
+        ],  # No 'content'
+        "usage": {"prompt_tokens": 1, "completion_tokens": 0, "total_tokens": 1},
     }
     mock_response3 = AsyncMock(spec=httpx.Response)
     mock_response3.status_code = 200
@@ -629,9 +649,17 @@ async def test_qwen_output_parsing_variations(mock_httpx_async_client_class):
 
     # Case 4: 'usage' field is missing
     response_no_usage = {
-        "id": "chatcmpl-4", "object": "chat.completion", "created": 126,
+        "id": "chatcmpl-4",
+        "object": "chat.completion",
+        "created": 126,
         "model": adapter.config.default_model,
-        "choices": [{"index": 0, "message": {"role": "assistant", "content": "No usage info"}, "finish_reason": "length"}]
+        "choices": [
+            {
+                "index": 0,
+                "message": {"role": "assistant", "content": "No usage info"},
+                "finish_reason": "length",
+            }
+        ],
         # No 'usage' field
     }
     mock_response4 = AsyncMock(spec=httpx.Response)
@@ -647,9 +675,12 @@ async def test_qwen_output_parsing_variations(mock_httpx_async_client_class):
 
     # Case 5: choices is not a list
     response_non_list_choices = {
-        "id": "chatcmpl-5", "object": "chat.completion", "created": 127,
-        "model": adapter.config.default_model, "choices": {"invalid": "data"}, # Not a list
-        "usage": {"prompt_tokens": 1, "completion_tokens": 0, "total_tokens": 1}
+        "id": "chatcmpl-5",
+        "object": "chat.completion",
+        "created": 127,
+        "model": adapter.config.default_model,
+        "choices": {"invalid": "data"},  # Not a list
+        "usage": {"prompt_tokens": 1, "completion_tokens": 0, "total_tokens": 1},
     }
     mock_response5 = AsyncMock(spec=httpx.Response)
     mock_response5.status_code = 200
@@ -663,10 +694,12 @@ async def test_qwen_output_parsing_variations(mock_httpx_async_client_class):
 
     # Case 6: first_choice.message is not a dict
     response_non_dict_choice_message = {
-        "id": "chatcmpl-6", "object": "chat.completion", "created": 128,
+        "id": "chatcmpl-6",
+        "object": "chat.completion",
+        "created": 128,
         "model": adapter.config.default_model,
         "choices": [{"index": 0, "message": "not_a_dict", "finish_reason": "stop"}],
-        "usage": {"prompt_tokens": 1, "completion_tokens": 0, "total_tokens": 1}
+        "usage": {"prompt_tokens": 1, "completion_tokens": 0, "total_tokens": 1},
     }
     mock_response6 = AsyncMock(spec=httpx.Response)
     mock_response6.status_code = 200
