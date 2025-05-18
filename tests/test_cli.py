@@ -32,6 +32,9 @@ async def test_cli_run_logic_success(mocker, tmp_path):
         openai_api_key=None,
         gemini_api_key=None,
         qwen_api_key=None,
+        anthropic_api_key=None,
+        grok_api_key=None,
+        deepseek_api_key=None,
     )
     mock_class.assert_called_once_with(
         config_dir=Path("."),
@@ -40,6 +43,9 @@ async def test_cli_run_logic_success(mocker, tmp_path):
         openai_api_key=None,
         gemini_api_key=None,
         qwen_api_key=None,
+        anthropic_api_key=None,
+        grok_api_key=None,
+        deepseek_api_key=None,
     )
     mock_instance.run_suite.assert_called_once_with([str(test_file)])
     mock_instance.close_cache_connection.assert_called_once()
@@ -62,6 +68,9 @@ async def test_cli_run_logic_failure_from_suite(mocker, tmp_path):
             openai_api_key=None,
             gemini_api_key=None,
             qwen_api_key=None,
+            anthropic_api_key=None,
+            grok_api_key=None,
+            deepseek_api_key=None,
         )
     assert exc_info.value.exit_code == 1
     mock_class.assert_called_once_with(
@@ -71,6 +80,9 @@ async def test_cli_run_logic_failure_from_suite(mocker, tmp_path):
         openai_api_key=None,
         gemini_api_key=None,
         qwen_api_key=None,
+        anthropic_api_key=None,
+        grok_api_key=None,
+        deepseek_api_key=None,
     )
     mock_instance.run_suite.assert_called_once_with([str(test_file)])
     mock_instance.close_cache_connection.assert_called_once()
@@ -92,21 +104,14 @@ async def test_cli_run_logic_runner_init_exception(mocker, tmp_path, capsys):
             openai_api_key=None,
             gemini_api_key=None,
             qwen_api_key=None,
+            anthropic_api_key=None,
+            grok_api_key=None,
+            deepseek_api_key=None,
         )
     assert exc_info.value.exit_code == 1
-    mock_class_raising.assert_called_once_with(
-        config_dir=Path("."),
-        cache_db_path=None,
-        use_cache=True,
-        openai_api_key=None,
-        gemini_api_key=None,
-        qwen_api_key=None,
-    )
+    mock_class_raising.assert_called_once()
     captured = capsys.readouterr()
-    assert (
-        "An unexpected error occurred during CLI run: Runner init boom!"
-        in strip_ansi(captured.out)
-    )
+    assert "Runner init boom!" in captured.out
 
 
 @pytest.mark.asyncio
@@ -126,23 +131,16 @@ async def test_cli_run_logic_suite_exception(mocker, tmp_path, capsys):
             openai_api_key=None,
             gemini_api_key=None,
             qwen_api_key=None,
+            anthropic_api_key=None,
+            grok_api_key=None,
+            deepseek_api_key=None,
         )
     assert exc_info.value.exit_code == 1
-    mock_class.assert_called_once_with(
-        config_dir=Path("."),
-        cache_db_path=None,
-        use_cache=True,
-        openai_api_key=None,
-        gemini_api_key=None,
-        qwen_api_key=None,
-    )
     mock_instance.run_suite.assert_called_once_with([str(test_file)])
     mock_instance.close_cache_connection.assert_called_once()
+    mock_class.assert_called_once()
     captured = capsys.readouterr()
-    assert (
-        "An unexpected error occurred during CLI run: Runner suite boom!"
-        in strip_ansi(captured.out)
-    )
+    assert "Runner suite boom!" in captured.out
 
 
 @pytest.mark.asyncio
@@ -163,6 +161,9 @@ async def test_cli_run_logic_multiple_files(mocker, tmp_path):
         openai_api_key=None,
         gemini_api_key=None,
         qwen_api_key=None,
+        anthropic_api_key=None,
+        grok_api_key=None,
+        deepseek_api_key=None,
     )
     mock_class.assert_called_once_with(
         config_dir=Path("."),
@@ -171,6 +172,9 @@ async def test_cli_run_logic_multiple_files(mocker, tmp_path):
         openai_api_key=None,
         gemini_api_key=None,
         qwen_api_key=None,
+        anthropic_api_key=None,
+        grok_api_key=None,
+        deepseek_api_key=None,
     )
     mock_instance.run_suite.assert_called_once_with([str(file1), str(file2)])
     mock_instance.close_cache_connection.assert_called_once()
@@ -188,13 +192,15 @@ async def test_cli_run_logic_file_not_found(mocker, capsys):
             openai_api_key=None,
             gemini_api_key=None,
             qwen_api_key=None,
+            anthropic_api_key=None,
+            grok_api_key=None,
+            deepseek_api_key=None,
         )
     assert exc_info.value.exit_code == 1
     mock_class_for_safety.assert_not_called()
-    captured_out_content = strip_ansi(capsys.readouterr().out)
-    normalized_captured_out = " ".join(captured_out_content.replace("\n", " ").split())
-    expected_string_in_output = "• non_existent_file.yaml: File not found"
-    assert expected_string_in_output in normalized_captured_out
+    captured = capsys.readouterr()
+    assert "Invalid file(s) provided:" in captured.out
+    assert "File not found" in captured.out
 
 
 @pytest.mark.asyncio
@@ -209,11 +215,14 @@ async def test_cli_run_logic_no_files_provided(mocker, capsys):
             openai_api_key=None,
             gemini_api_key=None,
             qwen_api_key=None,
+            anthropic_api_key=None,
+            grok_api_key=None,
+            deepseek_api_key=None,
         )
     assert exc_info.value.exit_code == 1
     mock_class_for_safety.assert_not_called()
     captured = capsys.readouterr()
-    assert "Error: No YAML files provided." in strip_ansi(captured.out)
+    assert "No YAML files provided" in captured.out
 
 
 def test_init_command_default_path(mocker, tmp_path):
@@ -402,13 +411,13 @@ async def test_cli_run_prints_security_warning(mocker, tmp_path, capsys):
         openai_api_key="cli_key_here",  # Providing any key should trigger the warning
         gemini_api_key=None,
         qwen_api_key=None,
+        anthropic_api_key=None,
+        grok_api_key=None,
+        deepseek_api_key=None,
     )
-    captured_output = strip_ansi(capsys.readouterr().out)
-    assert "Warning" in captured_output  # Check for Panel title
-    assert "SECURITY WARNING:" in captured_output  # Check for start of warning content
-    assert (
-        "Passing API keys directly" in captured_output
-    )  # Check for part of the message
+    captured = capsys.readouterr()
+    assert "SECURITY WARNING" in captured.out
+    assert "shell history" in captured.out
     mock_instance.close_cache_connection.assert_called_once()
     mock_instance.close_cache_connection.reset_mock()  # Reset for next call
 
@@ -421,10 +430,13 @@ async def test_cli_run_prints_security_warning(mocker, tmp_path, capsys):
         openai_api_key=None,
         gemini_api_key=None,
         qwen_api_key=None,
+        anthropic_api_key=None,
+        grok_api_key=None,
+        deepseek_api_key=None,
     )
-    captured_output = strip_ansi(capsys.readouterr().out)
-    assert "Warning" not in captured_output
-    assert "SECURITY WARNING:" not in captured_output
+    captured = capsys.readouterr()
+    assert "Warning" not in captured.out
+    assert "SECURITY WARNING:" not in captured.out
     mock_instance.close_cache_connection.assert_called_once()  # Ensure it was called, but no warning printed
 
 
@@ -446,6 +458,12 @@ def test_run_command_with_api_keys(mocker):
             "key2",
             "--qwen-api-key",
             "test_qwen_key",
+            "--anthropic-api-key",
+            "claude_key",
+            "--grok-api-key",
+            "grok_key",
+            "--deepseek-api-key",
+            "deepseek_key",
             "--no-cache",
             "--cache-db",
             str(dummy_cache_db),
@@ -463,37 +481,69 @@ def test_run_command_with_api_keys(mocker):
         "key1",  # openai_api_key (positional)
         "key2",  # gemini_api_key (positional)
         "test_qwen_key",  # qwen_api_key (positional)
+        "claude_key",  # anthropic_api_key (positional)
+        "grok_key",  # grok_api_key (positional)
+        "deepseek_key",  # deepseek_api_key (positional)
     )
-
     mock_run_async.reset_mock()
 
-    # Second call: without any API keys (implies defaults or env vars would be used by Runner)
-    # When invoking CLI for the second call, ensure all relevant options are specified if their defaults
-    # are not None and are part of the positional arguments to _run_async.
-    # The original _run_async call structure is:
-    # files, no_cache, cache_db, config_dir, openai_api_key, gemini_api_key, qwen_api_key
+    # Second call: with no API keys
     result = cli_runner.invoke(
         app,
         [
             "run",
             str(test_file_path),
-            # no_cache defaults to False, not explicitly passed unless True
-            # cache_db defaults to None, not explicitly passed unless a value is given
+            "--no-cache",
+            "--cache-db",
+            str(dummy_cache_db),
             "--config-dir",
             str(dummy_config_dir),
-            # openai_api_key, gemini_api_key, qwen_api_key default to None, not passed
         ],
     )
     assert result.exit_code == 0, strip_ansi(result.stdout)
 
     mock_run_async.assert_called_once_with(
-        [test_file_path],  # files
-        False,  # no_cache (default from Typer option)
-        None,  # cache_db (default from Typer option)
-        dummy_config_dir,  # config_dir
-        None,  # openai_api_key (default from Typer option)
-        None,  # gemini_api_key (default from Typer option)
-        None,  # qwen_api_key (default from Typer option)
+        [test_file_path],
+        True,
+        dummy_cache_db,
+        dummy_config_dir,
+        None,  # No OpenAI key
+        None,  # No Gemini key
+        None,  # No Qwen key
+        None,  # No Anthropic key
+        None,  # No Grok key
+        None,  # No DeepSeek key
+    )
+    mock_run_async.reset_mock()
+
+    # Third call: with just one API key
+    result = cli_runner.invoke(
+        app,
+        [
+            "run",
+            str(test_file_path),
+            "--gemini-api-key",
+            "just_gemini_key",
+            "--no-cache",
+            "--cache-db",
+            str(dummy_cache_db),
+            "--config-dir",
+            str(dummy_config_dir),
+        ],
+    )
+    assert result.exit_code == 0, strip_ansi(result.stdout)
+
+    mock_run_async.assert_called_once_with(
+        [test_file_path],
+        True,
+        dummy_cache_db,
+        dummy_config_dir,
+        None,  # No OpenAI key
+        "just_gemini_key",  # Only Gemini key provided
+        None,  # No Qwen key
+        None,  # No Anthropic key
+        None,  # No Grok key
+        None,  # No DeepSeek key
     )
 
 

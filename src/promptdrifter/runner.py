@@ -8,7 +8,10 @@ from rich.table import Table
 from promptdrifter.models.config import TestCase
 
 from .adapters.base import Adapter
+from .adapters.claude import ClaudeAdapter
+from .adapters.deepseek import DeepSeekAdapter
 from .adapters.gemini import GeminiAdapter
+from .adapters.grok import GrokAdapter
 from .adapters.ollama import OllamaAdapter
 from .adapters.openai import OpenAIAdapter
 from .adapters.qwen import QwenAdapter
@@ -21,6 +24,9 @@ ADAPTER_REGISTRY: Dict[str, Type[Adapter]] = {
     "ollama": OllamaAdapter,
     "gemini": GeminiAdapter,
     "qwen": QwenAdapter,
+    "claude": ClaudeAdapter,
+    "grok": GrokAdapter,
+    "deepseek": DeepSeekAdapter,
 }
 
 
@@ -35,6 +41,9 @@ class Runner:
         openai_api_key: Optional[str] = None,
         gemini_api_key: Optional[str] = None,
         qwen_api_key: Optional[str] = None,
+        anthropic_api_key: Optional[str] = None,
+        grok_api_key: Optional[str] = None,
+        deepseek_api_key: Optional[str] = None,
     ):
         self.config_dir = config_dir
         self.yaml_loader = YamlFileLoader()
@@ -48,9 +57,12 @@ class Runner:
         self.console = Console()
         self.results: List[Dict[str, Any]] = []
         self.overall_success = True
-        self.cli_openai_api_key = openai_api_key
-        self.cli_gemini_api_key = gemini_api_key
-        self.cli_qwen_api_key = qwen_api_key
+        self.cli_openai_key = openai_api_key
+        self.cli_gemini_key = gemini_api_key
+        self.cli_qwen_key = qwen_api_key
+        self.cli_anthropic_key = anthropic_api_key
+        self.cli_grok_key = grok_api_key
+        self.cli_deepseek_key = deepseek_api_key
 
     async def close_cache_connection(self):
         """Closes the database connection if cache is enabled and connection exists."""
@@ -63,12 +75,18 @@ class Runner:
         if adapter_class:
             try:
                 api_key_to_pass = None
-                if adapter_name.lower() == "openai" and self.cli_openai_api_key:
-                    api_key_to_pass = self.cli_openai_api_key
-                elif adapter_name.lower() == "gemini" and self.cli_gemini_api_key:
-                    api_key_to_pass = self.cli_gemini_api_key
-                elif adapter_name.lower() == "qwen" and self.cli_qwen_api_key:
-                    api_key_to_pass = self.cli_qwen_api_key
+                if adapter_name.lower() == "openai" and self.cli_openai_key:
+                    api_key_to_pass = self.cli_openai_key
+                elif adapter_name.lower() == "gemini" and self.cli_gemini_key:
+                    api_key_to_pass = self.cli_gemini_key
+                elif adapter_name.lower() == "qwen" and self.cli_qwen_key:
+                    api_key_to_pass = self.cli_qwen_key
+                elif adapter_name.lower() == "claude" and self.cli_anthropic_key:
+                    api_key_to_pass = self.cli_anthropic_key
+                elif adapter_name.lower() == "grok" and self.cli_grok_key:
+                    api_key_to_pass = self.cli_grok_key
+                elif adapter_name.lower() == "deepseek" and self.cli_deepseek_key:
+                    api_key_to_pass = self.cli_deepseek_key
 
                 if api_key_to_pass:
                     return adapter_class(api_key=api_key_to_pass)
@@ -85,13 +103,13 @@ class Runner:
     async def _run_single_test_case(
         self,
         test_case_path: Path,
-        test_case_model: TestCase,  # Changed type hint
+        test_case_model: TestCase,
     ) -> List[Dict[str, Any]]:
         all_adapter_results = []
 
         test_id = test_case_model.id
         base_prompt = test_case_model.prompt
-        inputs = test_case_model.inputs  # Already defaults to {} if not present
+        inputs = test_case_model.inputs
 
         prompt_text = base_prompt
         if inputs:
@@ -182,19 +200,36 @@ class Runner:
                 assertion_details_for_cache = []
                 if test_case_model.expect_exact is not None:
                     assertion_details_for_cache.append(("_assertion_type", "exact"))
-                    assertion_details_for_cache.append(("_assertion_value", test_case_model.expect_exact))
+                    assertion_details_for_cache.append(
+                        ("_assertion_value", test_case_model.expect_exact)
+                    )
                 elif test_case_model.expect_regex is not None:
                     assertion_details_for_cache.append(("_assertion_type", "regex"))
-                    assertion_details_for_cache.append(("_assertion_value", test_case_model.expect_regex))
+                    assertion_details_for_cache.append(
+                        ("_assertion_value", test_case_model.expect_regex)
+                    )
                 elif test_case_model.expect_substring is not None:
                     assertion_details_for_cache.append(("_assertion_type", "substring"))
-                    assertion_details_for_cache.append(("_assertion_value", test_case_model.expect_substring))
+                    assertion_details_for_cache.append(
+                        ("_assertion_value", test_case_model.expect_substring)
+                    )
                 elif test_case_model.expect_substring_case_insensitive is not None:
-                    assertion_details_for_cache.append(("_assertion_type", "substring_case_insensitive"))
-                    assertion_details_for_cache.append(("_assertion_value", test_case_model.expect_substring_case_insensitive))
+                    assertion_details_for_cache.append(
+                        ("_assertion_type", "substring_case_insensitive")
+                    )
+                    assertion_details_for_cache.append(
+                        (
+                            "_assertion_value",
+                            test_case_model.expect_substring_case_insensitive,
+                        )
+                    )
 
-                sorted_adapter_options_items = sorted(list(adapter_options.items()), key=lambda item: item[0])
-                combined_options_for_cache_key = sorted_adapter_options_items + assertion_details_for_cache
+                sorted_adapter_options_items = sorted(
+                    list(adapter_options.items()), key=lambda item: item[0]
+                )
+                combined_options_for_cache_key = (
+                    sorted_adapter_options_items + assertion_details_for_cache
+                )
                 cache_key_options_component = frozenset(combined_options_for_cache_key)
 
                 cached_response = self.cache.get(

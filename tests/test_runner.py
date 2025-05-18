@@ -172,10 +172,12 @@ async def test_run_single_test_case_cache_hit(
     }
 
     mock_cache.get.return_value = cached_llm_response
-    expected_cache_options_key = frozenset({
-        ("_assertion_type", "exact"),
-        ("_assertion_value", "Cached response"),
-    })
+    expected_cache_options_key = frozenset(
+        {
+            ("_assertion_type", "exact"),
+            ("_assertion_value", "Cached response"),
+        }
+    )
 
     results_list = await test_runner._run_single_test_case(test_file, test_case_model)
     assert len(results_list) == 1
@@ -388,8 +390,8 @@ async def test_run_single_test_case_with_adapter_options(
         "custom_param": "custom_value",
     }
     expected_cache_options_key_for_put = frozenset(
-        list(expected_options_to_execute.items()) +
-        [
+        list(expected_options_to_execute.items())
+        + [
             ("_assertion_type", "exact"),
             ("_assertion_value", "Response"),
         ]
