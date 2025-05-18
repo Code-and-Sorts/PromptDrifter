@@ -6,6 +6,11 @@ import httpx
 from rich.console import Console
 
 from promptdrifter.adapters.base import Adapter
+from promptdrifter.config.adapter_settings import (
+    API_KEY_ENV_VAR_DEEPSEEK,
+    DEEPSEEK_API_BASE_URL,
+    DEFAULT_DEEPSEEK_MODEL,
+)
 
 console = Console()
 
@@ -13,15 +18,15 @@ console = Console()
 class DeepSeekAdapter(Adapter):
     """Adapter for DeepSeek models."""
 
-    DEFAULT_MODEL = "deepseek-chat"
-    API_ENDPOINT = "https://api.deepseek.com/chat/completions"
+    DEFAULT_MODEL = DEFAULT_DEEPSEEK_MODEL
+    API_ENDPOINT = DEEPSEEK_API_BASE_URL
     DEFAULT_MAX_TOKENS = 1024
 
     def __init__(self, api_key: Optional[str] = None):
-        self.api_key = api_key or os.getenv("DEEPSEEK_API_KEY")
+        self.api_key = api_key or os.getenv(API_KEY_ENV_VAR_DEEPSEEK)
         if not self.api_key:
             raise ValueError(
-                "DeepSeek API key not provided. Please set DEEPSEEK_API_KEY environment variable."
+                f"{API_KEY_ENV_VAR_DEEPSEEK} not provided. Please set {API_KEY_ENV_VAR_DEEPSEEK} environment variable."
             )
         self.headers = {
             "Authorization": f"Bearer {self.api_key}",

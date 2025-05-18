@@ -6,6 +6,11 @@ import httpx
 from rich.console import Console
 
 from promptdrifter.adapters.base import Adapter
+from promptdrifter.config.adapter_settings import (
+    API_KEY_ENV_VAR_GROK,
+    DEFAULT_GROK_MODEL,
+    GROK_API_BASE_URL,
+)
 
 console = Console()
 
@@ -13,15 +18,15 @@ console = Console()
 class GrokAdapter(Adapter):
     """Adapter for xAI Grok models."""
 
-    DEFAULT_MODEL = "grok-1"
-    API_ENDPOINT = "https://api.grok.x.ai/v1/chat/completions"
+    DEFAULT_MODEL = DEFAULT_GROK_MODEL
+    API_ENDPOINT = GROK_API_BASE_URL
     DEFAULT_MAX_TOKENS = 1024
 
     def __init__(self, api_key: Optional[str] = None):
-        self.api_key = api_key or os.getenv("GROK_API_KEY")
+        self.api_key = api_key or os.getenv(API_KEY_ENV_VAR_GROK)
         if not self.api_key:
             raise ValueError(
-                "Grok API key not provided. Please set GROK_API_KEY environment variable."
+                f"{API_KEY_ENV_VAR_GROK} not provided. Please set {API_KEY_ENV_VAR_GROK} environment variable."
             )
         self.headers = {
             "Authorization": f"Bearer {self.api_key}",

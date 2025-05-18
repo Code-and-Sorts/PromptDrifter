@@ -38,40 +38,58 @@ Over time, updates to LLM versions, or even subtle shifts in their training data
 ---
 
 ### Undetected prompt drift can lead to:
-
-#### 🚨 Unexpected Failures
+<details>
+<summary>🚨 Unexpected Failures</summary>
 Applications or CI/CD pipelines may break silently or with cryptic errors when LLM outputs deviate from expected formats or content.
+</details>
 
-#### 📉 Degraded User Experience
+<details>
+<summary>📉 Degraded User Experience</summary>
 Features relying on consistent LLM responses can malfunction, leading to user frustration.
+</details>
 
-#### ⏱️ Increased Maintenance
+<details>
+<summary>⏱️ Increased Maintenance</summary>
 Engineers spend valuable time diagnosing issues, tracing them back to changed LLM behavior rather addressing features and bugs in code.
+</details>
 
-#### 🚧 Blocked Deployments
+<details>
+<summary>🚧 Blocked Deployments</summary>
 Uncertainty about LLM stability can slow down development cycles and deployment frequency.
+</details>
 
 ---
 
 ### PromptDrifter tackles these challenges head-on by providing:
-
-#### 🛡️ Automated Guardrails
+<details>
+<summary>🛡️ Automated Guardrails</summary>
 A simple, command-line driven tool to integrate LLM response validation directly into your development and CI/CD workflows.
+</details>
 
-#### 🔍 Early Drift Detection
+<details>
+<summary>🔍 Early Drift Detection</summary>
 By comparing LLM outputs against version-controlled expected responses or predefined patterns (like regex), **PromptDrifter** catches deviations as soon as they occur.
+</details>
 
-#### ⚙️ Consistent and Reliable Applications
+<details>
+<summary>⚙️ Consistent and Reliable Applications</summary>
 Ensures that your LLM-powered features behave predictably by failing builds when significant response changes are detected, *before* they impact users or production systems.
+</details>
 
-#### 🔌 Model Agnostic Design
+<details>
+<summary>🔌 Model Agnostic Design</summary>
 Through a flexible adapter system, PromptDrifter can interact with various LLM providers and models (e.g., OpenAI, Ollama, and more to come).
+</details>
 
-#### 📝 Declarative Test Suites
+<details>
+<summary>📝 Declarative Test Suites</summary>
 Define your prompt tests in easy-to-understand YAML files, making them simple to create, manage, and version alongside your codebase.
+</details>
 
-#### 😌 Developer Peace of Mind
+<details>
+<summary>😌 Developer Peace of Mind</summary>
 Build with greater confidence, knowing you have a safety net that monitors the stability of your critical prompt interactions.
+</details>
 
 > [!NOTE]
 > By making prompt-response testing a straightforward and automated part of your workflow, **PromptDrifter** helps you harness the power of LLMs while mitigating the risks associated with their dynamic nature.

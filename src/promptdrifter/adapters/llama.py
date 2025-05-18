@@ -6,6 +6,11 @@ import httpx
 from rich.console import Console
 
 from promptdrifter.adapters.base import Adapter
+from promptdrifter.config.adapter_settings import (
+    API_KEY_ENV_VAR_LLAMA,
+    DEFAULT_LLAMA_MODEL,
+    LLAMA_API_BASE_URL,
+)
 
 console = Console()
 
@@ -13,15 +18,15 @@ console = Console()
 class LlamaAdapter(Adapter):
     """Adapter for Meta's Llama models."""
 
-    DEFAULT_MODEL = "llama-3-70b-instruct"
-    API_ENDPOINT = "https://llama-api.meta.ai/v1/chat/completions"
+    DEFAULT_MODEL = DEFAULT_LLAMA_MODEL
+    API_ENDPOINT = LLAMA_API_BASE_URL
     DEFAULT_MAX_TOKENS = 1024
 
     def __init__(self, api_key: Optional[str] = None):
-        self.api_key = api_key or os.getenv("META_LLAMA_API_KEY")
+        self.api_key = api_key or os.getenv(API_KEY_ENV_VAR_LLAMA)
         if not self.api_key:
             raise ValueError(
-                "Meta Llama API key not provided. Please set META_LLAMA_API_KEY environment variable."
+                f"{API_KEY_ENV_VAR_LLAMA} not provided. Please set {API_KEY_ENV_VAR_LLAMA} environment variable."
             )
         self.headers = {
             "Authorization": f"Bearer {self.api_key}",

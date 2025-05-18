@@ -6,6 +6,12 @@ import httpx
 from rich.console import Console
 
 from promptdrifter.adapters.base import Adapter
+from promptdrifter.config.adapter_settings import (
+    API_KEY_ENV_VAR_CLAUDE,
+    CLAUDE_API_BASE_URL,
+    CLAUDE_API_VERSION,
+    DEFAULT_CLAUDE_MODEL,
+)
 
 console = Console()
 
@@ -13,19 +19,19 @@ console = Console()
 class ClaudeAdapter(Adapter):
     """Adapter for Anthropic Claude models."""
 
-    DEFAULT_MODEL = "claude-3-opus-20240229"
-    API_ENDPOINT = "https://api.anthropic.com/v1/messages"
+    DEFAULT_MODEL = DEFAULT_CLAUDE_MODEL
+    API_ENDPOINT = CLAUDE_API_BASE_URL
     DEFAULT_MAX_TOKENS = 1024
 
     def __init__(self, api_key: Optional[str] = None):
-        self.api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
+        self.api_key = api_key or os.getenv(API_KEY_ENV_VAR_CLAUDE)
         if not self.api_key:
             raise ValueError(
-                "Anthropic API key not provided. Please set ANTHROPIC_API_KEY environment variable."
+                f"{API_KEY_ENV_VAR_CLAUDE} not provided. Please set {API_KEY_ENV_VAR_CLAUDE} environment variable."
             )
         self.headers = {
             "x-api-key": self.api_key,
-            "anthropic-version": "2023-06-01",
+            "anthropic-version": CLAUDE_API_VERSION,
             "content-type": "application/json",
         }
 
