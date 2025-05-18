@@ -19,9 +19,7 @@ class PromptCache:
     ):
         self.db_path = db_path
         self.default_ttl_seconds = default_ttl_seconds
-        self._conn: Optional[sqlite3.Connection] = (
-            None
-        )
+        self._conn: Optional[sqlite3.Connection] = None
         with self._get_connection() as conn:
             self._ensure_db_and_table_with_conn(conn)
 
