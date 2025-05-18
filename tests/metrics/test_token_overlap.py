@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch  # Ensure MagicMock is imported if used
+from unittest.mock import patch
 
 import pytest
 

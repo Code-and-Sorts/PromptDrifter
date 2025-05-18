@@ -102,17 +102,19 @@ TODO: add demo with screenshots and GIFs
 
 PromptDrifter is designed to be extensible to various Large Language Models through its adapter system. Here's a current list of supported and planned adapters:
 
-| Provider / Model Family | Adapter Status | Details / Model Examples | Linked Issue |
-| :---------------------- | :------------- | :----------------------- | :----------- |
-| **GPT (OpenAI)**        | ✅ Available   | `gpt-3.5-turbo`, `gpt-4`, `gpt-4o`, etc.                         | N/A                            |
-| **Ollama**              | ✅ Available   | `llama3`, `mistral`, `gemma`, etc.                               | N/A                            |
-| **Claude (Anthropic)**  | ✅ Available  | `claude-3-7-sonnet`, `claude-3-5-sonnet`, `claude-3-opus`        | N/A                            |
-| **Gemini (Google)**     | ✅ Available   | `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-2.0-flash-thinking`| N/A                            |
-| **Qwen**                | ✅ Available | `qwen3-30b-a3b`, `qwq-32b`                                        | N/A  |
-| **Grok (xAI)**          | ✅ Available | `grok-3`, `grok-2`, etc.                                         | N/A |
-| **DeepSeek**            | ✅ Available | `deepseek-r1`, `deepseek-v3-0324`, etc.                          | N/A |
-| **Llama (Meta)**        | ✅ Available | `llama-4-maverick`, `llama-4-scout`, etc.                        | N/A |
-| **Mistral**             | ⏳ Coming Soon | `mistral-small-24b-instruct-2501`, `mistral-small-3.1-24b-instruct-2503` | N/a |
+| Provider / Model Family | Adapter Status | Details / Model Examples                                                 | Linked Issue |
+| :---------------------- | :------------- | :----------------------------------------------------------------------- | :----------- |
+| **GPT (OpenAI)**        | ✅ Available   | `gpt-3.5-turbo`, `gpt-4`, `gpt-4o`, etc.                                 | N/A          |
+| **Ollama**              | ✅ Available   | `llama3`, `mistral`, `gemma`, etc.                                       | N/A          |
+| **Claude (Anthropic)**  | ✅ Available   | `claude-3-7-sonnet`, `claude-3-5-sonnet`, `claude-3-opus`                | N/A          |
+| **Gemini (Google)**     | ✅ Available   | `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-2.0-flash-thinking`        | N/A          |
+| **Qwen (Alibaba)**      | ✅ Available   | `qwen3-30b-a3b`, `qwq-32b`                                               | N/A          |
+| **Grok (xAI)**          | ✅ Available   | `grok-3`, `grok-2`, etc.                                                 | N/A          |
+| **DeepSeek**            | ✅ Available   | `deepseek-r1`, `deepseek-v3-0324`, etc.                                  | N/A          |
+| **Llama (Meta)**        | ✅ Available   | `llama-4-maverick`, `llama-4-scout`, etc.                                | N/A          |
+| **Mistral**             | ✅ Available   | `mistral-small-24b-instruct-2501`, `mistral-small-3.1-24b-instruct-2503` | N/A          |
+| **Azure OpenAI**        | TBD   | `gpt-3.5-turbo`, `gpt-4`, `gpt-4o`, etc. | N/A          |
+| **Azure Foundry**        | TBD   | `` | N/A          |
 
 
 If there's a model or provider you'd like to see supported, please [open a feature request](https://github.com/Code-and-Sorts/PromptDrifter/issues/new?assignees=&template=feature_request.md) or consider contributing an adapter!

@@ -94,7 +94,7 @@ async def test_run_single_test_case_pass_exact_match(
     result = results_list[0]
 
     assert result["status"] == "PASS"
-    test_runner._get_adapter_instance.assert_called_with("openai")
+    test_runner._get_adapter_instance.assert_called_with("openai", None)
     mock_adapter.execute.assert_called_once_with("Say hello", model="test_model")
     mock_cache.put.assert_called_once()
     mock_adapter.close.assert_called_once()
@@ -334,7 +334,7 @@ async def test_run_single_test_case_unknown_adapter(
 ):
     get_adapter_mock = runner_dependencies_setup["get_adapter_method_mock"]
 
-    def side_effect_for_get_adapter(adapter_name_called):
+    def side_effect_for_get_adapter(adapter_name_called, base_url=None):
         if adapter_name_called == "gemini":
             return None
         return runner_dependencies_setup["adapter_instance"]
@@ -429,7 +429,7 @@ async def test_run_single_test_case_multiple_adapters(
     )
     mock_adapter_2_instance.close = AsyncMock()
 
-    def get_adapter_side_effect(adapter_name):
+    def get_adapter_side_effect(adapter_name, base_url=None):
         if adapter_name == "openai":
             return mock_adapter_1_instance
         elif adapter_name == "gemini":

@@ -8,7 +8,7 @@ help: ## ⁉️ Displays this help message
 
 test-unit: ## 🧪 Runs unit tests with coverage
 	@echo "🧪 Running unit tests with coverage..."
-	uv run pytest --cov=src/promptdrifter
+	uv run pytest --cov=src/promptdrifter -v
 	@echo "✅ Unit tests finished."
 
 lint: ## ✨ Runs linter (ruff check)

@@ -64,10 +64,14 @@ class OllamaAdapter(Adapter):
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
         stream: bool = False,
+        base_url: Optional[str] = None,
         **kwargs: Any,
     ) -> Dict[str, Any]:
         """Makes a request to the Ollama /api/generate endpoint."""
         effective_model = model or self.config.default_model
+
+        # Note: base_url is not used here as it's already set in the client during initialization
+        # If a different base_url is needed, it's better to create a new adapter instance
 
         payload = {
             "model": effective_model,

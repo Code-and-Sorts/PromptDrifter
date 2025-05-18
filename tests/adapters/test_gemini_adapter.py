@@ -136,7 +136,7 @@ async def test_gemini_adapter_execute_success(
     }
     mock_client_instance.post.return_value = mock_response
 
-    result = await adapter.execute(prompt=prompt)
+    result = await adapter.execute(prompt=prompt, base_url=None)
 
     mock_client_instance.post.assert_awaited_once()
     call_args, call_kwargs = mock_client_instance.post.call_args
@@ -183,7 +183,8 @@ async def test_gemini_adapter_with_system_prompt(
 
     await adapter.execute(
         prompt=user_prompt,
-        systemPrompt=system_prompt
+        systemPrompt=system_prompt,
+        base_url=None
     )
 
     mock_client_instance.post.assert_awaited_once()
@@ -223,6 +224,7 @@ async def test_gemini_adapter_execute_with_params(
         max_tokens=max_t,
         generation_config={"topP": top_p},
         safetySettings=[safety_setting],
+        base_url=None
     )
 
     mock_client_instance.post.assert_awaited_once()
@@ -252,7 +254,7 @@ async def test_gemini_adapter_execute_timeout_error(adapter, patch_httpx_client)
     mock_client_instance = patch_httpx_client.return_value
     mock_client_instance.post.side_effect = httpx.ReadTimeout("Request timed out after 60s")
 
-    result = await adapter.execute("A prompt")
+    result = await adapter.execute("A prompt", base_url=None)
 
     assert "error" in result
     assert "Request error connecting to Gemini API" in result["error"]
@@ -280,7 +282,7 @@ async def test_gemini_adapter_execute_empty_response_content(
     }
     mock_client_instance.post.return_value = mock_response
 
-    result = await adapter.execute("A prompt")
+    result = await adapter.execute("A prompt", base_url=None)
 
     assert "error" in result
     assert "Text not found" in result["error"]
@@ -311,7 +313,7 @@ async def test_gemini_adapter_execute_http_status_error(
     )
     mock_client_instance.post.return_value = mock_response
 
-    result = await adapter.execute(prompt=prompt)
+    result = await adapter.execute(prompt=prompt, base_url=None)
 
     assert "error" in result
     assert str(status_code) in result["error"]
@@ -328,7 +330,7 @@ async def test_gemini_adapter_execute_request_error(adapter, patch_httpx_client)
     mock_client_instance.post.side_effect = httpx.ConnectError(
         "Could not connect", request=MagicMock()
     )
-    result = await adapter.execute(prompt="Network error test")
+    result = await adapter.execute(prompt="Network error test", base_url=None)
 
     assert "error" in result
     assert "Request error connecting to Gemini API" in result["error"]
@@ -345,7 +347,7 @@ async def test_gemini_adapter_execute_malformed_response(
     mock_client_instance = patch_httpx_client.return_value
     mock_response.json.return_value = {"unexpected_structure": "data"}
     mock_client_instance.post.return_value = mock_response
-    result = await adapter.execute(prompt="Malformed response test")
+    result = await adapter.execute(prompt="Malformed response test", base_url=None)
 
     assert "error" in result
     assert "Candidates not found" in result["error"]

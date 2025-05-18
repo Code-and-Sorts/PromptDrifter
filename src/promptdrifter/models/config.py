@@ -14,6 +14,7 @@ class AdapterConfig(BaseModel):
         ..., alias="type"
     )
     model: str
+    base_url: Optional[str] = None
     temperature: Optional[float] = Field(default=None, ge=0, le=2)
     max_tokens: Optional[int] = Field(default=None, ge=1)
 

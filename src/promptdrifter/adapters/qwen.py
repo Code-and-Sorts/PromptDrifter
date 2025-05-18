@@ -82,11 +82,15 @@ class QwenAdapter(Adapter):
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
         system_prompt: Optional[str] = None,
+        base_url: Optional[str] = None,
         **kwargs: Any,
     ) -> Dict[str, Any]:
         """Makes a request to the Qwen API (OpenAI compatible chat completions)."""
         effective_model = model or self.config.default_model
         endpoint = "/chat/completions"
+
+        # Note: base_url is not used here as it's already set in the client during initialization
+        # If a different base_url is needed, it's better to create a new adapter instance
 
         messages = []
         if system_prompt:

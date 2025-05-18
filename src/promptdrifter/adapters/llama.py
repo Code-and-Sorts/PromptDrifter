@@ -40,6 +40,7 @@ class LlamaAdapter(Adapter):
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
         system_prompt: Optional[str] = None,
+        base_url: Optional[str] = None,
         **kwargs: Any,
     ) -> Dict[str, Any]:
         """
@@ -57,6 +58,7 @@ class LlamaAdapter(Adapter):
 
         selected_model = model or self.DEFAULT_MODEL
         selected_max_tokens = max_tokens or self.DEFAULT_MAX_TOKENS
+        endpoint = base_url or self.API_ENDPOINT
 
         messages = [{"role": "user", "content": prompt}]
         if system_prompt:
@@ -88,7 +90,7 @@ class LlamaAdapter(Adapter):
         client = httpx.AsyncClient()
         try:
             response = await client.post(
-                self.API_ENDPOINT, headers=self.headers, json=payload, timeout=60.0
+                endpoint, headers=self.headers, json=payload, timeout=60.0
             )
             response.raise_for_status()
 

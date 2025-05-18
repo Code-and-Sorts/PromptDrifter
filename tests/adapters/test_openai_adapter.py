@@ -126,7 +126,7 @@ async def test_execute_successful(patch_httpx_client):
 
     prompt = "Hello, OpenAI!"
     result = await adapter_instance.execute(
-        prompt, model="gpt-4", temperature=0.5, max_tokens=50
+        prompt, model="gpt-4", temperature=0.5, max_tokens=50, base_url=None
     )
 
     mock_client_instance.post.assert_called_once()
@@ -161,7 +161,7 @@ async def test_execute_with_system_prompt(adapter, patch_httpx_client):
     await adapter.execute("A prompt with system prompt", messages=[
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": "A prompt with system prompt"}
-    ])
+    ], base_url=None)
 
     payload = mock_client_instance.post.call_args[1]["json"]
     messages = payload["messages"]
@@ -178,7 +178,7 @@ async def test_execute_uses_default_model(adapter, patch_httpx_client):
         json={"choices": [{"message": {"content": "Default model response", "role": "assistant"}, "finish_reason": "stop"}]},
         request=httpx.Request("POST", "/"),
     )
-    await adapter.execute("A prompt")
+    await adapter.execute("A prompt", base_url=None)
     payload = mock_client_instance.post.call_args[1]["json"]
     assert payload["model"] == adapter.config.default_model
     await adapter.close()
@@ -197,7 +197,7 @@ async def test_execute_http_status_error(adapter, patch_httpx_client):
     )
     mock_client_instance.post.return_value = error_response
 
-    result = await adapter.execute("A prompt")
+    result = await adapter.execute("A prompt", base_url=None)
 
     assert "error" in result
     assert "HTTP error 401" in result["error"]
@@ -212,7 +212,7 @@ async def test_execute_request_error(adapter, patch_httpx_client):
     mock_client_instance = patch_httpx_client.return_value
     mock_client_instance.post.side_effect = httpx.ConnectError("Connection failed")
 
-    result = await adapter.execute("A prompt")
+    result = await adapter.execute("A prompt", base_url=None)
 
     assert "error" in result
     assert "Request error connecting to OpenAI" in result["error"]
@@ -226,7 +226,7 @@ async def test_execute_timeout_error(adapter, patch_httpx_client):
     mock_client_instance = patch_httpx_client.return_value
     mock_client_instance.post.side_effect = httpx.ReadTimeout("Request timed out")
 
-    result = await adapter.execute("A prompt")
+    result = await adapter.execute("A prompt", base_url=None)
 
     assert "error" in result
     assert "Request error connecting to OpenAI" in result["error"]
@@ -239,7 +239,7 @@ async def test_execute_unexpected_error(adapter, patch_httpx_client):
     mock_client_instance = patch_httpx_client.return_value
     mock_client_instance.post.side_effect = Exception("Something totally unexpected")
 
-    result = await adapter.execute("A prompt")
+    result = await adapter.execute("A prompt", base_url=None)
 
     assert "error" in result
     assert "An unexpected error occurred" in result["error"]
@@ -257,7 +257,7 @@ async def test_execute_unexpected_response_structure(adapter, patch_httpx_client
         request=httpx.Request("POST", "/chat/completions")
     )
 
-    result = await adapter.execute("A prompt")
+    result = await adapter.execute("A prompt", base_url=None)
 
     assert result["text_response"] is None
     await adapter.close()
@@ -273,7 +273,7 @@ async def test_execute_empty_response_content(adapter, patch_httpx_client):
         request=httpx.Request("POST", "/chat/completions")
     )
 
-    result = await adapter.execute("A prompt")
+    result = await adapter.execute("A prompt", base_url=None)
 
     assert result["text_response"] is None
     await adapter.close()

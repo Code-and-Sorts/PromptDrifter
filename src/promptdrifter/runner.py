@@ -77,7 +77,7 @@ class Runner:
         if self.cache and hasattr(self.cache, "close"):
             self.cache.close()
 
-    def _get_adapter_instance(self, adapter_name: str) -> Optional[Adapter]:
+    def _get_adapter_instance(self, adapter_name: str, base_url: Optional[str] = None) -> Optional[Adapter]:
         """Retrieves an initialized adapter instance from the registry."""
         adapter_class = ADAPTER_REGISTRY.get(adapter_name.lower())
         if adapter_class:
@@ -100,7 +100,14 @@ class Runner:
                 elif adapter_name.lower() == "mistral" and self.cli_mistral_key:
                     api_key_to_pass = self.cli_mistral_key
 
-                if api_key_to_pass:
+                adapter_init_params = adapter_class.__init__.__code__.co_varnames
+                can_pass_base_url = 'base_url' in adapter_init_params
+
+                if can_pass_base_url and api_key_to_pass and base_url:
+                    return adapter_class(api_key=api_key_to_pass, base_url=base_url)
+                elif can_pass_base_url and base_url:
+                    return adapter_class(base_url=base_url)
+                elif api_key_to_pass:
                     return adapter_class(api_key=api_key_to_pass)
                 else:
                     return adapter_class()
@@ -174,7 +181,13 @@ class Runner:
                 "raw_adapter_response": None,
             }
 
-            adapter_instance = self._get_adapter_instance(adapter_name)
+            all_adapter_params = adapter_config_model.model_dump(
+                by_alias=True, exclude_none=True
+            )
+
+            base_url = all_adapter_params.get("base_url")
+
+            adapter_instance = self._get_adapter_instance(adapter_name, base_url)
             if adapter_instance is None:
                 current_run_details["reason"] = (
                     f"Adapter '{adapter_name}' not found or failed to initialize."
@@ -183,10 +196,6 @@ class Runner:
                 all_adapter_results.append(current_run_details)
                 self.overall_success = False
                 continue
-
-            all_adapter_params = adapter_config_model.model_dump(
-                by_alias=True, exclude_none=True
-            )
 
             known_options_to_pass = {}
             if "temperature" in all_adapter_params:
@@ -198,12 +207,16 @@ class Runner:
                     "max_tokens"
                 )
 
+            all_adapter_params.pop("base_url", None)
             all_adapter_params.pop("type", None)
             all_adapter_params.pop("model", None)
 
             additional_adapter_kwargs = all_adapter_params
 
             adapter_options = {**known_options_to_pass, **additional_adapter_kwargs}
+
+            if base_url:
+                adapter_options["base_url"] = base_url
 
             llm_response_data: Optional[Dict[str, Any]] = None
             cache_key_options_component = None

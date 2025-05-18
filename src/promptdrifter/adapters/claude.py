@@ -27,7 +27,7 @@ class ClaudeAdapter(Adapter):
         self.api_key = api_key or os.getenv(API_KEY_ENV_VAR_CLAUDE)
         if not self.api_key:
             raise ValueError(
-                f"{API_KEY_ENV_VAR_CLAUDE} not provided. Please set {API_KEY_ENV_VAR_CLAUDE} environment variable."
+                f"Claude API key not provided. Please set {API_KEY_ENV_VAR_CLAUDE} environment variable."
             )
         self.headers = {
             "x-api-key": self.api_key,
@@ -42,6 +42,7 @@ class ClaudeAdapter(Adapter):
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
         system_prompt: Optional[str] = None,
+        base_url: Optional[str] = None,
         **kwargs: Any,
     ) -> Dict[str, Any]:
         """
@@ -59,6 +60,7 @@ class ClaudeAdapter(Adapter):
 
         selected_model = model or self.DEFAULT_MODEL
         selected_max_tokens = max_tokens or self.DEFAULT_MAX_TOKENS
+        endpoint = base_url or self.API_ENDPOINT
 
         payload: Dict[str, Any] = {
             "model": selected_model,
@@ -88,7 +90,7 @@ class ClaudeAdapter(Adapter):
         client = httpx.AsyncClient()
         try:
             response = await client.post(
-                self.API_ENDPOINT, headers=self.headers, json=payload, timeout=60.0
+                endpoint, headers=self.headers, json=payload, timeout=60.0
             )
             response.raise_for_status()
 
