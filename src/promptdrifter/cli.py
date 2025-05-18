@@ -126,9 +126,20 @@ async def _run_async(
     anthropic_api_key: Optional[str],
     grok_api_key: Optional[str],
     deepseek_api_key: Optional[str],
+    meta_llama_api_key: Optional[str],
+    mistral_api_key: Optional[str],
 ):
     """Async implementation of the run command."""
-    if openai_api_key or gemini_api_key or qwen_api_key or anthropic_api_key or grok_api_key or deepseek_api_key:
+    if (
+        openai_api_key
+        or gemini_api_key
+        or qwen_api_key
+        or anthropic_api_key
+        or grok_api_key
+        or deepseek_api_key
+        or meta_llama_api_key
+        or mistral_api_key
+    ):
         _print_api_key_security_warning()
 
     if not files:
@@ -178,6 +189,8 @@ async def _run_async(
             anthropic_api_key=anthropic_api_key,
             grok_api_key=grok_api_key,
             deepseek_api_key=deepseek_api_key,
+            meta_llama_api_key=meta_llama_api_key,
+            mistral_api_key=mistral_api_key,
         )
         overall_success = await runner_instance.run_suite(yaml_files_str)
         if not overall_success:
@@ -236,15 +249,29 @@ def run(
     grok_api_key: Optional[str] = typer.Option(
         None,
         "--grok-api-key",
-        help="Grok API key (can also be set via GROK_API_KEY env var)",
+        help="Grok API key (can also be set via GROK_API_KEY env var. Warning: Exposes key in shell history.)",
         envvar="GROK_API_KEY",
         rich_help_panel="API Keys",
     ),
     deepseek_api_key: Optional[str] = typer.Option(
         None,
         "--deepseek-api-key",
-        help="DeepSeek API key (can also be set via DEEPSEEK_API_KEY env var)",
+        help="DeepSeek API key (can also be set via DEEPSEEK_API_KEY env var. Warning: Exposes key in shell history.)",
         envvar="DEEPSEEK_API_KEY",
+        rich_help_panel="API Keys",
+    ),
+    meta_llama_api_key: Optional[str] = typer.Option(
+        None,
+        "--meta-llama-api-key",
+        help="Meta Llama API key (can also be set via META_LLAMA_API_KEY env var. Warning: Exposes key in shell history.)",
+        envvar="META_LLAMA_API_KEY",
+        rich_help_panel="API Keys",
+    ),
+    mistral_api_key: Optional[str] = typer.Option(
+        None,
+        "--mistral-api-key",
+        help="Mistral API key (can also be set via MISTRAL_API_KEY env var. Warning: Exposes key in shell history.)",
+        envvar="MISTRAL_API_KEY",
         rich_help_panel="API Keys",
     ),
 ):
@@ -261,6 +288,8 @@ def run(
             anthropic_api_key,
             grok_api_key,
             deepseek_api_key,
+            meta_llama_api_key,
+            mistral_api_key,
         )
     )
 

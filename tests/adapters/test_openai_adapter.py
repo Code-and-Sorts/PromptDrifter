@@ -116,7 +116,7 @@ async def test_execute_successful(patch_httpx_client):
 
     mock_response_data = {
         "choices": [
-            {"message": {"role": "assistant", "content": "Test response from OpenAI"}}
+            {"message": {"role": "assistant", "content": "Test response from OpenAI"}, "finish_reason": "stop"}
         ],
         "usage": {"total_tokens": 10},
     }
@@ -146,11 +146,36 @@ async def test_execute_successful(patch_httpx_client):
     mock_client_instance.aclose.assert_called_once()
 
 
+async def test_execute_with_system_prompt(adapter, patch_httpx_client):
+    """Test execution with a system prompt parameter."""
+    mock_client_instance = patch_httpx_client.return_value
+    mock_client_instance.post.return_value = httpx.Response(
+        200,
+        json={"choices": [
+            {"message": {"content": "Response with system prompt", "role": "assistant"}, "finish_reason": "stop"}
+        ]},
+        request=httpx.Request("POST", "/chat/completions"),
+    )
+
+    system_prompt = "You are a helpful AI assistant that provides concise answers."
+    await adapter.execute("A prompt with system prompt", messages=[
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": "A prompt with system prompt"}
+    ])
+
+    payload = mock_client_instance.post.call_args[1]["json"]
+    messages = payload["messages"]
+    assert len(messages) >= 1
+    assert any(msg.get("role") == "system" and msg.get("content") == system_prompt for msg in messages)
+    await adapter.close()
+    mock_client_instance.aclose.assert_called_once()
+
+
 async def test_execute_uses_default_model(adapter, patch_httpx_client):
     mock_client_instance = patch_httpx_client.return_value
     mock_client_instance.post.return_value = httpx.Response(
         200,
-        json={"choices": [{"message": {"content": "Default model response"}}]},
+        json={"choices": [{"message": {"content": "Default model response", "role": "assistant"}, "finish_reason": "stop"}]},
         request=httpx.Request("POST", "/"),
     )
     await adapter.execute("A prompt")
@@ -196,6 +221,20 @@ async def test_execute_request_error(adapter, patch_httpx_client):
     mock_client_instance.aclose.assert_called_once()
 
 
+async def test_execute_timeout_error(adapter, patch_httpx_client):
+    """Test handling of timeout errors during execution."""
+    mock_client_instance = patch_httpx_client.return_value
+    mock_client_instance.post.side_effect = httpx.ReadTimeout("Request timed out")
+
+    result = await adapter.execute("A prompt")
+
+    assert "error" in result
+    assert "Request error connecting to OpenAI" in result["error"]
+    assert "timed out" in result["error"]
+    await adapter.close()
+    mock_client_instance.aclose.assert_called_once()
+
+
 async def test_execute_unexpected_error(adapter, patch_httpx_client):
     mock_client_instance = patch_httpx_client.return_value
     mock_client_instance.post.side_effect = Exception("Something totally unexpected")
@@ -205,6 +244,38 @@ async def test_execute_unexpected_error(adapter, patch_httpx_client):
     assert "error" in result
     assert "An unexpected error occurred" in result["error"]
     assert "Something totally unexpected" in result["error"]
+    await adapter.close()
+    mock_client_instance.aclose.assert_called_once()
+
+
+async def test_execute_unexpected_response_structure(adapter, patch_httpx_client):
+    """Test handling of unexpected response structure."""
+    mock_client_instance = patch_httpx_client.return_value
+    mock_client_instance.post.return_value = httpx.Response(
+        200,
+        json={"unexpected_structure": True},
+        request=httpx.Request("POST", "/chat/completions")
+    )
+
+    result = await adapter.execute("A prompt")
+
+    assert result["text_response"] is None
+    await adapter.close()
+    mock_client_instance.aclose.assert_called_once()
+
+
+async def test_execute_empty_response_content(adapter, patch_httpx_client):
+    """Test handling of empty response content."""
+    mock_client_instance = patch_httpx_client.return_value
+    mock_client_instance.post.return_value = httpx.Response(
+        200,
+        json={"choices": [{"message": {}}]},
+        request=httpx.Request("POST", "/chat/completions")
+    )
+
+    result = await adapter.execute("A prompt")
+
+    assert result["text_response"] is None
     await adapter.close()
     mock_client_instance.aclose.assert_called_once()
 

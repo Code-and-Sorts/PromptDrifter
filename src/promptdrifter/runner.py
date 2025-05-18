@@ -12,6 +12,8 @@ from .adapters.claude import ClaudeAdapter
 from .adapters.deepseek import DeepSeekAdapter
 from .adapters.gemini import GeminiAdapter
 from .adapters.grok import GrokAdapter
+from .adapters.llama import LlamaAdapter
+from .adapters.mistral import MistralAdapter
 from .adapters.ollama import OllamaAdapter
 from .adapters.openai import OpenAIAdapter
 from .adapters.qwen import QwenAdapter
@@ -27,6 +29,8 @@ ADAPTER_REGISTRY: Dict[str, Type[Adapter]] = {
     "claude": ClaudeAdapter,
     "grok": GrokAdapter,
     "deepseek": DeepSeekAdapter,
+    "llama": LlamaAdapter,
+    "mistral": MistralAdapter,
 }
 
 
@@ -44,6 +48,8 @@ class Runner:
         anthropic_api_key: Optional[str] = None,
         grok_api_key: Optional[str] = None,
         deepseek_api_key: Optional[str] = None,
+        meta_llama_api_key: Optional[str] = None,
+        mistral_api_key: Optional[str] = None,
     ):
         self.config_dir = config_dir
         self.yaml_loader = YamlFileLoader()
@@ -63,6 +69,8 @@ class Runner:
         self.cli_anthropic_key = anthropic_api_key
         self.cli_grok_key = grok_api_key
         self.cli_deepseek_key = deepseek_api_key
+        self.cli_meta_llama_key = meta_llama_api_key
+        self.cli_mistral_key = mistral_api_key
 
     async def close_cache_connection(self):
         """Closes the database connection if cache is enabled and connection exists."""
@@ -87,6 +95,10 @@ class Runner:
                     api_key_to_pass = self.cli_grok_key
                 elif adapter_name.lower() == "deepseek" and self.cli_deepseek_key:
                     api_key_to_pass = self.cli_deepseek_key
+                elif adapter_name.lower() == "llama" and self.cli_meta_llama_key:
+                    api_key_to_pass = self.cli_meta_llama_key
+                elif adapter_name.lower() == "mistral" and self.cli_mistral_key:
+                    api_key_to_pass = self.cli_mistral_key
 
                 if api_key_to_pass:
                     return adapter_class(api_key=api_key_to_pass)

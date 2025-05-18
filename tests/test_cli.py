@@ -1,4 +1,4 @@
-import re  # For stripping ANSI codes
+import re
 from pathlib import Path
 from unittest.mock import AsyncMock
 
@@ -35,6 +35,8 @@ async def test_cli_run_logic_success(mocker, tmp_path):
         anthropic_api_key=None,
         grok_api_key=None,
         deepseek_api_key=None,
+        meta_llama_api_key=None,
+        mistral_api_key=None,
     )
     mock_class.assert_called_once_with(
         config_dir=Path("."),
@@ -46,6 +48,8 @@ async def test_cli_run_logic_success(mocker, tmp_path):
         anthropic_api_key=None,
         grok_api_key=None,
         deepseek_api_key=None,
+        meta_llama_api_key=None,
+        mistral_api_key=None,
     )
     mock_instance.run_suite.assert_called_once_with([str(test_file)])
     mock_instance.close_cache_connection.assert_called_once()
@@ -71,6 +75,8 @@ async def test_cli_run_logic_failure_from_suite(mocker, tmp_path):
             anthropic_api_key=None,
             grok_api_key=None,
             deepseek_api_key=None,
+            meta_llama_api_key=None,
+            mistral_api_key=None,
         )
     assert exc_info.value.exit_code == 1
     mock_class.assert_called_once_with(
@@ -83,6 +89,8 @@ async def test_cli_run_logic_failure_from_suite(mocker, tmp_path):
         anthropic_api_key=None,
         grok_api_key=None,
         deepseek_api_key=None,
+        meta_llama_api_key=None,
+        mistral_api_key=None,
     )
     mock_instance.run_suite.assert_called_once_with([str(test_file)])
     mock_instance.close_cache_connection.assert_called_once()
@@ -107,6 +115,8 @@ async def test_cli_run_logic_runner_init_exception(mocker, tmp_path, capsys):
             anthropic_api_key=None,
             grok_api_key=None,
             deepseek_api_key=None,
+            meta_llama_api_key=None,
+            mistral_api_key=None,
         )
     assert exc_info.value.exit_code == 1
     mock_class_raising.assert_called_once()
@@ -134,6 +144,8 @@ async def test_cli_run_logic_suite_exception(mocker, tmp_path, capsys):
             anthropic_api_key=None,
             grok_api_key=None,
             deepseek_api_key=None,
+            meta_llama_api_key=None,
+            mistral_api_key=None,
         )
     assert exc_info.value.exit_code == 1
     mock_instance.run_suite.assert_called_once_with([str(test_file)])
@@ -164,6 +176,8 @@ async def test_cli_run_logic_multiple_files(mocker, tmp_path):
         anthropic_api_key=None,
         grok_api_key=None,
         deepseek_api_key=None,
+        meta_llama_api_key=None,
+        mistral_api_key=None,
     )
     mock_class.assert_called_once_with(
         config_dir=Path("."),
@@ -175,6 +189,8 @@ async def test_cli_run_logic_multiple_files(mocker, tmp_path):
         anthropic_api_key=None,
         grok_api_key=None,
         deepseek_api_key=None,
+        meta_llama_api_key=None,
+        mistral_api_key=None,
     )
     mock_instance.run_suite.assert_called_once_with([str(file1), str(file2)])
     mock_instance.close_cache_connection.assert_called_once()
@@ -195,6 +211,8 @@ async def test_cli_run_logic_file_not_found(mocker, capsys):
             anthropic_api_key=None,
             grok_api_key=None,
             deepseek_api_key=None,
+            meta_llama_api_key=None,
+            mistral_api_key=None,
         )
     assert exc_info.value.exit_code == 1
     mock_class_for_safety.assert_not_called()
@@ -218,6 +236,8 @@ async def test_cli_run_logic_no_files_provided(mocker, capsys):
             anthropic_api_key=None,
             grok_api_key=None,
             deepseek_api_key=None,
+            meta_llama_api_key=None,
+            mistral_api_key=None,
         )
     assert exc_info.value.exit_code == 1
     mock_class_for_safety.assert_not_called()
@@ -289,7 +309,6 @@ def test_init_new_directory_success(mocker, tmp_path):
     base_dir = tmp_path / "new_project_dir"
     config_file = base_dir / "promptdrifter.yaml"
 
-    # Ensure base_dir does not exist before the command is run
     assert not base_dir.exists()
 
     mocker.patch.object(Path, "resolve", return_value=base_dir)
@@ -306,7 +325,7 @@ def test_init_new_directory_success(mocker, tmp_path):
     assert base_dir.name in normalized_stdout
     assert "Successfully created sample configuration:" in normalized_stdout
     assert config_file.name in normalized_stdout
-    assert base_dir.exists()  # Should have been created by CLI
+    assert base_dir.exists()
     assert base_dir.is_dir()
     assert config_file.exists()
     assert config_file.read_text() == "version: '0.1'\\nsample_content: true"
@@ -315,7 +334,7 @@ def test_init_new_directory_success(mocker, tmp_path):
 def test_init_sample_config_not_found(mocker, tmp_path):
     """Test init command when the sample config file is not found by importlib."""
     target_dir = tmp_path / "project_dir"
-    target_dir.mkdir()  # Ensure target_dir exists
+    target_dir.mkdir()
 
     mocker.patch.object(Path, "resolve", return_value=target_dir)
     mock_files = mocker.patch("importlib.resources.files")
@@ -402,26 +421,26 @@ async def test_cli_run_prints_security_warning(mocker, tmp_path, capsys):
     mock_instance.close_cache_connection = AsyncMock()
     mocker.patch("promptdrifter.cli.Runner", return_value=mock_instance)
 
-    # Test with an API key (e.g., OpenAI key)
     await _run_async(
         files=[Path(str(test_file))],
         no_cache=False,
         cache_db=None,
         config_dir=Path("."),
-        openai_api_key="cli_key_here",  # Providing any key should trigger the warning
+        openai_api_key="cli_key_here",
         gemini_api_key=None,
         qwen_api_key=None,
         anthropic_api_key=None,
         grok_api_key=None,
         deepseek_api_key=None,
+        meta_llama_api_key=None,
+        mistral_api_key=None,
     )
     captured = capsys.readouterr()
     assert "SECURITY WARNING" in captured.out
     assert "shell history" in captured.out
     mock_instance.close_cache_connection.assert_called_once()
-    mock_instance.close_cache_connection.reset_mock()  # Reset for next call
+    mock_instance.close_cache_connection.reset_mock()
 
-    # Test with no CLI keys (should not print warning)
     await _run_async(
         files=[Path(str(test_file))],
         no_cache=False,
@@ -433,11 +452,13 @@ async def test_cli_run_prints_security_warning(mocker, tmp_path, capsys):
         anthropic_api_key=None,
         grok_api_key=None,
         deepseek_api_key=None,
+        meta_llama_api_key=None,
+        mistral_api_key=None,
     )
     captured = capsys.readouterr()
     assert "Warning" not in captured.out
     assert "SECURITY WARNING:" not in captured.out
-    mock_instance.close_cache_connection.assert_called_once()  # Ensure it was called, but no warning printed
+    mock_instance.close_cache_connection.assert_called_once()
 
 
 def test_run_command_with_api_keys(mocker):
@@ -446,7 +467,6 @@ def test_run_command_with_api_keys(mocker):
     dummy_cache_db = Path("dummy_cache.db")
     dummy_config_dir = Path("dummy_config")
 
-    # First call: with specific API keys
     result = cli_runner.invoke(
         app,
         [
@@ -484,10 +504,11 @@ def test_run_command_with_api_keys(mocker):
         "claude_key",  # anthropic_api_key (positional)
         "grok_key",  # grok_api_key (positional)
         "deepseek_key",  # deepseek_api_key (positional)
+        None,  # meta_llama_api_key (positional)
+        None,  # mistral_api_key (positional)
     )
     mock_run_async.reset_mock()
 
-    # Second call: with no API keys
     result = cli_runner.invoke(
         app,
         [
@@ -513,10 +534,11 @@ def test_run_command_with_api_keys(mocker):
         None,  # No Anthropic key
         None,  # No Grok key
         None,  # No DeepSeek key
+        None,  # No Meta Llama key
+        None,  # No Mistral key
     )
     mock_run_async.reset_mock()
 
-    # Third call: with just one API key
     result = cli_runner.invoke(
         app,
         [
@@ -544,10 +566,10 @@ def test_run_command_with_api_keys(mocker):
         None,  # No Anthropic key
         None,  # No Grok key
         None,  # No DeepSeek key
+        None,  # No Meta Llama key
+        None,  # No Mistral key
     )
 
 
 def test_version_command():
-    # This test is not provided in the original file or the new code block
-    # It's assumed to exist as it's called in the test_run_command_with_api_keys function
     pass

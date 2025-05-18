@@ -1,5 +1,3 @@
-import asyncio
-import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -253,12 +251,12 @@ async def test_execute_httpx_request_error(
 async def test_execute_timeout_error(
     deepseek_adapter_env_key, patch_httpx_async_client
 ):
-    patch_httpx_async_client.post.side_effect = asyncio.TimeoutError()
+    patch_httpx_async_client.post.side_effect = httpx.ReadTimeout("Request timed out")
 
     result = await deepseek_adapter_env_key.execute("A prompt")
 
     assert result["error"] is not None
-    assert "Request timed out." in result["error"]
+    assert "Request timed out" in result["error"]
     assert result["text_response"] is None
     assert result["finish_reason"] == "error"
 

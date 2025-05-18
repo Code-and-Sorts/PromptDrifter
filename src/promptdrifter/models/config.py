@@ -8,7 +8,9 @@ class AdapterConfig(BaseModel):
         extra="allow", validate_assignment=True, populate_by_name=True
     )
 
-    adapter_type: Literal["openai", "ollama", "gemini", "qwen"] = Field(
+    adapter_type: Literal[
+        "openai", "ollama", "gemini", "qwen", "claude", "grok", "deepseek", "llama", "mistral"
+    ] = Field(
         ..., alias="type"
     )
     model: str

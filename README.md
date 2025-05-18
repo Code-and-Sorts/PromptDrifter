@@ -93,7 +93,7 @@ PromptDrifter is designed to be extensible to various Large Language Models thro
 | **Qwen**                | ✅ Available | `qwen3-30b-a3b`, `qwq-32b`                                        | N/A  |
 | **Grok (xAI)**          | ✅ Available | `grok-3`, `grok-2`, etc.                                         | N/A |
 | **DeepSeek**            | ✅ Available | `deepseek-r1`, `deepseek-v3-0324`, etc.                          | N/A |
-| **Llama (Meta)**        | ⏳ Coming Soon | `llama-4-maverick`, `llama-4-scout`, etc.                        | N/A |
+| **Llama (Meta)**        | ✅ Available | `llama-4-maverick`, `llama-4-scout`, etc.                        | N/A |
 | **Mistral**             | ⏳ Coming Soon | `mistral-small-24b-instruct-2501`, `mistral-small-3.1-24b-instruct-2503` | N/a |
 
 

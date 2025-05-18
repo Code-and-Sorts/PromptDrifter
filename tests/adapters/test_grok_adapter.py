@@ -1,5 +1,3 @@
-import asyncio
-import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -7,7 +5,6 @@ import pytest
 
 from promptdrifter.adapters.grok import GrokAdapter
 
-# Environment variable for Grok API Key
 GROK_API_KEY_ENV_VAR = "GROK_API_KEY"
 
 
@@ -26,16 +23,12 @@ def mock_response():
 def patch_httpx_async_client(mock_response):
     """Patch httpx.AsyncClient to return a mock response directly from post."""
     with patch("httpx.AsyncClient") as mock_client_class:
-        # Create a client instance mock
         mock_client = MagicMock()
 
-        # Setup the post method to return our prepared response
         mock_client.post = AsyncMock(return_value=mock_response)
 
-        # Setup the close method
         mock_client.aclose = AsyncMock()
 
-        # Return the client when AsyncClient is instantiated
         mock_client_class.return_value = mock_client
 
         yield mock_client
@@ -56,9 +49,6 @@ def mock_response_content():
         "model": "grok-1",
         "usage": {"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30},
     }
-
-
-# --- Initialization Tests ---
 
 
 def test_grok_adapter_init_with_direct_key(monkeypatch):
@@ -82,7 +72,6 @@ def test_grok_adapter_init_no_key_raises_error(monkeypatch):
     assert GROK_API_KEY_ENV_VAR in str(excinfo.value)
 
 
-# --- Execution Tests ---
 
 
 @pytest.fixture
@@ -99,16 +88,13 @@ async def test_execute_successful(
     mock_response,
     mock_response_content,
 ):
-    # Set up the mock response
     mock_response.json.return_value = mock_response_content
 
-    # Execute the adapter
     prompt = "Hi Grok"
     result = await grok_adapter_env_key.execute(
         prompt, model="grok-1", temperature=0.7, max_tokens=100
     )
 
-    # Verify post was called with correct args
     patch_httpx_async_client.post.assert_called_once_with(
         GrokAdapter.API_ENDPOINT,
         headers=grok_adapter_env_key.headers,
@@ -121,7 +107,6 @@ async def test_execute_successful(
         timeout=60.0,
     )
 
-    # Verify the returned result
     assert result["text_response"] == "Hello from Grok!"
     assert result["raw_response"] == mock_response_content
     assert result["model_name"] == "grok-1"
@@ -181,7 +166,7 @@ async def test_execute_no_text_in_response_content(
     mock_response.json.return_value = {
         "choices": [
             {
-                "message": {"role": "assistant"},  # No content field
+                "message": {"role": "assistant"},
                 "finish_reason": "stop",
             }
         ]
@@ -215,9 +200,6 @@ async def test_execute_malformed_success_response(
     assert result["error"] == "Unexpected response structure for 200 OK."
 
 
-# --- Error Handling Tests ---
-
-
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "status_code, error_msg, expected_error_detail",
@@ -240,14 +222,12 @@ async def test_execute_http_status_error_json_body(
     mock_response.status_code = status_code
     mock_response.json.return_value = error_json
 
-    # Create an HTTPStatusError
     http_error = httpx.HTTPStatusError(
         message=f"HTTP Error {status_code}",
         request=MagicMock(),
         response=mock_response
     )
 
-    # Have the raise_for_status method raise this error
     mock_response.raise_for_status.side_effect = http_error
     patch_httpx_async_client.post.return_value = mock_response
 
@@ -279,12 +259,12 @@ async def test_execute_httpx_request_error(
 async def test_execute_timeout_error(
     grok_adapter_env_key, patch_httpx_async_client
 ):
-    patch_httpx_async_client.post.side_effect = asyncio.TimeoutError()
+    patch_httpx_async_client.post.side_effect = httpx.ReadTimeout("Request timed out")
 
     result = await grok_adapter_env_key.execute("A prompt")
 
     assert result["error"] is not None
-    assert "Request timed out." in result["error"]
+    assert "Request timed out" in result["error"]
     assert result["text_response"] is None
     assert result["finish_reason"] == "error"
 

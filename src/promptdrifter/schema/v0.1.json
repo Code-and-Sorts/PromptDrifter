@@ -81,7 +81,16 @@
                 "type": {
                     "type": "string",
                     "description": "Backend adapter name (e.g. openai, azure, ollama, qwen).",
-                    "enum": ["openai", "ollama", "gemini", "qwen", "claude", "grok", "deepseek"]
+                    "enum": [
+                        "openai",
+                        "ollama",
+                        "gemini",
+                        "qwen",
+                        "claude",
+                        "grok",
+                        "deepseek",
+                        "llama"
+                    ]
                 },
                 "model": {
                     "type": "string",

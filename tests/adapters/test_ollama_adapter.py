@@ -1,5 +1,4 @@
 import json
-import os
 from unittest.mock import (
     AsyncMock,
     MagicMock,
@@ -136,6 +135,38 @@ async def test_execute_non_streaming_uses_default_model_and_url(patch_httpx_clie
     mock_client_instance.aclose.assert_called_once()
 
 
+async def test_execute_with_system_prompt(ollama_adapter, patch_httpx_client):
+    """Test execution with a system prompt parameter."""
+    mock_client_instance = patch_httpx_client.return_value
+    mock_response_data = {
+        "model": "llama3",
+        "response": "Response with system instructions",
+        "done": True,
+    }
+    mock_client_instance.post.return_value = httpx.Response(
+        200, json=mock_response_data, request=httpx.Request("POST", "/api/generate")
+    )
+
+    system_prompt = "You are a helpful AI assistant that provides concise answers."
+    prompt = "Tell me about the solar system"
+
+    result = await ollama_adapter.execute(
+        prompt,
+        system=system_prompt,
+        model="llama3",
+        stream=False
+    )
+
+    mock_client_instance.post.assert_called_once()
+    payload = mock_client_instance.post.call_args[1]["json"]
+    assert payload["options"]["system"] == system_prompt
+    assert payload["prompt"] == prompt
+
+    assert result["text_response"] == "Response with system instructions"
+    await ollama_adapter.close()
+    mock_client_instance.aclose.assert_called_once()
+
+
 @pytest.fixture
 def mock_streaming_byte_chunks():
     chunks_data = [
@@ -244,6 +275,37 @@ async def test_execute_request_error_streaming(ollama_adapter, patch_httpx_clien
     result = await ollama_adapter.execute("A prompt", stream=True)
     assert "error" in result
     assert "Request error connecting to Ollama" in result["error"]
+    await ollama_adapter.close()
+    mock_client_instance.aclose.assert_called_once()
+
+
+async def test_execute_timeout_error(ollama_adapter, patch_httpx_client):
+    """Test handling of timeout errors during requests."""
+    mock_client_instance = patch_httpx_client.return_value
+    mock_client_instance.post.side_effect = httpx.ReadTimeout("Request timed out after 60s")
+
+    result = await ollama_adapter.execute("A prompt", stream=False)
+
+    assert "error" in result
+    assert "Request error connecting to Ollama" in result["error"]
+    assert "timed out" in result["error"].lower()
+    await ollama_adapter.close()
+    mock_client_instance.aclose.assert_called_once()
+
+
+async def test_execute_empty_response_content(ollama_adapter, patch_httpx_client):
+    """Test handling of empty response content."""
+    mock_client_instance = patch_httpx_client.return_value
+
+    mock_client_instance.post.return_value = httpx.Response(
+        200,
+        json={"model": "test-model", "response": "", "done": True},
+        request=httpx.Request("POST", "/api/generate")
+    )
+
+    result = await ollama_adapter.execute("A prompt", stream=False)
+
+    assert result["text_response"] == ""
     await ollama_adapter.close()
     mock_client_instance.aclose.assert_called_once()
 

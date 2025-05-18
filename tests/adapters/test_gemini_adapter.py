@@ -20,7 +20,6 @@ from promptdrifter.config.adapter_settings import (
 )
 
 
-# Fixtures
 @pytest.fixture
 def mock_response():
     """Creates a mock httpx.Response."""
@@ -59,9 +58,6 @@ def adapter(patch_httpx_client):
             base_url=adapter_instance.config.base_url
         )
         return adapter_instance
-
-
-# --- Test Cases ---
 
 
 @pytest.mark.asyncio
@@ -165,6 +161,41 @@ async def test_gemini_adapter_execute_success(
 
 
 @pytest.mark.asyncio
+async def test_gemini_adapter_with_system_prompt(
+    adapter, patch_httpx_client, mock_response
+):
+    """Test support for system prompts via Gemini's content format."""
+    mock_client_instance = patch_httpx_client.return_value
+
+    system_prompt = "You are a helpful assistant that specializes in quantum physics."
+    user_prompt = "Explain quantum entanglement"
+    expected_text = "Quantum entanglement is a phenomenon where particles become correlated."
+
+    mock_response.json.return_value = {
+        "candidates": [
+            {
+                "content": {"parts": [{"text": expected_text}], "role": "model"},
+                "finishReason": "STOP",
+            }
+        ]
+    }
+    mock_client_instance.post.return_value = mock_response
+
+    await adapter.execute(
+        prompt=user_prompt,
+        systemPrompt=system_prompt
+    )
+
+    mock_client_instance.post.assert_awaited_once()
+    payload = mock_client_instance.post.call_args[1]["json"]
+
+    assert payload["contents"][0]["parts"][0]["text"] == user_prompt
+
+    await adapter.close()
+    mock_client_instance.aclose.assert_called_once()
+
+
+@pytest.mark.asyncio
 async def test_gemini_adapter_execute_with_params(
     adapter, patch_httpx_client, mock_response
 ):
@@ -202,15 +233,58 @@ async def test_gemini_adapter_execute_with_params(
 
     assert endpoint_url == f"/models/{model}:generateContent"
     assert query_params["key"] == adapter.config.api_key
+    assert payload["contents"][0]["parts"][0]["text"] == prompt
     assert payload["generationConfig"]["temperature"] == temp
     assert payload["generationConfig"]["maxOutputTokens"] == max_t
     assert payload["generationConfig"]["topP"] == top_p
-    assert payload["safetySettings"][0]["category"] == safety_setting["category"]
-    assert payload["safetySettings"][0]["threshold"] == safety_setting["threshold"]
+    assert payload["safetySettings"] == [safety_setting]
 
     assert "error" not in result
     assert result["text_response"] == "Quantum."
     assert result["model_used"] == model
+    await adapter.close()
+    mock_client_instance.aclose.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_gemini_adapter_execute_timeout_error(adapter, patch_httpx_client):
+    """Test handling of timeout errors during API requests."""
+    mock_client_instance = patch_httpx_client.return_value
+    mock_client_instance.post.side_effect = httpx.ReadTimeout("Request timed out after 60s")
+
+    result = await adapter.execute("A prompt")
+
+    assert "error" in result
+    assert "Request error connecting to Gemini API" in result["error"]
+    assert "timed out" in result["error"].lower()
+    assert result["text_response"] is None
+    assert result["raw_response"] is None
+    await adapter.close()
+    mock_client_instance.aclose.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_gemini_adapter_execute_empty_response_content(
+    adapter, patch_httpx_client, mock_response
+):
+    """Test handling of empty response content from the API."""
+    mock_client_instance = patch_httpx_client.return_value
+
+    mock_response.json.return_value = {
+        "candidates": [
+            {
+                "content": {"parts": [{}]},
+                "finishReason": "STOP"
+            }
+        ]
+    }
+    mock_client_instance.post.return_value = mock_response
+
+    result = await adapter.execute("A prompt")
+
+    assert "error" in result
+    assert "Text not found" in result["error"]
+    assert result["text_response"] is None
     await adapter.close()
     mock_client_instance.aclose.assert_called_once()
 

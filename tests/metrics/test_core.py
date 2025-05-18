@@ -1,12 +1,13 @@
+from typing import Any, Optional
+
 import pytest
-from typing import Optional, Any
 
 from promptdrifter.metrics.base import Metric
 from promptdrifter.metrics.core import (
-    register_metric,
-    get_metric,
+    _METRIC_REGISTRY,
     get_all_metrics,
-    _METRIC_REGISTRY
+    get_metric,
+    register_metric,
 )
 
 

@@ -220,7 +220,6 @@ async def test_qwen_adapter_execute_successful(mock_httpx_async_client_class):
     adapter = QwenAdapter(api_key=TEST_API_KEY)
     mock_client_instance = mock_httpx_async_client_class.return_value
 
-    # Use a local copy of the success payload to avoid modification issues if model is dynamic
     current_success_payload = SUCCESS_RESPONSE_PAYLOAD.copy()
     current_success_payload["model"] = adapter.config.default_model
 
@@ -230,17 +229,16 @@ async def test_qwen_adapter_execute_successful(mock_httpx_async_client_class):
     mock_response.raise_for_status = MagicMock()
     mock_client_instance.post.return_value = mock_response
 
-    result = await adapter.execute(prompt=TEST_PROMPT)  # No system_prompt, so none sent
+    result = await adapter.execute(prompt=TEST_PROMPT)
 
     expected_payload = {
         "model": adapter.config.default_model,
         "messages": [
             {"role": "user", "content": TEST_PROMPT},
         ],
-        # temperature and max_tokens are not sent if None
     }
     mock_client_instance.post.assert_called_once_with(
-        "/chat/completions",  # Updated endpoint
+        "/chat/completions",
         json=expected_payload,
         timeout=180.0,
     )
@@ -267,7 +265,6 @@ async def test_qwen_adapter_execute_with_model_and_temp_and_kwargs(
     adapter = QwenAdapter(api_key=TEST_API_KEY)
     mock_client_instance = mock_httpx_async_client_class.return_value
 
-    # Use a local copy of the success payload
     current_success_payload = SUCCESS_RESPONSE_PAYLOAD.copy()
     current_success_payload["model"] = TEST_MODEL
 
@@ -286,7 +283,7 @@ async def test_qwen_adapter_execute_with_model_and_temp_and_kwargs(
         temperature=0.5,
         max_tokens=test_max_tokens,
         system_prompt=custom_system_prompt,
-        top_p=0.9,  # Example of another kwarg
+        top_p=0.9,
         custom_param="value",
     )
 
@@ -302,12 +299,11 @@ async def test_qwen_adapter_execute_with_model_and_temp_and_kwargs(
         "custom_param": "value",
     }
     mock_client_instance.post.assert_called_once_with(
-        "/chat/completions",  # Updated endpoint
+        "/chat/completions",
         json=expected_payload,
         timeout=180.0,
     )
     assert result["model_used"] == TEST_MODEL
-    # Add assertions for other extracted fields if necessary, like in the successful test
     assert (
         result["text_response"]
         == current_success_payload["choices"][0]["message"]["content"]
@@ -336,17 +332,16 @@ async def test_qwen_adapter_execute_no_system_prompt(mock_httpx_async_client_cla
 
     await adapter.execute(prompt=TEST_PROMPT, system_prompt=None)
 
-    # Check the actual payload sent
     mock_client_instance.post.assert_called_once()
     args, kwargs_call = mock_client_instance.post.call_args
-    assert args[0] == "/chat/completions"  # Check endpoint
+    assert args[0] == "/chat/completions"
     sent_payload = kwargs_call["json"]
 
     assert len(sent_payload["messages"]) == 1
     assert sent_payload["messages"][0]["role"] == "user"
     assert sent_payload["messages"][0]["content"] == TEST_PROMPT
-    assert "temperature" not in sent_payload  # Assuming default behavior
-    assert "max_tokens" not in sent_payload  # Assuming default behavior
+    assert "temperature" not in sent_payload
+    assert "max_tokens" not in sent_payload
 
     await adapter.close()
     mock_client_instance.aclose.assert_called_once()
@@ -354,14 +349,13 @@ async def test_qwen_adapter_execute_no_system_prompt(mock_httpx_async_client_cla
 
 @pytest.mark.asyncio
 async def test_qwen_adapter_execute_minimal_call(
-    mock_httpx_async_client_class,  # Renamed test for clarity
+    mock_httpx_async_client_class,
 ):
     adapter = QwenAdapter(api_key=TEST_API_KEY)
     mock_client_instance = mock_httpx_async_client_class.return_value
 
     current_success_payload = SUCCESS_RESPONSE_PAYLOAD.copy()
     current_success_payload["model"] = adapter.config.default_model
-    # Minimal call, so temperature and max_tokens will not be in payload
 
     mock_response = AsyncMock(spec=httpx.Response)
     mock_response.status_code = 200
@@ -373,7 +367,7 @@ async def test_qwen_adapter_execute_minimal_call(
 
     mock_client_instance.post.assert_called_once()
     args, kwargs_call = mock_client_instance.post.call_args
-    assert args[0] == "/chat/completions"  # Check endpoint
+    assert args[0] == "/chat/completions"
     sent_payload = kwargs_call["json"]
 
     expected_keys = {"model", "messages"}
@@ -395,15 +389,14 @@ async def test_qwen_adapter_execute_api_error_in_json_response(
     mock_client_instance = mock_httpx_async_client_class.return_value
 
     mock_response = AsyncMock(spec=httpx.Response)
-    mock_response.status_code = 200  # API error is in the JSON body of a 200 response
+    mock_response.status_code = 200
     mock_response.json = MagicMock(return_value=API_ERROR_RESPONSE_PAYLOAD)
-    mock_response.raise_for_status = MagicMock()  # Does not raise for 200
+    mock_response.raise_for_status = MagicMock()
     mock_client_instance.post.return_value = mock_response
 
     result = await adapter.execute(prompt=TEST_PROMPT)
 
     assert "error" in result
-    # Check against the new API_ERROR_RESPONSE_PAYLOAD structure
     error_details = API_ERROR_RESPONSE_PAYLOAD["error"]
     assert error_details["type"] in result["error"]
     assert error_details["code"] in result["error"]
@@ -433,15 +426,12 @@ async def test_qwen_adapter_execute_http_status_error_json_body(
         request=AsyncMock(spec=httpx.Request),
         response=mock_error_response,
     )
-    # This mock_error_response is what's passed to the HTTPStatusError
-    # and its .raise_for_status() is what gets called by the SUT indirectly.
-    # So, this mock_error_response's raise_for_status should throw the http_error.
     mock_client_instance.post.return_value = (
-        mock_error_response  # The client's post returns this response
+        mock_error_response
     )
     mock_error_response.raise_for_status = MagicMock(
         side_effect=http_error
-    )  # This response, when checked, raises the error
+    )
 
     result = await adapter.execute(prompt=TEST_PROMPT)
     assert "error" in result
@@ -480,13 +470,11 @@ async def test_qwen_adapter_execute_http_status_error_text_body(
 
     result = await adapter.execute(prompt=TEST_PROMPT)
 
-    # Verify the post call was made to the correct endpoint
     mock_client_instance.post.assert_called_once()
     args, _ = mock_client_instance.post.call_args
     assert args[0] == "/chat/completions"
 
     assert "error" in result
-    # The adapter formats this as: f"HTTP error {e.response.status_code} from Qwen API: {e.response.text}"
     assert "HTTP error 500 from Qwen API: Server error text" == result["error"]
     assert result["raw_response_error"] == "Server error text"
     await adapter.close()
@@ -504,12 +492,11 @@ async def test_qwen_adapter_execute_non_json_success_response(
     mock_response.status_code = 200
     mock_response.json = MagicMock(side_effect=json.JSONDecodeError("err", "doc", 0))
     mock_response.text = "This is not JSON but was a 200 OK"
-    mock_response.raise_for_status = MagicMock()  # Does not raise for 200 OK
+    mock_response.raise_for_status = MagicMock()
     mock_client_instance.post.return_value = mock_response
 
     result = await adapter.execute(prompt=TEST_PROMPT)
 
-    # Verify the post call was made to the correct endpoint
     mock_client_instance.post.assert_called_once()
     args, _ = mock_client_instance.post.call_args
     assert args[0] == "/chat/completions"
@@ -588,7 +575,6 @@ async def test_qwen_output_parsing_variations(mock_httpx_async_client_class):
     adapter = QwenAdapter(api_key=TEST_API_KEY)
     mock_client_instance = mock_httpx_async_client_class.return_value
 
-    # Case 1: Empty choices list
     response_empty_choices = {
         "id": "chatcmpl-1",
         "object": "chat.completion",
@@ -607,13 +593,12 @@ async def test_qwen_output_parsing_variations(mock_httpx_async_client_class):
     assert result1["finish_reason"] is None
     assert result1["raw_response"] == response_empty_choices
 
-    # Case 2: Choice item exists, but 'message' key is missing
     response_choice_no_message = {
         "id": "chatcmpl-2",
         "object": "chat.completion",
         "created": 124,
         "model": adapter.config.default_model,
-        "choices": [{"index": 0, "finish_reason": "stop"}],  # No 'message'
+        "choices": [{"index": 0, "finish_reason": "stop"}],
         "usage": {"prompt_tokens": 1, "completion_tokens": 0, "total_tokens": 1},
     }
     mock_response2 = AsyncMock(spec=httpx.Response)
@@ -626,7 +611,6 @@ async def test_qwen_output_parsing_variations(mock_httpx_async_client_class):
     assert result2["finish_reason"] == "stop"
     assert result2["raw_response"] == response_choice_no_message
 
-    # Case 3: Message exists, but 'content' key is missing
     response_message_no_content = {
         "id": "chatcmpl-3",
         "object": "chat.completion",
@@ -634,7 +618,7 @@ async def test_qwen_output_parsing_variations(mock_httpx_async_client_class):
         "model": adapter.config.default_model,
         "choices": [
             {"index": 0, "message": {"role": "assistant"}, "finish_reason": "stop"}
-        ],  # No 'content'
+        ],
         "usage": {"prompt_tokens": 1, "completion_tokens": 0, "total_tokens": 1},
     }
     mock_response3 = AsyncMock(spec=httpx.Response)
@@ -647,7 +631,6 @@ async def test_qwen_output_parsing_variations(mock_httpx_async_client_class):
     assert result3["finish_reason"] == "stop"
     assert result3["raw_response"] == response_message_no_content
 
-    # Case 4: 'usage' field is missing
     response_no_usage = {
         "id": "chatcmpl-4",
         "object": "chat.completion",
@@ -660,7 +643,6 @@ async def test_qwen_output_parsing_variations(mock_httpx_async_client_class):
                 "finish_reason": "length",
             }
         ],
-        # No 'usage' field
     }
     mock_response4 = AsyncMock(spec=httpx.Response)
     mock_response4.status_code = 200
@@ -673,13 +655,12 @@ async def test_qwen_output_parsing_variations(mock_httpx_async_client_class):
     assert result4["usage"] is None
     assert result4["raw_response"] == response_no_usage
 
-    # Case 5: choices is not a list
     response_non_list_choices = {
         "id": "chatcmpl-5",
         "object": "chat.completion",
         "created": 127,
         "model": adapter.config.default_model,
-        "choices": {"invalid": "data"},  # Not a list
+        "choices": {"invalid": "data"},
         "usage": {"prompt_tokens": 1, "completion_tokens": 0, "total_tokens": 1},
     }
     mock_response5 = AsyncMock(spec=httpx.Response)
@@ -692,7 +673,6 @@ async def test_qwen_output_parsing_variations(mock_httpx_async_client_class):
     assert result5["finish_reason"] is None
     assert result5["raw_response"] == response_non_list_choices
 
-    # Case 6: first_choice.message is not a dict
     response_non_dict_choice_message = {
         "id": "chatcmpl-6",
         "object": "chat.completion",
@@ -712,6 +692,4 @@ async def test_qwen_output_parsing_variations(mock_httpx_async_client_class):
     assert result6["raw_response"] == response_non_dict_choice_message
 
     await adapter.close()
-    # Check if aclose was called (it should be once per adapter instance,
-    # but here it's after multiple execute calls on the same instance)
     mock_client_instance.aclose.assert_called_once()

@@ -18,3 +18,8 @@ DEFAULT_QWEN_MODEL = "qwen-plus"
 # Ollama
 DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434"
 DEFAULT_OLLAMA_MODEL = "llama3"
+
+# Mistral
+MISTRAL_API_BASE_URL = "https://api.mistral.ai/v1"
+DEFAULT_MISTRAL_MODEL = "mistral-large-latest"
+API_KEY_ENV_VAR_MISTRAL = "MISTRAL_API_KEY"
