@@ -1,4 +1,4 @@
-import os
+import json
 from unittest.mock import (
     AsyncMock,
     MagicMock,
@@ -21,68 +21,114 @@ from promptdrifter.config.adapter_settings import (
 
 pytestmark = pytest.mark.asyncio
 
+TEST_API_KEY = "test-openai-api-key"
+TEST_PROMPT = "Hello, OpenAI from test!"
+TEST_MODEL = "gpt-4-test"
+CUSTOM_BASE_URL = "http://localhost:8000"
+
+SUCCESS_RESPONSE_PAYLOAD = {
+    "id": "chatcmpl-mockid",
+    "object": "chat.completion",
+    "created": 1677652288,
+    "model": config_DEFAULT_OPENAI_MODEL,
+    "choices": [
+        {
+            "index": 0,
+            "message": {
+                "role": "assistant",
+                "content": "This is a test response from OpenAI.",
+            },
+            "finish_reason": "stop",
+        }
+    ],
+    "usage": {"prompt_tokens": 9, "completion_tokens": 12, "total_tokens": 21},
+}
+
+API_ERROR_RESPONSE_PAYLOAD = {
+    "error": {
+        "message": "The API key provided is invalid.",
+        "type": "invalid_request_error",
+        "param": None,
+        "code": "invalid_api_key",
+    }
+}
 
 @pytest.fixture
 def mock_response():
-    """Creates a mock httpx.Response."""
     response = MagicMock(spec=httpx.Response)
     response.status_code = 200
     response.raise_for_status = MagicMock()
     response.json = MagicMock()
     return response
 
-
 @pytest.fixture
 def mock_httpx_client():
-    """Creates a mock httpx.AsyncClient."""
     client = MagicMock(spec=httpx.AsyncClient)
     client.post = AsyncMock()
     client.aclose = AsyncMock()
     return client
 
-
 @pytest.fixture(autouse=True)
 def patch_httpx_client(mock_httpx_client):
-    """Patches httpx.AsyncClient to return our mock client."""
     with patch(
         "promptdrifter.adapters.openai.httpx.AsyncClient",
         return_value=mock_httpx_client,
     ) as patched_class_mock:
         yield patched_class_mock
 
+@pytest.fixture
+def adapter_config_data():
+    return {
+        "api_key": TEST_API_KEY,
+        "base_url": config_OPENAI_API_BASE_URL,
+        "default_model": config_DEFAULT_OPENAI_MODEL,
+        "max_tokens": 1024,
+    }
 
 @pytest.fixture
-def adapter(patch_httpx_client):
-    """Provides an OpenAIAdapter instance with a dummy API key handled by Pydantic."""
-    with patch.dict(os.environ, {config_API_KEY_ENV_VAR_OPENAI: "test-api-key-env"}):
-        adapter_instance = OpenAIAdapter()
-        patch_httpx_client.assert_called_once_with(
-            base_url=adapter_instance.config.base_url,
-            headers={"Authorization": f"Bearer {adapter_instance.config.api_key}"},
-        )
-        return adapter_instance
+def adapter(patch_httpx_client, adapter_config_data, monkeypatch):
+    monkeypatch.setenv(config_API_KEY_ENV_VAR_OPENAI, adapter_config_data["api_key"])
+    config = OpenAIAdapterConfig(
+        api_key=adapter_config_data["api_key"],
+        base_url=adapter_config_data["base_url"],
+        default_model=adapter_config_data["default_model"],
+        max_tokens=adapter_config_data["max_tokens"]
+    )
+    adapter_instance = OpenAIAdapter(config=config)
+    patch_httpx_client.assert_called_once_with(
+        base_url=adapter_config_data["base_url"],
+        headers={"Authorization": f"Bearer {adapter_config_data['api_key']}", "Content-Type": "application/json"}
+    )
+    return adapter_instance
 
-
-async def test_openai_adapter_init_with_direct_key(monkeypatch, patch_httpx_client):
+async def test_openai_adapter_init_with_direct_params(monkeypatch, patch_httpx_client):
     monkeypatch.delenv(config_API_KEY_ENV_VAR_OPENAI, raising=False)
-    adapter_instance = OpenAIAdapter(api_key="direct_key", base_url="custom_url")
+    config = OpenAIAdapterConfig(
+        api_key="direct_key",
+        base_url="custom_url",
+        default_model="custom_model",
+        max_tokens=512
+    )
+    adapter_instance = OpenAIAdapter(config=config)
     assert adapter_instance.config.api_key == "direct_key"
     assert adapter_instance.config.base_url == "custom_url"
-    assert adapter_instance.config.default_model == config_DEFAULT_OPENAI_MODEL
+    assert adapter_instance.config.default_model == "custom_model"
+    assert adapter_instance.config.max_tokens == 512
     patch_httpx_client.assert_called_once_with(
-        base_url="custom_url", headers={"Authorization": "Bearer direct_key"}
+        base_url="custom_url", headers={"Authorization": "Bearer direct_key", "Content-Type": "application/json"}
     )
 
-
-async def test_openai_adapter_init_with_env_key(monkeypatch, patch_httpx_client):
-    monkeypatch.setenv(config_API_KEY_ENV_VAR_OPENAI, "env_key")
-    adapter_instance = OpenAIAdapter()
-    assert adapter_instance.config.api_key == "env_key"
+async def test_openai_adapter_init_with_env_key_and_defaults(monkeypatch, patch_httpx_client):
+    monkeypatch.setenv(config_API_KEY_ENV_VAR_OPENAI, "env_key_defaults")
+    config = OpenAIAdapterConfig()
+    adapter_instance = OpenAIAdapter(config=config)
+    assert adapter_instance.config.api_key == "env_key_defaults"
     assert adapter_instance.config.base_url == config_OPENAI_API_BASE_URL
+    assert adapter_instance.config.default_model == config_DEFAULT_OPENAI_MODEL
+    assert adapter_instance.config.max_tokens == OpenAIAdapterConfig().max_tokens
     patch_httpx_client.assert_called_once_with(
-        base_url=config_OPENAI_API_BASE_URL, headers={"Authorization": "Bearer env_key"}
+        base_url=config_OPENAI_API_BASE_URL, headers={"Authorization": "Bearer env_key_defaults", "Content-Type": "application/json"}
     )
-
 
 async def test_openai_adapter_init_no_key_raises_error(monkeypatch):
     monkeypatch.delenv(config_API_KEY_ENV_VAR_OPENAI, raising=False)
@@ -90,197 +136,163 @@ async def test_openai_adapter_init_no_key_raises_error(monkeypatch):
         OpenAIAdapter()
     assert config_API_KEY_ENV_VAR_OPENAI in str(excinfo.value)
 
-
 async def test_openai_adapter_init_with_config_object(monkeypatch, patch_httpx_client):
     monkeypatch.delenv(config_API_KEY_ENV_VAR_OPENAI, raising=False)
     config = OpenAIAdapterConfig(
-        api_key="config_key", base_url="config_url", default_model="config_model"
+        api_key="config_key",
+        base_url="config_url",
+        default_model="config_model",
+        max_tokens=256
     )
     adapter_instance = OpenAIAdapter(config=config)
     assert adapter_instance.config is config
     assert adapter_instance.config.api_key == "config_key"
     assert adapter_instance.config.base_url == "config_url"
     assert adapter_instance.config.default_model == "config_model"
+    assert adapter_instance.config.max_tokens == 256
     patch_httpx_client.assert_called_once_with(
-        base_url="config_url", headers={"Authorization": "Bearer config_key"}
+        base_url="config_url", headers={"Authorization": "Bearer config_key", "Content-Type": "application/json"}
     )
 
-
-async def test_execute_successful(patch_httpx_client):
-    with patch.dict(
-        os.environ, {config_API_KEY_ENV_VAR_OPENAI: "test_api_key_execute"}
-    ):
-        adapter_instance = OpenAIAdapter(base_url="execute_custom_url")
-
+async def test_execute_successful(adapter, patch_httpx_client):
     mock_client_instance = patch_httpx_client.return_value
-
-    mock_response_data = {
-        "choices": [
-            {"message": {"role": "assistant", "content": "Test response from OpenAI"}, "finish_reason": "stop"}
-        ],
-        "usage": {"total_tokens": 10},
-    }
-    mock_client_instance.post.return_value = httpx.Response(
-        200, json=mock_response_data, request=httpx.Request("POST", "/chat/completions")
-    )
+    mock_http_response = MagicMock(spec=httpx.Response)
+    mock_http_response.status_code = 200
+    mock_http_response.json = MagicMock(return_value=SUCCESS_RESPONSE_PAYLOAD)
+    mock_http_response.raise_for_status = MagicMock()
+    mock_client_instance.post.return_value = mock_http_response
 
     prompt = "Hello, OpenAI!"
-    result = await adapter_instance.execute(
-        prompt, model="gpt-4", temperature=0.5, max_tokens=50, base_url=None
+    config_override = OpenAIAdapterConfig(
+        default_model="gpt-4-override",
+        temperature=0.5,
+        max_tokens=50
     )
+    result = await adapter.execute(prompt, config_override=config_override)
 
     mock_client_instance.post.assert_called_once()
     call_args = mock_client_instance.post.call_args
     assert call_args[0][0] == "/chat/completions"
     payload = call_args[1]["json"]
-    assert payload["model"] == "gpt-4"
+    assert payload["model"] == "gpt-4-override"
     assert payload["messages"] == [{"role": "user", "content": prompt}]
     assert payload["temperature"] == 0.5
     assert payload["max_tokens"] == 50
 
-    assert result["text_response"] == "Test response from OpenAI"
-    assert result["raw_response"] == mock_response_data
-    assert result["model_used"] == "gpt-4"
-    assert "error" not in result
-    await adapter_instance.close()
-    mock_client_instance.aclose.assert_called_once()
+    assert result["text_response"] == SUCCESS_RESPONSE_PAYLOAD["choices"][0]["message"]["content"]
+    assert result["raw_response"] == SUCCESS_RESPONSE_PAYLOAD
+    assert result["model_name"] == "gpt-4-override"
+    assert result["finish_reason"] == "stop"
+    assert result["usage"] == SUCCESS_RESPONSE_PAYLOAD["usage"]
+    assert result["error"] is None
 
-
-async def test_execute_with_system_prompt(adapter, patch_httpx_client):
-    """Test execution with a system prompt parameter."""
-    mock_client_instance = patch_httpx_client.return_value
-    mock_client_instance.post.return_value = httpx.Response(
-        200,
-        json={"choices": [
-            {"message": {"content": "Response with system prompt", "role": "assistant"}, "finish_reason": "stop"}
-        ]},
-        request=httpx.Request("POST", "/chat/completions"),
-    )
-
-    system_prompt = "You are a helpful AI assistant that provides concise answers."
-    await adapter.execute("A prompt with system prompt", messages=[
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": "A prompt with system prompt"}
-    ], base_url=None)
-
-    payload = mock_client_instance.post.call_args[1]["json"]
-    messages = payload["messages"]
-    assert len(messages) >= 1
-    assert any(msg.get("role") == "system" and msg.get("content") == system_prompt for msg in messages)
     await adapter.close()
     mock_client_instance.aclose.assert_called_once()
 
-
-async def test_execute_uses_default_model(adapter, patch_httpx_client):
+async def test_execute_uses_config_default_max_tokens(adapter, patch_httpx_client):
     mock_client_instance = patch_httpx_client.return_value
-    mock_client_instance.post.return_value = httpx.Response(
-        200,
-        json={"choices": [{"message": {"content": "Default model response", "role": "assistant"}, "finish_reason": "stop"}]},
-        request=httpx.Request("POST", "/"),
-    )
-    await adapter.execute("A prompt", base_url=None)
+    mock_http_response = MagicMock(spec=httpx.Response)
+    mock_http_response.status_code = 200
+    mock_http_response.json = MagicMock(return_value=SUCCESS_RESPONSE_PAYLOAD)
+    mock_http_response.raise_for_status = MagicMock()
+    mock_client_instance.post.return_value = mock_http_response
+
+    await adapter.execute("Test prompt")
     payload = mock_client_instance.post.call_args[1]["json"]
+    assert payload["max_tokens"] == adapter.config.max_tokens
     assert payload["model"] == adapter.config.default_model
-    await adapter.close()
-    mock_client_instance.aclose.assert_called_once()
 
+    result = await adapter.execute("Test prompt")
+    assert result["usage"] == SUCCESS_RESPONSE_PAYLOAD["usage"]
+    assert result["finish_reason"] == "stop"
 
 async def test_execute_http_status_error(adapter, patch_httpx_client):
     mock_client_instance = patch_httpx_client.return_value
-    error_response_content = (
-        '{"error": {"message": "Invalid API key", "type": "auth_error"}}'
-    )
-    error_response = httpx.Response(
-        401,
-        content=error_response_content.encode("utf-8"),
-        request=httpx.Request("POST", "/"),
-    )
-    mock_client_instance.post.return_value = error_response
+    error_response_content_str = json.dumps(API_ERROR_RESPONSE_PAYLOAD)
 
-    result = await adapter.execute("A prompt", base_url=None)
+    mock_error_http_response = MagicMock(spec=httpx.Response)
+    mock_error_http_response.status_code = 401
+    mock_error_http_response.text = error_response_content_str
+    mock_error_http_response.json = MagicMock(return_value=API_ERROR_RESPONSE_PAYLOAD)
+    mock_error_http_response.request = httpx.Request("POST", "/chat/completions")
+    mock_error_http_response.raise_for_status = MagicMock(side_effect=httpx.HTTPStatusError(
+        message="Client error '401 Unauthorized' for url 'https://api.openai.com/v1/chat/completions'",
+        request=mock_error_http_response.request,
+        response=mock_error_http_response
+    ))
+    mock_client_instance.post.return_value = mock_error_http_response
 
-    assert "error" in result
-    assert "HTTP error 401" in result["error"]
-    assert "Invalid API key" in result["error"]
-    assert result["raw_response"] is None
+    result = await adapter.execute("A prompt")
+
+    assert result["error"].startswith("API Error (HTTP 401):")
+    assert error_response_content_str in result["error"]
+    assert result["raw_response"] == {"error_detail": error_response_content_str}
     assert result["text_response"] is None
-    await adapter.close()
-    mock_client_instance.aclose.assert_called_once()
-
+    assert result["model_name"] == adapter.config.default_model
+    assert result["finish_reason"] == "error"
+    assert result["usage"] is None
 
 async def test_execute_request_error(adapter, patch_httpx_client):
     mock_client_instance = patch_httpx_client.return_value
     mock_client_instance.post.side_effect = httpx.ConnectError("Connection failed")
 
-    result = await adapter.execute("A prompt", base_url=None)
+    result = await adapter.execute("A prompt")
 
-    assert "error" in result
-    assert "Request error connecting to OpenAI" in result["error"]
+    assert result["error"].startswith("HTTP Client Error: RequestError")
     assert "Connection failed" in result["error"]
-    await adapter.close()
-    mock_client_instance.aclose.assert_called_once()
-
+    assert result["raw_response"] == {"error_detail": "Connection failed"}
+    assert result["text_response"] is None
+    assert result["model_name"] == adapter.config.default_model
+    assert result["finish_reason"] == "error"
 
 async def test_execute_timeout_error(adapter, patch_httpx_client):
-    """Test handling of timeout errors during execution."""
     mock_client_instance = patch_httpx_client.return_value
-    mock_client_instance.post.side_effect = httpx.ReadTimeout("Request timed out")
+    timeout_message = "Read operation timed out"
+    mock_client_instance.post.side_effect = httpx.ReadTimeout(timeout_message)
 
-    result = await adapter.execute("A prompt", base_url=None)
+    result = await adapter.execute("A prompt for timeout")
 
-    assert "error" in result
-    assert "Request error connecting to OpenAI" in result["error"]
-    assert "timed out" in result["error"]
-    await adapter.close()
-    mock_client_instance.aclose.assert_called_once()
-
+    assert result["error"].startswith("HTTP Client Error: RequestError")
+    assert timeout_message in result["error"]
+    assert result["raw_response"] == {"error_detail": timeout_message}
+    assert result["text_response"] is None
+    assert result["finish_reason"] == "error"
 
 async def test_execute_unexpected_error(adapter, patch_httpx_client):
     mock_client_instance = patch_httpx_client.return_value
     mock_client_instance.post.side_effect = Exception("Something totally unexpected")
 
-    result = await adapter.execute("A prompt", base_url=None)
+    result = await adapter.execute("A prompt for unexpected")
 
-    assert "error" in result
+    assert result["error"] is not None
     assert "An unexpected error occurred" in result["error"]
     assert "Something totally unexpected" in result["error"]
-    await adapter.close()
-    mock_client_instance.aclose.assert_called_once()
-
-
-async def test_execute_unexpected_response_structure(adapter, patch_httpx_client):
-    """Test handling of unexpected response structure."""
-    mock_client_instance = patch_httpx_client.return_value
-    mock_client_instance.post.return_value = httpx.Response(
-        200,
-        json={"unexpected_structure": True},
-        request=httpx.Request("POST", "/chat/completions")
-    )
-
-    result = await adapter.execute("A prompt", base_url=None)
-
+    assert result["raw_response"] == {"error_detail": "Something totally unexpected"}
     assert result["text_response"] is None
-    await adapter.close()
-    mock_client_instance.aclose.assert_called_once()
-
-
-async def test_execute_empty_response_content(adapter, patch_httpx_client):
-    """Test handling of empty response content."""
-    mock_client_instance = patch_httpx_client.return_value
-    mock_client_instance.post.return_value = httpx.Response(
-        200,
-        json={"choices": [{"message": {}}]},
-        request=httpx.Request("POST", "/chat/completions")
-    )
-
-    result = await adapter.execute("A prompt", base_url=None)
-
-    assert result["text_response"] is None
-    await adapter.close()
-    mock_client_instance.aclose.assert_called_once()
-
+    assert result["finish_reason"] == "error"
 
 async def test_adapter_close_called(adapter, patch_httpx_client):
     mock_client_instance = patch_httpx_client.return_value
     await adapter.close()
     mock_client_instance.aclose.assert_called_once()
+
+async def test_execute_with_system_prompt_in_kwargs(adapter, patch_httpx_client):
+    mock_client_instance = patch_httpx_client.return_value
+    mock_http_response = MagicMock(spec=httpx.Response)
+    mock_http_response.status_code = 200
+    mock_http_response.json = MagicMock(return_value=SUCCESS_RESPONSE_PAYLOAD)
+    mock_http_response.raise_for_status = MagicMock()
+    mock_client_instance.post.return_value = mock_http_response
+
+    config_override = OpenAIAdapterConfig(
+        default_model=adapter.config.default_model,
+        system_prompt="You are a test bot."
+    )
+    await adapter.execute("Hello bot", config_override=config_override)
+    payload = mock_client_instance.post.call_args[1]["json"]
+    assert payload["messages"][0]["role"] == "system"
+    assert payload["messages"][0]["content"] == "You are a test bot."
+    assert payload["messages"][1]["role"] == "user"
+    assert payload["messages"][1]["content"] == "Hello bot"
+    result = await adapter.execute("Hello bot", config_override=config_override)
+    assert result["text_response"] == SUCCESS_RESPONSE_PAYLOAD["choices"][0]["message"]["content"]

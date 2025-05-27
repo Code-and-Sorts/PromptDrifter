@@ -24,6 +24,7 @@
         "Qianwen",
         "qwen",
         "rapidfuzz",
+        "respx",
         "testpypi",
         "Timm",
         "tomlkit",

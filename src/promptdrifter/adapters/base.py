@@ -1,6 +1,24 @@
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional
 
+from pydantic import BaseModel, Field
+
+
+class BaseAdapterConfig(BaseModel, ABC):
+    """Base configuration for all LLM adapters."""
+    base_url: str = Field(...)
+    default_model: str = Field(...)
+    api_key: Optional[str] = None
+    max_tokens: Optional[int] = None
+
+    @abstractmethod
+    def get_headers(self) -> dict:
+        pass
+
+    @abstractmethod
+    def get_payload(self, prompt: str, config_override: Optional["BaseAdapterConfig"] = None) -> dict:
+        pass
+
 
 class Adapter(ABC):
     """Abstract Base Class for all LLM adapters."""
@@ -29,4 +47,8 @@ class Adapter(ABC):
             A dictionary containing the model's response and any other relevant information.
             Typically, this would include a key like 'text_response' or 'choices'.
         """
+        pass
+
+    async def close(self):
+        """Close any resources used by the adapter."""
         pass

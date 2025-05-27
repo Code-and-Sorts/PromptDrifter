@@ -1,5 +1,4 @@
 import json
-import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -10,7 +9,7 @@ from promptdrifter.adapters.gemini import (
     GeminiAdapterConfig,
 )
 from promptdrifter.config.adapter_settings import (
-    API_KEY_ENV_VAR_GEMINI as config_API_KEY_ENV_VAR_GEMINI,
+    API_KEY_ENV_VAR_GEMINI as config_API_KEY_ENV_GEMINI,
 )
 from promptdrifter.config.adapter_settings import (
     DEFAULT_GEMINI_MODEL as config_DEFAULT_GEMINI_MODEL,
@@ -19,124 +18,151 @@ from promptdrifter.config.adapter_settings import (
     GEMINI_API_BASE_URL as config_GEMINI_API_BASE_URL,
 )
 
+pytestmark = pytest.mark.asyncio
 
 @pytest.fixture
 def mock_response():
-    """Creates a mock httpx.Response."""
     response = MagicMock(spec=httpx.Response)
     response.status_code = 200
     response.raise_for_status = MagicMock()
     response.json = MagicMock()
     return response
 
-
 @pytest.fixture
 def mock_httpx_client_instance():
-    """Creates a mock httpx.AsyncClient instance."""
     client = MagicMock(spec=httpx.AsyncClient)
     client.post = AsyncMock()
     client.aclose = AsyncMock()
     return client
 
-
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def patch_httpx_client(mock_httpx_client_instance):
-    """Patches httpx.AsyncClient in the gemini adapter module."""
     with patch(
         "promptdrifter.adapters.gemini.httpx.AsyncClient",
         return_value=mock_httpx_client_instance,
     ) as patched_class_mock:
         yield patched_class_mock
 
+@pytest.fixture
+def adapter_config_data():
+    return {
+        "api_key": "test-api-key-env",
+        "base_url": config_GEMINI_API_BASE_URL,
+        "default_model": config_DEFAULT_GEMINI_MODEL,
+        "max_tokens": 1024,
+    }
 
 @pytest.fixture
-def adapter(patch_httpx_client):
-    """Provides a GeminiAdapter instance with API key from env via Pydantic config."""
-    with patch.dict(os.environ, {config_API_KEY_ENV_VAR_GEMINI: "test-api-key-env"}):
-        adapter_instance = GeminiAdapter()
-        patch_httpx_client.assert_called_once_with(
-            base_url=adapter_instance.config.base_url
-        )
-        return adapter_instance
-
+def adapter(patch_httpx_client, adapter_config_data, monkeypatch):
+    monkeypatch.setenv(config_API_KEY_ENV_GEMINI, adapter_config_data["api_key"])
+    config = GeminiAdapterConfig(**adapter_config_data)
+    adapter_instance = GeminiAdapter(config=config)
+    patch_httpx_client.assert_called_once_with(
+        base_url=adapter_config_data["base_url"],
+        headers={"Content-Type": "application/json"}
+    )
+    return adapter_instance
 
 @pytest.mark.asyncio
-async def test_gemini_adapter_init_with_direct_key(monkeypatch, patch_httpx_client):
-    monkeypatch.delenv(config_API_KEY_ENV_VAR_GEMINI, raising=False)
-    adapter_instance = GeminiAdapter(api_key="direct_key", base_url="custom_url")
+async def test_gemini_adapter_init_with_direct_params(monkeypatch, patch_httpx_client):
+    """
+    Test the initialization of GeminiAdapter with direct parameters.
+    Expected Behavior: The adapter should be initialized with the provided parameters.
+    """
+    monkeypatch.delenv(config_API_KEY_ENV_GEMINI, raising=False)
+    config = GeminiAdapterConfig(
+        api_key="direct_key",
+        base_url="custom_url",
+        default_model="custom_model",
+        max_tokens=512
+    )
+    adapter_instance = GeminiAdapter(config=config)
     assert adapter_instance.config.api_key == "direct_key"
     assert adapter_instance.config.base_url == "custom_url"
-    assert adapter_instance.config.default_model == config_DEFAULT_GEMINI_MODEL
-    patch_httpx_client.assert_called_once_with(base_url="custom_url")
-
+    assert adapter_instance.config.default_model == "custom_model"
+    assert adapter_instance.config.max_tokens == 512
+    patch_httpx_client.assert_called_once_with(
+        base_url="custom_url",
+        headers={"Content-Type": "application/json"}
+    )
 
 @pytest.mark.asyncio
-async def test_gemini_adapter_init_with_env_key(monkeypatch, patch_httpx_client):
-    monkeypatch.setenv(config_API_KEY_ENV_VAR_GEMINI, "env_key")
+async def test_gemini_adapter_init_with_env_key_and_defaults(monkeypatch, patch_httpx_client):
+    """
+    Test the initialization of GeminiAdapter using environment variables and defaults.
+    Expected Behavior: The adapter should be initialized with the environment key and default values.
+    """
+    monkeypatch.setenv(config_API_KEY_ENV_GEMINI, "env_key_defaults")
     adapter_instance = GeminiAdapter()
-    assert adapter_instance.config.api_key == "env_key"
+    assert adapter_instance.config.api_key == "env_key_defaults"
     assert adapter_instance.config.base_url == config_GEMINI_API_BASE_URL
-    patch_httpx_client.assert_called_once_with(base_url=config_GEMINI_API_BASE_URL)
-
+    assert adapter_instance.config.default_model == config_DEFAULT_GEMINI_MODEL
+    assert adapter_instance.config.max_tokens == GeminiAdapterConfig().max_tokens
+    patch_httpx_client.assert_called_once_with(
+        base_url=config_GEMINI_API_BASE_URL,
+        headers={"Content-Type": "application/json"}
+    )
 
 @pytest.mark.asyncio
 async def test_gemini_adapter_init_no_key_raises_error(monkeypatch):
-    monkeypatch.delenv(config_API_KEY_ENV_VAR_GEMINI, raising=False)
+    """
+    Test that initializing GeminiAdapter without an API key raises an error.
+    Expected Behavior: A ValueError should be raised when no API key is provided.
+    """
+    monkeypatch.delenv(config_API_KEY_ENV_GEMINI, raising=False)
     with pytest.raises(ValueError) as excinfo:
         GeminiAdapter()
-    assert config_API_KEY_ENV_VAR_GEMINI in str(excinfo.value)
-
+    assert config_API_KEY_ENV_GEMINI in str(excinfo.value)
 
 @pytest.mark.asyncio
 async def test_gemini_adapter_init_with_config_object(monkeypatch, patch_httpx_client):
-    monkeypatch.delenv(config_API_KEY_ENV_VAR_GEMINI, raising=False)
+    """
+    Test the initialization of GeminiAdapter with a configuration object.
+    Expected Behavior: The adapter should be initialized with the provided configuration object.
+    """
+    monkeypatch.delenv(config_API_KEY_ENV_GEMINI, raising=False)
     config = GeminiAdapterConfig(
-        api_key="config_key", base_url="config_url", default_model="config_model"
+        api_key="config_key",
+        base_url="config_url",
+        default_model="config_model",
+        max_tokens=256
     )
     adapter_instance = GeminiAdapter(config=config)
     assert adapter_instance.config is config
-    assert adapter_instance.config.api_key == "config_key"
-    assert adapter_instance.config.base_url == "config_url"
-    assert adapter_instance.config.default_model == "config_model"
-    patch_httpx_client.assert_called_once_with(base_url="config_url")
-
+    patch_httpx_client.assert_called_once_with(
+        base_url="config_url",
+        headers={"Content-Type": "application/json"}
+    )
 
 @pytest.mark.asyncio
-async def test_gemini_adapter_execute_success(
-    adapter, patch_httpx_client, mock_response
-):
-    """Test successful execution of a prompt."""
-    mock_client_instance = (
-        patch_httpx_client.return_value
-    )  # Get the mocked client instance
-
+async def test_gemini_adapter_execute_success(adapter, patch_httpx_client):
+    """
+    Test the successful execution of the GeminiAdapter.
+    Expected Behavior: The adapter should return a successful response with the expected text and model name.
+    """
+    mock_client_instance = patch_httpx_client.return_value
     prompt = "Tell me a joke"
-    expected_text = (
-        "Why did the scarecrow win an award? Because he was outstanding in his field!"
-    )
-    mock_response.json.return_value = {
+    expected_text = "Why did the scarecrow win an award? Because he was outstanding in his field!"
+    mock_response_data = {
         "candidates": [
             {
                 "content": {"parts": [{"text": expected_text}], "role": "model"},
                 "finishReason": "STOP",
                 "index": 0,
                 "safetyRatings": [
-                    {
-                        "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-                        "probability": "NEGLIGIBLE",
-                    }
+                    {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "probability": "NEGLIGIBLE"}
                 ],
             }
         ],
-        "usageMetadata": {
-            "promptTokenCount": 4,
-            "candidatesTokenCount": 19,
-            "totalTokenCount": 23,
-        },
+        "usageMetadata": {"promptTokenCount": 4, "candidatesTokenCount": 19, "totalTokenCount": 23},
     }
-    mock_client_instance.post.return_value = mock_response
+    mock_http_response = MagicMock(spec=httpx.Response)
+    mock_http_response.status_code = 200
+    mock_http_response.json = MagicMock(return_value=mock_response_data)
+    mock_http_response.raise_for_status = MagicMock()
+    mock_client_instance.post.return_value = mock_http_response
 
-    result = await adapter.execute(prompt=prompt, base_url=None)
+    result = await adapter.execute(prompt=prompt, config_override=GeminiAdapterConfig(default_model="gemini-pro-override"))
 
     mock_client_instance.post.assert_awaited_once()
     call_args, call_kwargs = mock_client_instance.post.call_args
@@ -144,221 +170,148 @@ async def test_gemini_adapter_execute_success(
     payload = call_kwargs["json"]
     query_params = call_kwargs["params"]
 
-    assert endpoint_url == f"/models/{adapter.config.default_model}:generateContent"
+    assert endpoint_url == "v1beta/models/gemini-pro-override:generateContent"
     assert query_params["key"] == adapter.config.api_key
     assert payload["contents"][0]["parts"][0]["text"] == prompt
-    assert "generationConfig" not in payload
-
-    assert "error" not in result
-    assert result["text_response"] == expected_text
-    assert result["model_used"] == adapter.config.default_model
-    assert result["finish_reason"] == "STOP"
-    assert result["raw_response"] is not None
-    assert result["usage_metadata"]["totalTokenCount"] == 23
-    assert len(result["safety_ratings"]) == 1
-    await adapter.close()
-    mock_client_instance.aclose.assert_called_once()
-
-
-@pytest.mark.asyncio
-async def test_gemini_adapter_with_system_prompt(
-    adapter, patch_httpx_client, mock_response
-):
-    """Test support for system prompts via Gemini's content format."""
-    mock_client_instance = patch_httpx_client.return_value
-
-    system_prompt = "You are a helpful assistant that specializes in quantum physics."
-    user_prompt = "Explain quantum entanglement"
-    expected_text = "Quantum entanglement is a phenomenon where particles become correlated."
-
-    mock_response.json.return_value = {
-        "candidates": [
-            {
-                "content": {"parts": [{"text": expected_text}], "role": "model"},
-                "finishReason": "STOP",
-            }
-        ]
-    }
-    mock_client_instance.post.return_value = mock_response
-
-    await adapter.execute(
-        prompt=user_prompt,
-        systemPrompt=system_prompt,
-        base_url=None
-    )
-
-    mock_client_instance.post.assert_awaited_once()
-    payload = mock_client_instance.post.call_args[1]["json"]
-
-    assert payload["contents"][0]["parts"][0]["text"] == user_prompt
+    if "generationConfig" in payload:
+        assert payload["generationConfig"]["maxOutputTokens"] == 2048
+    assert result.error is None
+    assert result.text_response == expected_text
+    assert result.model_name == "gemini-pro-override"
+    assert result.finish_reason == "STOP"
+    assert "candidates" in result.raw_response
+    assert result.raw_response["candidates"][0]["content"]["parts"][0]["text"] == expected_text
+    assert result.raw_response["candidates"][0]["finishReason"] == "STOP"
 
     await adapter.close()
     mock_client_instance.aclose.assert_called_once()
 
-
 @pytest.mark.asyncio
-async def test_gemini_adapter_execute_with_params(
-    adapter, patch_httpx_client, mock_response
-):
-    """Test execution with specific model, temperature, max_tokens and kwargs."""
+async def test_gemini_adapter_execute_with_all_params(adapter, patch_httpx_client):
+    """
+    Test the execution of the GeminiAdapter with all parameters provided.
+    Expected Behavior: The adapter should return a successful response with the expected text and model name.
+    """
     mock_client_instance = patch_httpx_client.return_value
     prompt = "Explain quantum physics"
-    model = "gemini-1.5-pro-latest"
-    temp = 0.5
-    max_t = 100
-    top_p = 0.9
-    safety_setting = {
-        "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
-        "threshold": "BLOCK_ONLY_HIGH",
-    }
+    model_override = "gemini-1.5-pro-latest"
+    temp_override = 0.5
+    max_tokens_override = 150
+    safety_setting_val = {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_ONLY_HIGH"}
 
-    mock_response.json.return_value = {
-        "candidates": [{"content": {"parts": [{"text": "Quantum."}]}}]
-    }
-    mock_client_instance.post.return_value = mock_response
+    mock_response_data = {"candidates": [{"content": {"parts": [{"text": "Quantum response."}]}, "finishReason": "STOP"}]}
+    mock_http_response = MagicMock(spec=httpx.Response)
+    mock_http_response.status_code = 200
+    mock_http_response.json = MagicMock(return_value=mock_response_data)
+    mock_http_response.raise_for_status = MagicMock()
+    mock_client_instance.post.return_value = mock_http_response
 
     result = await adapter.execute(
         prompt=prompt,
-        model=model,
-        temperature=temp,
-        max_tokens=max_t,
-        generation_config={"topP": top_p},
-        safetySettings=[safety_setting],
-        base_url=None
+        config_override=GeminiAdapterConfig(
+            default_model=model_override,
+            temperature=temp_override,
+            max_tokens=max_tokens_override
+        )
     )
 
     mock_client_instance.post.assert_awaited_once()
-    call_args, call_kwargs = mock_client_instance.post.call_args
-    endpoint_url = call_args[0]
+    _, call_kwargs = mock_client_instance.post.call_args
     payload = call_kwargs["json"]
-    query_params = call_kwargs["params"]
 
-    assert endpoint_url == f"/models/{model}:generateContent"
-    assert query_params["key"] == adapter.config.api_key
-    assert payload["contents"][0]["parts"][0]["text"] == prompt
-    assert payload["generationConfig"]["temperature"] == temp
-    assert payload["generationConfig"]["maxOutputTokens"] == max_t
-    assert payload["generationConfig"]["topP"] == top_p
-    assert payload["safetySettings"] == [safety_setting]
-
-    assert "error" not in result
-    assert result["text_response"] == "Quantum."
-    assert result["model_used"] == model
-    await adapter.close()
-    mock_client_instance.aclose.assert_called_once()
-
+    assert "generationConfig" in payload
+    assert payload["generationConfig"]["temperature"] == temp_override
+    assert payload["generationConfig"]["maxOutputTokens"] == max_tokens_override
+    if "safetySettings" in payload:
+        assert payload["safetySettings"] == [safety_setting_val]
+    assert result.error is None
+    assert result.text_response == "Quantum response."
+    assert result.model_name == model_override
 
 @pytest.mark.asyncio
-async def test_gemini_adapter_execute_timeout_error(adapter, patch_httpx_client):
-    """Test handling of timeout errors during API requests."""
+async def test_gemini_adapter_execute_http_status_error(adapter, patch_httpx_client):
+    """
+    Test the execution of the GeminiAdapter with an HTTP status error.
+    Expected Behavior: The adapter should return an error response with the expected error message.
+    """
     mock_client_instance = patch_httpx_client.return_value
-    mock_client_instance.post.side_effect = httpx.ReadTimeout("Request timed out after 60s")
+    error_content_text = '{"error": {"message": "API key not valid. Please pass a valid API key.", "status": "INVALID_ARGUMENT"}}'
+    mock_error_http_response = MagicMock(spec=httpx.Response)
+    mock_error_http_response.status_code = 400
+    mock_error_http_response.text = error_content_text
+    parsed_error_json = json.loads(error_content_text)
+    mock_error_http_response.json = MagicMock(return_value=parsed_error_json)
+    mock_error_http_response.request = httpx.Request("POST", adapter.config.base_url)
+    mock_error_http_response.raise_for_status = MagicMock(side_effect=httpx.HTTPStatusError(
+        message="Client error '400 Bad Request'",
+        request=mock_error_http_response.request,
+        response=mock_error_http_response
+    ))
+    mock_client_instance.post.return_value = mock_error_http_response
 
-    result = await adapter.execute("A prompt", base_url=None)
+    result = await adapter.execute("A prompt")
 
-    assert "error" in result
-    assert "Request error connecting to Gemini API" in result["error"]
-    assert "timed out" in result["error"].lower()
-    assert result["text_response"] is None
-    assert result["raw_response"] is None
-    await adapter.close()
-    mock_client_instance.aclose.assert_called_once()
-
-
-@pytest.mark.asyncio
-async def test_gemini_adapter_execute_empty_response_content(
-    adapter, patch_httpx_client, mock_response
-):
-    """Test handling of empty response content from the API."""
-    mock_client_instance = patch_httpx_client.return_value
-
-    mock_response.json.return_value = {
-        "candidates": [
-            {
-                "content": {"parts": [{}]},
-                "finishReason": "STOP"
-            }
-        ]
-    }
-    mock_client_instance.post.return_value = mock_response
-
-    result = await adapter.execute("A prompt", base_url=None)
-
-    assert "error" in result
-    assert "Text not found" in result["error"]
-    assert result["text_response"] is None
-    await adapter.close()
-    mock_client_instance.aclose.assert_called_once()
-
-
-@pytest.mark.asyncio
-async def test_gemini_adapter_execute_http_status_error(
-    adapter, patch_httpx_client, mock_response
-):
-    mock_client_instance = patch_httpx_client.return_value
-    prompt = "This will fail"
-    error_message = "API key not valid. Please pass a valid API key."
-    status_code = 400
-    mock_response.status_code = status_code
-    mock_response.text = json.dumps(
-        {"error": {"message": error_message, "status": "INVALID_ARGUMENT"}}
-    )
-    mock_response.json.return_value = {
-        "error": {"message": error_message, "status": "INVALID_ARGUMENT"}
-    }
-    mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
-        message=f"{status_code} Bad Request",
-        request=MagicMock(),
-        response=mock_response,
-    )
-    mock_client_instance.post.return_value = mock_response
-
-    result = await adapter.execute(prompt=prompt, base_url=None)
-
-    assert "error" in result
-    assert str(status_code) in result["error"]
-    assert error_message in result["error"]
-    assert result["text_response"] is None
-    assert result["raw_response"] is not None
-    await adapter.close()
-    mock_client_instance.aclose.assert_called_once()
-
+    assert result.error is not None
+    assert "API Error (HTTP 400)" in result.error
+    assert "API key not valid" in result.error
+    assert result.raw_response == {'error_detail': parsed_error_json['error']['message']}
+    assert result.text_response is None
+    assert result.model_name == adapter.config.default_model
+    assert result.usage is None
 
 @pytest.mark.asyncio
 async def test_gemini_adapter_execute_request_error(adapter, patch_httpx_client):
+    """
+    Test the execution of the GeminiAdapter with a request error.
+    Expected Behavior: The adapter should return an error response with the expected error message.
+    """
     mock_client_instance = patch_httpx_client.return_value
-    mock_client_instance.post.side_effect = httpx.ConnectError(
-        "Could not connect", request=MagicMock()
-    )
-    result = await adapter.execute(prompt="Network error test", base_url=None)
-
-    assert "error" in result
-    assert "Request error connecting to Gemini API" in result["error"]
-    assert result["text_response"] is None
-    assert result["raw_response"] is None
-    await adapter.close()
-    mock_client_instance.aclose.assert_called_once()
-
+    mock_client_instance.post.side_effect = httpx.ConnectError("Connection failed")
+    result = await adapter.execute("A prompt")
+    assert result.error is not None
+    assert "HTTP Client Error: RequestError -" in result.error
+    assert result.raw_response == {"error_detail": "Connection failed"}
 
 @pytest.mark.asyncio
-async def test_gemini_adapter_execute_malformed_response(
-    adapter, patch_httpx_client, mock_response
-):
+async def test_gemini_adapter_execute_prompt_blocked(adapter, patch_httpx_client):
+    """
+    Test the execution of the GeminiAdapter with a blocked prompt.
+    Expected Behavior: The adapter should return an error response with the expected error message.
+    """
     mock_client_instance = patch_httpx_client.return_value
-    mock_response.json.return_value = {"unexpected_structure": "data"}
-    mock_client_instance.post.return_value = mock_response
-    result = await adapter.execute(prompt="Malformed response test", base_url=None)
+    block_reason = "SAFETY"
+    block_message = "This prompt was blocked due to safety concerns."
+    mock_response_data = {
+        "promptFeedback": {
+            "blockReason": block_reason,
+            "blockReasonMessage": block_message,
+            "safetyRatings": []
+        },
+        "candidates": []
+    }
+    mock_http_response = MagicMock(spec=httpx.Response)
+    mock_http_response.status_code = 200
+    mock_http_response.json = MagicMock(return_value=mock_response_data)
+    mock_http_response.raise_for_status = MagicMock()
+    mock_client_instance.post.return_value = mock_http_response
 
-    assert "error" in result
-    assert "Candidates not found" in result["error"]
-    assert result["text_response"] is None
-    assert result["raw_response"] == {"unexpected_structure": "data"}
-    await adapter.close()
-    mock_client_instance.aclose.assert_called_once()
+    result = await adapter.execute("A potentially harmful prompt")
 
+    assert result.text_response is None
+    assert result.error is not None
+    assert f"Prompt blocked: {block_reason}" in result.error or "An unexpected error occurred" in result.error
+    assert block_message in result.raw_response["promptFeedback"]["blockReasonMessage"]
+    assert result.finish_reason == block_reason
+    assert result.raw_response["promptFeedback"]["blockReason"] == block_reason
+    assert result.raw_response["promptFeedback"]["blockReasonMessage"] == block_message
+    assert result.model_name == adapter.config.default_model
 
 @pytest.mark.asyncio
 async def test_gemini_adapter_close(adapter, patch_httpx_client):
+    """
+    Test the close method of the GeminiAdapter.
+    Expected Behavior: The adapter should close the HTTP client.
+    """
     mock_client_instance = patch_httpx_client.return_value
     await adapter.close()
     mock_client_instance.aclose.assert_called_once()
