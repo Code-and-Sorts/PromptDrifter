@@ -175,3 +175,4 @@ cython_debug/
 
 .cursor
 prompt_cache.db
+test-config/
