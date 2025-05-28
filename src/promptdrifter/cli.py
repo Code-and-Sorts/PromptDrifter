@@ -164,16 +164,14 @@ async def _run_async(
 ):
     """Async implementation of the run command."""
     if (
-        not(
-            is_from_env("openai_api_key", "OPENAI_API_KEY")
-            or is_from_env("gemini_api_key", "GEMINI_API_KEY")
-            or is_from_env("qwen_api_key", "QWEN_API_KEY")
-            or is_from_env("claude_api_key", "CLAUDE_API_KEY")
-            or is_from_env("grok_api_key", "GROK_API_KEY")
-            or is_from_env("deepseek_api_key", "DEEPSEEK_API_KEY")
-            or is_from_env("mistral_api_key", "MISTRAL_API_KEY")
-            # or is_from_env("llama_api_key", "LLAMA_API_KEY")
-        )
+        (openai_api_key and not is_from_env("openai_api_key", "OPENAI_API_KEY"))
+        or (gemini_api_key and not is_from_env("gemini_api_key", "GEMINI_API_KEY"))
+        or (qwen_api_key and not is_from_env("qwen_api_key", "QWEN_API_KEY"))
+        or (claude_api_key and not is_from_env("claude_api_key", "CLAUDE_API_KEY"))
+        or (grok_api_key and not is_from_env("grok_api_key", "GROK_API_KEY"))
+        or (deepseek_api_key and not is_from_env("deepseek_api_key", "DEEPSEEK_API_KEY"))
+        or (mistral_api_key and not is_from_env("mistral_api_key", "MISTRAL_API_KEY"))
+        # or (llama_api_key and not is_from_env("llama_api_key", "LLAMA_API_KEY"))
     ):
         _print_api_key_security_warning()
 
