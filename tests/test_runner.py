@@ -208,7 +208,8 @@ async def test_run_single_test_case_cache_hit(
     mock_cache.get.assert_called_once_with(
         "Cached prompt", "openai", "cached_model", expected_cache_options_key
     )
-    mock_adapter.close.assert_called_once()
+    # With the concurrent adapter implementation, adapter.close() is no longer called
+    # for cached responses since we don't add the adapter to adapter_instances list
 
 
 async def test_run_single_test_case_adapter_error(

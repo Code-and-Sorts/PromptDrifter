@@ -1,3 +1,4 @@
+import asyncio
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Type
 
@@ -161,6 +162,9 @@ class Runner:
             test_case_model.expect_substring_case_insensitive
         )
 
+        adapter_instances = []
+        adapter_details = []
+
         for adapter_config_model in test_case_model.adapter_configurations:
             adapter_name = adapter_config_model.adapter_type
             model_name = adapter_config_model.model
@@ -220,8 +224,8 @@ class Runner:
             if base_url:
                 adapter_options["base_url"] = base_url
 
-            llm_response_data: Optional[Dict[str, Any]] = None
             cache_key_options_component = None
+            cached_response = None
 
             if self.cache:
                 assertion_details_for_cache = []
@@ -263,113 +267,188 @@ class Runner:
                     prompt_text, adapter_name, model_name, cache_key_options_component
                 )
                 if cached_response:
-                    llm_response_data = cached_response
                     current_run_details["cache_status"] = "HIT"
 
-            if not llm_response_data:
+            if cached_response:
+                current_run_details["cache_status"] = "HIT"
+                all_adapter_results.append(self._process_adapter_response(
+                    current_run_details,
+                    cached_response,
+                    expect_exact,
+                    expect_regex,
+                    expect_substring,
+                    expect_substring_case_insensitive
+                ))
+            else:
                 if self.cache:
                     current_run_details["cache_status"] = "MISS"
+
                 try:
                     config_override = type(adapter_instance.config)(
                         default_model=model_name,
                         **adapter_options
                     )
-                    response = await adapter_instance.execute(
-                        prompt_text,
-                        config_override=config_override
-                    )
-                    llm_response_data = {
-                        "text_response": response.text_response,
-                        "raw_response": response.raw_response,
-                        "error": response.error
-                    }
-                    if (
-                        self.cache
-                        and cache_key_options_component is not None
-                        and llm_response_data
-                        and not llm_response_data.get("error")
-                    ):
-                        self.cache.put(
-                            prompt_text,
-                            adapter_name,
-                            model_name,
-                            cache_key_options_component,
-                            llm_response_data,
-                        )
+
+                    adapter_details.append({
+                        "run_details": current_run_details,
+                        "adapter_instance": adapter_instance,
+                        "prompt": prompt_text,
+                        "config_override": config_override,
+                        "cache_key": cache_key_options_component
+                    })
+                    adapter_instances.append(adapter_instance)
                 except Exception as e:
                     current_run_details["status"] = "ERROR"
-                    current_run_details["reason"] = f"Adapter execution error: {e}"
+                    current_run_details["reason"] = f"Adapter configuration error: {e}"
                     all_adapter_results.append(current_run_details)
                     self.overall_success = False
-                    if hasattr(adapter_instance, "close"):
-                        await adapter_instance.close()
-                    continue
 
-            if hasattr(adapter_instance, "close"):
-                await adapter_instance.close()
-
-            if not llm_response_data:
-                current_run_details["status"] = "ERROR"
-                current_run_details["reason"] = "No response from adapter."
-                all_adapter_results.append(current_run_details)
-                self.overall_success = False
-                continue
-
-            if llm_response_data.get("error"):
-                current_run_details["status"] = "ERROR"
-                current_run_details["reason"] = (
-                    f"Adapter error: {llm_response_data['error']}"
+        if adapter_details:
+            tasks = [
+                self._execute_adapter_task(
+                    details["adapter_instance"],
+                    details["prompt"],
+                    details["config_override"],
+                    details["run_details"],
+                    details["cache_key"],
+                    expect_exact,
+                    expect_regex,
+                    expect_substring,
+                    expect_substring_case_insensitive
                 )
-                current_run_details["actual_response"] = llm_response_data.get(
-                    "raw_response"
-                )
-                all_adapter_results.append(current_run_details)
-                self.overall_success = False
-                continue
+                for details in adapter_details
+            ]
 
-            actual_text_response = llm_response_data.get("text_response")
-            current_run_details["actual_response"] = actual_text_response
-            current_run_details["raw_adapter_response"] = llm_response_data.get(
-                "raw_response"
-            )
+            task_results = await asyncio.gather(*tasks, return_exceptions=True)
 
-            if actual_text_response is None:
-                current_run_details["status"] = "FAIL"
-                current_run_details["reason"] = "Adapter returned no text_response."
-                all_adapter_results.append(current_run_details)
-                self.overall_success = False
-                continue
+            for result in task_results:
+                if isinstance(result, Exception):
+                    error_details = {
+                        "file": str(test_case_path.name),
+                        "id": test_id,
+                        "adapter": "N/A",
+                        "model": "N/A",
+                        "status": "ERROR",
+                        "reason": f"Concurrent execution error: {str(result)}",
+                    }
+                    all_adapter_results.append(error_details)
+                    self.overall_success = False
+                else:
+                    all_adapter_results.append(result)
 
-            passed = False
-            assertion_reason = ""
-            if expect_exact:
-                passed = exact_match(expect_exact, actual_text_response)
-                if not passed:
-                    assertion_reason = f"Exact match failed. Expected: '{expect_exact}'"
-            elif expect_regex:
-                passed = regex_match(expect_regex, actual_text_response)
-                if not passed:
-                    assertion_reason = f"Regex match failed. Pattern: '{expect_regex}'"
-            elif expect_substring:
-                passed = expect_substring in actual_text_response
-                if not passed:
-                    assertion_reason = f"Substring match failed. Expected to find: '{expect_substring}'"
-            elif expect_substring_case_insensitive:
-                passed = (
-                    expect_substring_case_insensitive.lower()
-                    in actual_text_response.lower()
-                )
-                if not passed:
-                    assertion_reason = f"Case-insensitive substring match failed. Expected to find: '{expect_substring_case_insensitive}'"
-
-            current_run_details["status"] = "PASS" if passed else "FAIL"
-            if not passed:
-                current_run_details["reason"] = assertion_reason
-                self.overall_success = False
-
-            all_adapter_results.append(current_run_details)
+            close_tasks = [instance.close() for instance in adapter_instances if hasattr(instance, "close")]
+            if close_tasks:
+                await asyncio.gather(*close_tasks, return_exceptions=True)
 
         return all_adapter_results
+
+    async def _execute_adapter_task(
+        self,
+        adapter_instance,
+        prompt_text,
+        config_override,
+        run_details,
+        cache_key_options_component,
+        expect_exact,
+        expect_regex,
+        expect_substring,
+        expect_substring_case_insensitive
+    ):
+        """Execute a single adapter task and process its result."""
+        try:
+            response = await adapter_instance.execute(
+                prompt_text,
+                config_override=config_override
+            )
+            llm_response_data = {
+                "text_response": response.text_response,
+                "raw_response": response.raw_response,
+                "error": response.error
+            }
+
+            if (
+                self.cache
+                and cache_key_options_component is not None
+                and llm_response_data
+                and not llm_response_data.get("error")
+            ):
+                self.cache.put(
+                    prompt_text,
+                    run_details["adapter"],
+                    run_details["model"],
+                    cache_key_options_component,
+                    llm_response_data,
+                )
+
+            return self._process_adapter_response(
+                run_details.copy(),
+                llm_response_data,
+                expect_exact,
+                expect_regex,
+                expect_substring,
+                expect_substring_case_insensitive
+            )
+        except Exception as e:
+            run_details["status"] = "ERROR"
+            run_details["reason"] = f"Adapter execution error: {e}"
+            self.overall_success = False
+            return run_details
+
+    def _process_adapter_response(
+        self,
+        run_details,
+        llm_response_data,
+        expect_exact,
+        expect_regex,
+        expect_substring,
+        expect_substring_case_insensitive
+    ):
+        """Process an adapter response and determine test status."""
+        if llm_response_data.get("error"):
+            run_details["status"] = "ERROR"
+            run_details["reason"] = f"Adapter error: {llm_response_data['error']}"
+            run_details["actual_response"] = llm_response_data.get("raw_response")
+            self.overall_success = False
+            return run_details
+
+        actual_text_response = llm_response_data.get("text_response")
+        run_details["actual_response"] = actual_text_response
+        run_details["raw_adapter_response"] = llm_response_data.get("raw_response")
+
+        if actual_text_response is None:
+            run_details["status"] = "FAIL"
+            run_details["reason"] = "Adapter returned no text_response."
+            self.overall_success = False
+            return run_details
+
+        passed = False
+        assertion_reason = ""
+        if expect_exact:
+            passed = exact_match(expect_exact, actual_text_response)
+            if not passed:
+                assertion_reason = f"Exact match failed. Expected: '{expect_exact}'"
+        elif expect_regex:
+            passed = regex_match(expect_regex, actual_text_response)
+            if not passed:
+                assertion_reason = f"Regex match failed. Pattern: '{expect_regex}'"
+        elif expect_substring:
+            passed = expect_substring in actual_text_response
+            if not passed:
+                assertion_reason = f"Substring match failed. Expected to find: '{expect_substring}'"
+        elif expect_substring_case_insensitive:
+            passed = (
+                expect_substring_case_insensitive.lower()
+                in actual_text_response.lower()
+            )
+            if not passed:
+                assertion_reason = f"Case-insensitive substring match failed. Expected to find: '{expect_substring_case_insensitive}'"
+
+        run_details["status"] = "PASS" if passed else "FAIL"
+        if not passed:
+            run_details["reason"] = assertion_reason
+            self.overall_success = False
+
+        return run_details
 
     async def run_suite(self, test_file_paths: List[Path]):
         """Loads YAML files from a directory and runs all test cases defined within them."""
