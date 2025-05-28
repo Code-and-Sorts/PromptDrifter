@@ -116,7 +116,7 @@ async def test_execute_successful(adapter, auto_patch_httpx_client, mock_claude_
         "temperature": 0.6
     }
     mock_client.post.assert_called_once_with(
-        CLAUDE_API_BASE_URL,
+        "/messages",
         json=expected_json_payload,
         timeout=60.0
     )

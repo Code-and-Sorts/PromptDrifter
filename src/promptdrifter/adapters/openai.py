@@ -42,8 +42,8 @@ class OpenAIAdapterConfig(BaseAdapterConfig):
 
     def get_headers(self) -> Dict[str, str]:
         return OpenAIHeaders(
-            authorization=f"Bearer {self.api_key}"
-        ).model_dump()
+            Authorization=f"Bearer {self.api_key}"
+        ).model_dump(by_alias=True)
 
     def get_payload(
             self,

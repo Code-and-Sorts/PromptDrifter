@@ -57,8 +57,8 @@ class QwenAdapterConfig(BaseAdapterConfig):
 
     def get_headers(self) -> Dict[str, str]:
         return QwenHeaders(
-            authorization=f"Bearer {self.api_key}"
-        ).model_dump()
+            Authorization=f"Bearer {self.api_key}"
+        ).model_dump(by_alias=True)
 
     def get_payload(
             self,

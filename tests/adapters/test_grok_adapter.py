@@ -114,7 +114,7 @@ async def test_execute_successful(adapter, auto_patch_httpx_client, mock_grok_su
         "temperature": 0.5,
     }
     mock_client.post.assert_called_once_with(
-        "/chat/completions",
+        "/v1/chat/completions",
         json=expected_json_payload,
         timeout=60.0,
     )

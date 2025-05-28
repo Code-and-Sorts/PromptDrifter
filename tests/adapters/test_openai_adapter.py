@@ -179,12 +179,12 @@ async def test_execute_successful(adapter, patch_httpx_client):
     assert payload["temperature"] == 0.5
     assert payload["max_tokens"] == 50
 
-    assert result["text_response"] == SUCCESS_RESPONSE_PAYLOAD["choices"][0]["message"]["content"]
-    assert result["raw_response"] == SUCCESS_RESPONSE_PAYLOAD
-    assert result["model_name"] == "gpt-4-override"
-    assert result["finish_reason"] == "stop"
-    assert result["usage"] == SUCCESS_RESPONSE_PAYLOAD["usage"]
-    assert result["error"] is None
+    assert result.text_response == SUCCESS_RESPONSE_PAYLOAD["choices"][0]["message"]["content"]
+    assert result.raw_response == SUCCESS_RESPONSE_PAYLOAD
+    assert result.model_name == "gpt-4-override"
+    assert result.finish_reason == "stop"
+    assert result.usage == SUCCESS_RESPONSE_PAYLOAD["usage"]
+    assert result.error is None
 
     await adapter.close()
     mock_client_instance.aclose.assert_called_once()
@@ -203,8 +203,8 @@ async def test_execute_uses_config_default_max_tokens(adapter, patch_httpx_clien
     assert payload["model"] == adapter.config.default_model
 
     result = await adapter.execute("Test prompt")
-    assert result["usage"] == SUCCESS_RESPONSE_PAYLOAD["usage"]
-    assert result["finish_reason"] == "stop"
+    assert result.usage == SUCCESS_RESPONSE_PAYLOAD["usage"]
+    assert result.finish_reason == "stop"
 
 async def test_execute_http_status_error(adapter, patch_httpx_client):
     mock_client_instance = patch_httpx_client.return_value
@@ -224,13 +224,13 @@ async def test_execute_http_status_error(adapter, patch_httpx_client):
 
     result = await adapter.execute("A prompt")
 
-    assert result["error"].startswith("API Error (HTTP 401):")
-    assert error_response_content_str in result["error"]
-    assert result["raw_response"] == {"error_detail": error_response_content_str}
-    assert result["text_response"] is None
-    assert result["model_name"] == adapter.config.default_model
-    assert result["finish_reason"] == "error"
-    assert result["usage"] is None
+    assert result.error.startswith("API Error (HTTP 401):")
+    assert error_response_content_str in result.error
+    assert result.raw_response == {"error_detail": error_response_content_str}
+    assert result.text_response is None
+    assert result.model_name == adapter.config.default_model
+    assert result.finish_reason == "error"
+    assert result.usage is None
 
 async def test_execute_request_error(adapter, patch_httpx_client):
     mock_client_instance = patch_httpx_client.return_value
@@ -238,12 +238,12 @@ async def test_execute_request_error(adapter, patch_httpx_client):
 
     result = await adapter.execute("A prompt")
 
-    assert result["error"].startswith("HTTP Client Error: RequestError")
-    assert "Connection failed" in result["error"]
-    assert result["raw_response"] == {"error_detail": "Connection failed"}
-    assert result["text_response"] is None
-    assert result["model_name"] == adapter.config.default_model
-    assert result["finish_reason"] == "error"
+    assert result.error.startswith("HTTP Client Error: RequestError")
+    assert "Connection failed" in result.error
+    assert result.raw_response == {"error_detail": "Connection failed"}
+    assert result.text_response is None
+    assert result.model_name == adapter.config.default_model
+    assert result.finish_reason == "error"
 
 async def test_execute_timeout_error(adapter, patch_httpx_client):
     mock_client_instance = patch_httpx_client.return_value
@@ -252,11 +252,11 @@ async def test_execute_timeout_error(adapter, patch_httpx_client):
 
     result = await adapter.execute("A prompt for timeout")
 
-    assert result["error"].startswith("HTTP Client Error: RequestError")
-    assert timeout_message in result["error"]
-    assert result["raw_response"] == {"error_detail": timeout_message}
-    assert result["text_response"] is None
-    assert result["finish_reason"] == "error"
+    assert result.error.startswith("HTTP Client Error: RequestError")
+    assert timeout_message in result.error
+    assert result.raw_response == {"error_detail": timeout_message}
+    assert result.text_response is None
+    assert result.finish_reason == "error"
 
 async def test_execute_unexpected_error(adapter, patch_httpx_client):
     mock_client_instance = patch_httpx_client.return_value
@@ -264,12 +264,12 @@ async def test_execute_unexpected_error(adapter, patch_httpx_client):
 
     result = await adapter.execute("A prompt for unexpected")
 
-    assert result["error"] is not None
-    assert "An unexpected error occurred" in result["error"]
-    assert "Something totally unexpected" in result["error"]
-    assert result["raw_response"] == {"error_detail": "Something totally unexpected"}
-    assert result["text_response"] is None
-    assert result["finish_reason"] == "error"
+    assert result.error is not None
+    assert "An unexpected error occurred" in result.error
+    assert "Something totally unexpected" in result.error
+    assert result.raw_response == {"error_detail": "Something totally unexpected"}
+    assert result.text_response is None
+    assert result.finish_reason == "error"
 
 async def test_adapter_close_called(adapter, patch_httpx_client):
     mock_client_instance = patch_httpx_client.return_value
@@ -295,4 +295,4 @@ async def test_execute_with_system_prompt_in_kwargs(adapter, patch_httpx_client)
     assert payload["messages"][1]["role"] == "user"
     assert payload["messages"][1]["content"] == "Hello bot"
     result = await adapter.execute("Hello bot", config_override=config_override)
-    assert result["text_response"] == SUCCESS_RESPONSE_PAYLOAD["choices"][0]["message"]["content"]
+    assert result.text_response == SUCCESS_RESPONSE_PAYLOAD["choices"][0]["message"]["content"]

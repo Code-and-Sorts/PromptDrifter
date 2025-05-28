@@ -150,22 +150,22 @@ async def _run_async(
     openai_api_key: Optional[str],
     gemini_api_key: Optional[str],
     qwen_api_key: Optional[str],
-    anthropic_api_key: Optional[str],
+    claude_api_key: Optional[str],
     grok_api_key: Optional[str],
     deepseek_api_key: Optional[str],
-    meta_llama_api_key: Optional[str],
     mistral_api_key: Optional[str],
+    # llama_api_key: Optional[str],
 ):
     """Async implementation of the run command."""
     if (
         openai_api_key
         or gemini_api_key
         or qwen_api_key
-        or anthropic_api_key
+        or claude_api_key
         or grok_api_key
         or deepseek_api_key
-        or meta_llama_api_key
         or mistral_api_key
+        # or llama_api_key
     ):
         _print_api_key_security_warning()
 
@@ -213,11 +213,11 @@ async def _run_async(
             openai_api_key=openai_api_key,
             gemini_api_key=gemini_api_key,
             qwen_api_key=qwen_api_key,
-            anthropic_api_key=anthropic_api_key,
+            claude_api_key=claude_api_key,
             grok_api_key=grok_api_key,
             deepseek_api_key=deepseek_api_key,
-            meta_llama_api_key=meta_llama_api_key,
             mistral_api_key=mistral_api_key,
+            # llama_api_key=llama_api_key,
         )
         overall_success = await runner_instance.run_suite(yaml_files_str)
         if not overall_success:
@@ -267,10 +267,10 @@ def run(
         help="Qwen API key (DashScope). Overrides QWEN_API_KEY or DASHSCOPE_API_KEY env var. Warning: Exposes key in shell history.",
         rich_help_panel="API Keys",
     ),
-    anthropic_api_key: Optional[str] = typer.Option(
+    claude_api_key: Optional[str] = typer.Option(
         None,
-        "--anthropic-api-key",
-        help="Anthropic API key. Overrides ANTHROPIC_API_KEY env var. Warning: Exposes key in shell history.",
+        "--claude-api-key",
+        help="Anthropic Claude API key. Overrides CLAUDE_API_KEY env var. Warning: Exposes key in shell history.",
         rich_help_panel="API Keys",
     ),
     grok_api_key: Optional[str] = typer.Option(
@@ -287,13 +287,6 @@ def run(
         envvar="DEEPSEEK_API_KEY",
         rich_help_panel="API Keys",
     ),
-    meta_llama_api_key: Optional[str] = typer.Option(
-        None,
-        "--meta-llama-api-key",
-        help="Meta Llama API key (can also be set via META_LLAMA_API_KEY env var. Warning: Exposes key in shell history.)",
-        envvar="META_LLAMA_API_KEY",
-        rich_help_panel="API Keys",
-    ),
     mistral_api_key: Optional[str] = typer.Option(
         None,
         "--mistral-api-key",
@@ -301,6 +294,13 @@ def run(
         envvar="MISTRAL_API_KEY",
         rich_help_panel="API Keys",
     ),
+    # llama_api_key: Optional[str] = typer.Option(
+    #     None,
+    #     "--llama-api-key",
+    #     help="Meta Llama API key (can also be set via LLAMA_API_KEY env var. Warning: Exposes key in shell history.)",
+    #     envvar="LLAMA_API_KEY",
+    #     rich_help_panel="API Keys",
+    # ),
 ):
     """Run a suite of prompt tests from one or more YAML files."""
     asyncio.run(
@@ -312,11 +312,11 @@ def run(
             openai_api_key,
             gemini_api_key,
             qwen_api_key,
-            anthropic_api_key,
+            claude_api_key,
             grok_api_key,
             deepseek_api_key,
-            meta_llama_api_key,
             mistral_api_key,
+            # llama_api_key,
         )
     )
 
@@ -330,7 +330,7 @@ def record(
         help="Path to save recorded interactions",
     ),
     adapter: str = typer.Option(
-        ..., "--adapter", "-a", help="LLM adapter to use (e.g., openai, ollama)"
+        ..., "--adapter", "-a", help="LLM adapter to use (e.g., openai, ollama, claude, grok)"
     ),
     model: str = typer.Option(
         ..., "--model", "-m", help="Model to use with the adapter"

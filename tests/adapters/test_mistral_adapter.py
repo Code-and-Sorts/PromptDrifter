@@ -13,6 +13,7 @@ from promptdrifter.config.adapter_settings import (
     MISTRAL_API_BASE_URL,
 )
 
+
 @pytest.fixture(autouse=True)
 def auto_patch_httpx_client():
     mock_client = MagicMock(spec=httpx.AsyncClient)

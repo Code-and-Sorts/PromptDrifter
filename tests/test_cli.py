@@ -32,11 +32,11 @@ async def test_cli_run_logic_success(mocker, tmp_path):
         openai_api_key=None,
         gemini_api_key=None,
         qwen_api_key=None,
-        anthropic_api_key=None,
+        claude_api_key=None,
         grok_api_key=None,
         deepseek_api_key=None,
-        meta_llama_api_key=None,
         mistral_api_key=None,
+        # llama_api_key=None,
     )
     mock_class.assert_called_once_with(
         config_dir=Path("."),
@@ -45,11 +45,11 @@ async def test_cli_run_logic_success(mocker, tmp_path):
         openai_api_key=None,
         gemini_api_key=None,
         qwen_api_key=None,
-        anthropic_api_key=None,
+        claude_api_key=None,
         grok_api_key=None,
         deepseek_api_key=None,
-        meta_llama_api_key=None,
         mistral_api_key=None,
+        # llama_api_key=None,
     )
     mock_instance.run_suite.assert_called_once_with([str(test_file)])
     mock_instance.close_cache_connection.assert_called_once()
@@ -72,10 +72,9 @@ async def test_cli_run_logic_failure_from_suite(mocker, tmp_path):
             openai_api_key=None,
             gemini_api_key=None,
             qwen_api_key=None,
-            anthropic_api_key=None,
+            claude_api_key=None,
             grok_api_key=None,
             deepseek_api_key=None,
-            meta_llama_api_key=None,
             mistral_api_key=None,
         )
     assert exc_info.value.exit_code == 1
@@ -86,10 +85,9 @@ async def test_cli_run_logic_failure_from_suite(mocker, tmp_path):
         openai_api_key=None,
         gemini_api_key=None,
         qwen_api_key=None,
-        anthropic_api_key=None,
+        claude_api_key=None,
         grok_api_key=None,
         deepseek_api_key=None,
-        meta_llama_api_key=None,
         mistral_api_key=None,
     )
     mock_instance.run_suite.assert_called_once_with([str(test_file)])
@@ -112,11 +110,11 @@ async def test_cli_run_logic_runner_init_exception(mocker, tmp_path, capsys):
             openai_api_key=None,
             gemini_api_key=None,
             qwen_api_key=None,
-            anthropic_api_key=None,
+            claude_api_key=None,
             grok_api_key=None,
             deepseek_api_key=None,
-            meta_llama_api_key=None,
             mistral_api_key=None,
+            # llama_api_key=None,
         )
     assert exc_info.value.exit_code == 1
     mock_class_raising.assert_called_once()
@@ -141,11 +139,11 @@ async def test_cli_run_logic_suite_exception(mocker, tmp_path, capsys):
             openai_api_key=None,
             gemini_api_key=None,
             qwen_api_key=None,
-            anthropic_api_key=None,
+            claude_api_key=None,
             grok_api_key=None,
             deepseek_api_key=None,
-            meta_llama_api_key=None,
             mistral_api_key=None,
+            # llama_api_key=None,
         )
     assert exc_info.value.exit_code == 1
     mock_instance.run_suite.assert_called_once_with([str(test_file)])
@@ -173,11 +171,11 @@ async def test_cli_run_logic_multiple_files(mocker, tmp_path):
         openai_api_key=None,
         gemini_api_key=None,
         qwen_api_key=None,
-        anthropic_api_key=None,
+        claude_api_key=None,
         grok_api_key=None,
         deepseek_api_key=None,
-        meta_llama_api_key=None,
         mistral_api_key=None,
+        # llama_api_key=None,
     )
     mock_class.assert_called_once_with(
         config_dir=Path("."),
@@ -186,11 +184,11 @@ async def test_cli_run_logic_multiple_files(mocker, tmp_path):
         openai_api_key=None,
         gemini_api_key=None,
         qwen_api_key=None,
-        anthropic_api_key=None,
+        claude_api_key=None,
         grok_api_key=None,
         deepseek_api_key=None,
-        meta_llama_api_key=None,
         mistral_api_key=None,
+        # llama_api_key=None,
     )
     mock_instance.run_suite.assert_called_once_with([str(file1), str(file2)])
     mock_instance.close_cache_connection.assert_called_once()
@@ -208,11 +206,11 @@ async def test_cli_run_logic_file_not_found(mocker, capsys):
             openai_api_key=None,
             gemini_api_key=None,
             qwen_api_key=None,
-            anthropic_api_key=None,
+            claude_api_key=None,
             grok_api_key=None,
             deepseek_api_key=None,
-            meta_llama_api_key=None,
             mistral_api_key=None,
+            # llama_api_key=None,
         )
     assert exc_info.value.exit_code == 1
     mock_class_for_safety.assert_not_called()
@@ -233,11 +231,11 @@ async def test_cli_run_logic_no_files_provided(mocker, capsys):
             openai_api_key=None,
             gemini_api_key=None,
             qwen_api_key=None,
-            anthropic_api_key=None,
+            claude_api_key=None,
             grok_api_key=None,
             deepseek_api_key=None,
-            meta_llama_api_key=None,
             mistral_api_key=None,
+            # llama_api_key=None,
         )
     assert exc_info.value.exit_code == 1
     mock_class_for_safety.assert_not_called()
@@ -429,11 +427,11 @@ async def test_cli_run_prints_security_warning(mocker, tmp_path, capsys):
         openai_api_key="cli_key_here",
         gemini_api_key=None,
         qwen_api_key=None,
-        anthropic_api_key=None,
+        claude_api_key=None,
         grok_api_key=None,
         deepseek_api_key=None,
-        meta_llama_api_key=None,
         mistral_api_key=None,
+        # llama_api_key=None,
     )
     captured = capsys.readouterr()
     assert "SECURITY WARNING" in captured.out
@@ -449,11 +447,11 @@ async def test_cli_run_prints_security_warning(mocker, tmp_path, capsys):
         openai_api_key=None,
         gemini_api_key=None,
         qwen_api_key=None,
-        anthropic_api_key=None,
+        claude_api_key=None,
         grok_api_key=None,
         deepseek_api_key=None,
-        meta_llama_api_key=None,
         mistral_api_key=None,
+        # llama_api_key=None,
     )
     captured = capsys.readouterr()
     assert "Warning" not in captured.out
@@ -478,7 +476,7 @@ def test_run_command_with_api_keys(mocker):
             "key2",
             "--qwen-api-key",
             "test_qwen_key",
-            "--anthropic-api-key",
+            "--claude-api-key",
             "claude_key",
             "--grok-api-key",
             "grok_key",
@@ -501,11 +499,11 @@ def test_run_command_with_api_keys(mocker):
         "key1",  # openai_api_key (positional)
         "key2",  # gemini_api_key (positional)
         "test_qwen_key",  # qwen_api_key (positional)
-        "claude_key",  # anthropic_api_key (positional)
+        "claude_key",  # claude_api_key (positional)
         "grok_key",  # grok_api_key (positional)
         "deepseek_key",  # deepseek_api_key (positional)
-        None,  # meta_llama_api_key (positional)
         None,  # mistral_api_key (positional)
+        # None,  # llama_api_key (positional)
     )
     mock_run_async.reset_mock()
 
@@ -531,11 +529,11 @@ def test_run_command_with_api_keys(mocker):
         None,  # No OpenAI key
         None,  # No Gemini key
         None,  # No Qwen key
-        None,  # No Anthropic key
+        None,  # No Claude key
         None,  # No Grok key
         None,  # No DeepSeek key
-        None,  # No Meta Llama key
         None,  # No Mistral key
+        # None,  # No Llama key
     )
     mock_run_async.reset_mock()
 
@@ -563,11 +561,11 @@ def test_run_command_with_api_keys(mocker):
         None,  # No OpenAI key
         "just_gemini_key",  # Only Gemini key provided
         None,  # No Qwen key
-        None,  # No Anthropic key
+        None,  # No Claude key
         None,  # No Grok key
         None,  # No DeepSeek key
-        None,  # No Meta Llama key
         None,  # No Mistral key
+        # None,  # No Llama key
     )
 
 

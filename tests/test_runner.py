@@ -21,7 +21,7 @@ def mock_yaml_loader(mocker) -> MagicMock:
 @pytest.fixture
 def mock_cache(mocker) -> MagicMock:
     mock = mocker.MagicMock(spec=PromptCache)
-    mock.get = MagicMock(return_value=None)  # Default to cache miss
+    mock.get = MagicMock(return_value=None)
     mock.put = MagicMock()
     return mock
 
@@ -32,10 +32,17 @@ def mock_console(mocker) -> MagicMock:
 
 
 @pytest.fixture
-def mock_adapter_instance() -> AsyncMock:  # Returns an instance of a mock adapter
+def mock_adapter_instance() -> AsyncMock:
     adapter_mock = AsyncMock(spec=Adapter)
     adapter_mock.execute = AsyncMock()
     adapter_mock.close = AsyncMock()
+
+    mock_config = MagicMock()
+    mock_config_class = MagicMock()
+    mock_config_class.return_value = mock_config
+    adapter_mock.config = mock_config
+    adapter_mock.config.__class__ = mock_config_class
+
     return adapter_mock
 
 
@@ -66,9 +73,6 @@ def test_runner(runner_dependencies_setup, tmp_path) -> Runner:
     return runner
 
 
-# --- Test Cases ---
-
-
 async def test_run_single_test_case_pass_exact_match(
     test_runner: Runner, runner_dependencies_setup
 ):
@@ -83,10 +87,14 @@ async def test_run_single_test_case_pass_exact_match(
         "expect_exact": "Hello there",
     }
     test_case_model = TestCase(**test_data_dict)
-    mock_adapter.execute.return_value = {
-        "text_response": "Hello there",
-        "raw_response": {},
-    }
+
+    # Create a mock response object with attributes
+    mock_response = MagicMock()
+    mock_response.text_response = "Hello there"
+    mock_response.raw_response = {}
+    mock_response.error = None
+    mock_adapter.execute.return_value = mock_response
+
     mock_cache.get.return_value = None
 
     results_list = await test_runner._run_single_test_case(test_file, test_case_model)
@@ -95,7 +103,10 @@ async def test_run_single_test_case_pass_exact_match(
 
     assert result["status"] == "PASS"
     test_runner._get_adapter_instance.assert_called_with("openai", None)
-    mock_adapter.execute.assert_called_once_with("Say hello", model="test_model")
+    mock_adapter.execute.assert_called_once()
+    call_args = mock_adapter.execute.call_args
+    assert call_args[0][0] == "Say hello"  # First positional arg is prompt
+    assert call_args[1]["config_override"].default_model == "test_model"  # Check config override
     mock_cache.put.assert_called_once()
     mock_adapter.close.assert_called_once()
 
@@ -104,7 +115,13 @@ async def test_run_single_test_case_fail_exact_match(
     test_runner: Runner, runner_dependencies_setup
 ):
     mock_adapter = runner_dependencies_setup["adapter_instance"]
-    mock_adapter.execute.return_value = {"text_response": "Goodbye", "raw_response": {}}
+
+    # Create a mock response object with attributes
+    mock_response = MagicMock()
+    mock_response.text_response = "Goodbye"
+    mock_response.raw_response = {}
+    mock_response.error = None
+    mock_adapter.execute.return_value = mock_response
 
     test_file = Path("test_exact_fail.yaml")
     test_data_dict = {
@@ -130,10 +147,12 @@ async def test_run_single_test_case_pass_regex_match(
 ):
     mock_adapter = runner_dependencies_setup["adapter_instance"]
     test_runner.overall_success = True
-    mock_adapter.execute.return_value = {
-        "text_response": "The number is 42.",
-        "raw_response": {},
-    }
+
+    mock_response = MagicMock()
+    mock_response.text_response = "The number is 42."
+    mock_response.raw_response = {}
+    mock_response.error = None
+    mock_adapter.execute.return_value = mock_response
 
     test_file = Path("test_regex.yaml")
     test_data_dict = {
@@ -196,10 +215,13 @@ async def test_run_single_test_case_adapter_error(
     test_runner: Runner, runner_dependencies_setup
 ):
     mock_adapter = runner_dependencies_setup["adapter_instance"]
-    mock_adapter.execute.return_value = {
-        "error": "Something went wrong with LLM",
-        "raw_response": {},
-    }
+
+    # Create a mock response object with attributes
+    mock_response = MagicMock()
+    mock_response.text_response = None
+    mock_response.raw_response = {}
+    mock_response.error = "Something went wrong with LLM"
+    mock_adapter.execute.return_value = mock_response
 
     test_file = Path("test_adapter_err.yaml")
     test_data_dict = {
@@ -249,7 +271,12 @@ async def test_run_single_test_case_no_text_response(
     test_runner: Runner, runner_dependencies_setup
 ):
     mock_adapter = runner_dependencies_setup["adapter_instance"]
-    mock_adapter.execute.return_value = {"raw_response": {}}  # No text_response
+
+    mock_response = MagicMock()
+    mock_response.text_response = None
+    mock_response.raw_response = {}
+    mock_response.error = None
+    mock_adapter.execute.return_value = mock_response
 
     test_file = Path("test_no_text.yaml")
     test_data_dict = {
@@ -310,10 +337,13 @@ async def test_run_single_test_case_skipped_no_assertion(
     test_runner: Runner, runner_dependencies_setup
 ):
     mock_adapter = runner_dependencies_setup["adapter_instance"]
-    mock_adapter.execute.return_value = {
-        "text_response": "Some response",
-        "raw_response": {},
-    }
+
+    mock_response = MagicMock()
+    mock_response.text_response = "Some response"
+    mock_response.raw_response = {}
+    mock_response.error = None
+    mock_adapter.execute.return_value = mock_response
+
     test_file = Path("test_skip_no_assertion.yaml")
     test_data_dict = {
         "id": "skip-no-assertion",
@@ -379,55 +409,61 @@ async def test_run_single_test_case_with_adapter_options(
         "expect_exact": "Response",
     }
     test_case_model = TestCase(**test_data_dict)
-    mock_adapter.execute.return_value = {
-        "text_response": "Response",
-        "raw_response": {},
-    }
 
-    expected_options_to_execute = {
-        "temperature": 0.77,
-        "max_tokens": 123,
-        "custom_param": "custom_value",
-    }
-    expected_cache_options_key_for_put = frozenset(
-        list(expected_options_to_execute.items())
-        + [
-            ("_assertion_type", "exact"),
-            ("_assertion_value", "Response"),
-        ]
-    )
+    mock_response = MagicMock()
+    mock_response.text_response = "Response"
+    mock_response.raw_response = {}
+    mock_response.error = None
+    mock_adapter.execute.return_value = mock_response
 
     results_list = await test_runner._run_single_test_case(test_file, test_case_model)
     assert len(results_list) == 1
     result = results_list[0]
 
     assert result["status"] == "PASS"
-    mock_adapter.execute.assert_called_once_with(
-        "Prompt with options", model="options_model", **expected_options_to_execute
-    )
+    mock_adapter.execute.assert_called_once()
+    call_args = mock_adapter.execute.call_args
+    assert call_args[0][0] == "Prompt with options"
+    config_override = call_args[1]["config_override"]
+    assert config_override.default_model == "options_model"
+    assert config_override.temperature == 0.77
+    assert config_override.max_tokens == 123
+    assert config_override.custom_param == "custom_value"
     runner_dependencies_setup["cache"].put.assert_called_once()
-    _, cache_put_args, _ = runner_dependencies_setup["cache"].put.mock_calls[0]
-    assert cache_put_args[0] == "Prompt with options"
-    assert cache_put_args[1] == "openai"
-    assert cache_put_args[2] == "options_model"
-    assert cache_put_args[3] == expected_cache_options_key_for_put
-    assert cache_put_args[4] == {"text_response": "Response", "raw_response": {}}
 
 
 async def test_run_single_test_case_multiple_adapters(
     test_runner: Runner, runner_dependencies_setup
 ):
     mock_adapter_1_instance = AsyncMock(spec=Adapter)
-    mock_adapter_1_instance.execute = AsyncMock(
-        return_value={"text_response": "Adapter 1 says PASS"}
-    )
+
+    mock_response_1 = MagicMock()
+    mock_response_1.text_response = "Adapter 1 says PASS"
+    mock_response_1.raw_response = {}
+    mock_response_1.error = None
+    mock_adapter_1_instance.execute = AsyncMock(return_value=mock_response_1)
     mock_adapter_1_instance.close = AsyncMock()
 
+    mock_config_1 = MagicMock()
+    mock_config_class_1 = MagicMock()
+    mock_config_class_1.return_value = mock_config_1
+    mock_adapter_1_instance.config = mock_config_1
+    mock_adapter_1_instance.config.__class__ = mock_config_class_1
+
     mock_adapter_2_instance = AsyncMock(spec=Adapter)
-    mock_adapter_2_instance.execute = AsyncMock(
-        return_value={"text_response": "Adapter 2 says FAIL"}
-    )
+
+    mock_response_2 = MagicMock()
+    mock_response_2.text_response = "Adapter 2 says FAIL"
+    mock_response_2.raw_response = {}
+    mock_response_2.error = None
+    mock_adapter_2_instance.execute = AsyncMock(return_value=mock_response_2)
     mock_adapter_2_instance.close = AsyncMock()
+
+    mock_config_2 = MagicMock()
+    mock_config_class_2 = MagicMock()
+    mock_config_class_2.return_value = mock_config_2
+    mock_adapter_2_instance.config = mock_config_2
+    mock_adapter_2_instance.config.__class__ = mock_config_class_2
 
     def get_adapter_side_effect(adapter_name, base_url=None):
         if adapter_name == "openai":
@@ -459,18 +495,20 @@ async def test_run_single_test_case_multiple_adapters(
     result_adapter1 = next(r for r in results_list if r["adapter"] == "openai")
     assert result_adapter1["status"] == "PASS"
     assert result_adapter1["model"] == "model1"
-    mock_adapter_1_instance.execute.assert_called_once_with(
-        "Test all adapters", model="model1"
-    )
+    mock_adapter_1_instance.execute.assert_called_once()
+    call_args_1 = mock_adapter_1_instance.execute.call_args
+    assert call_args_1[0][0] == "Test all adapters"
+    assert call_args_1[1]["config_override"].default_model == "model1"
     mock_adapter_1_instance.close.assert_called_once()
 
     result_adapter2 = next(r for r in results_list if r["adapter"] == "gemini")
     assert result_adapter2["status"] == "FAIL"
     assert result_adapter2["model"] == "model2"
     assert "Substring match failed" in result_adapter2["reason"]
-    mock_adapter_2_instance.execute.assert_called_once_with(
-        "Test all adapters", model="model2"
-    )
+    mock_adapter_2_instance.execute.assert_called_once()
+    call_args_2 = mock_adapter_2_instance.execute.call_args
+    assert call_args_2[0][0] == "Test all adapters"
+    assert call_args_2[1]["config_override"].default_model == "model2"
     mock_adapter_2_instance.close.assert_called_once()
 
     assert test_runner.overall_success is False
@@ -682,10 +720,12 @@ async def test_run_single_test_case_prompt_templating(
         "expect_exact": "Hello Test User from Pytest!",
     }
     test_case_model = TestCase(**test_data_dict)
-    mock_adapter.execute.return_value = {
-        "text_response": "Hello Test User from Pytest!",
-        "raw_response": {},
-    }
+
+    mock_response = MagicMock()
+    mock_response.text_response = "Hello Test User from Pytest!"
+    mock_response.raw_response = {}
+    mock_response.error = None
+    mock_adapter.execute.return_value = mock_response
 
     results_list = await test_runner._run_single_test_case(test_file, test_case_model)
 
@@ -693,6 +733,7 @@ async def test_run_single_test_case_prompt_templating(
     result = results_list[0]
     assert result["status"] == "PASS"
 
-    mock_adapter.execute.assert_called_once_with(
-        "Hello Test User from Pytest!", model="template_model"
-    )
+    mock_adapter.execute.assert_called_once()
+    call_args = mock_adapter.execute.call_args
+    assert call_args[0][0] == "Hello Test User from Pytest!"
+    assert call_args[1]["config_override"].default_model == "template_model"

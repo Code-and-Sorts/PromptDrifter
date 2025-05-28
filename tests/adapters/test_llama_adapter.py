@@ -142,11 +142,7 @@ async def test_execute_successful(adapter, auto_patch_httpx_client, mock_llama_s
         "system": "You are a Llama test bot."
     }
     mock_client.post.assert_called_once_with(
-        adapter.config.base_url,
-        headers={
-            "Authorization": f"Bearer {adapter.config.api_key}",
-            "Content-Type": "application/json",
-        },
+        "/chat/completions",
         json=expected_payload,
         timeout=60.0,
     )

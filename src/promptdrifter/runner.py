@@ -12,11 +12,12 @@ from .adapters.claude import ClaudeAdapter
 from .adapters.deepseek import DeepSeekAdapter
 from .adapters.gemini import GeminiAdapter
 from .adapters.grok import GrokAdapter
-from .adapters.llama import LlamaAdapter
 from .adapters.mistral import MistralAdapter
 from .adapters.ollama import OllamaAdapter
 from .adapters.openai import OpenAIAdapter
 from .adapters.qwen import QwenAdapter
+
+# from .adapters.llama import LlamaAdapter
 from .assertions import exact_match, regex_match
 from .cache import PromptCache
 from .yaml_loader import YamlFileLoader
@@ -26,11 +27,11 @@ ADAPTER_REGISTRY: Dict[str, Type[Adapter]] = {
     "deepseek": DeepSeekAdapter,
     "gemini": GeminiAdapter,
     "grok": GrokAdapter,
-    "llama": LlamaAdapter,
     "mistral": MistralAdapter,
     "openai": OpenAIAdapter,
     "ollama": OllamaAdapter,
     "qwen": QwenAdapter,
+    # "llama": LlamaAdapter,
 }
 
 
@@ -45,11 +46,11 @@ class Runner:
         openai_api_key: Optional[str] = None,
         gemini_api_key: Optional[str] = None,
         qwen_api_key: Optional[str] = None,
-        anthropic_api_key: Optional[str] = None,
+        claude_api_key: Optional[str] = None,
         grok_api_key: Optional[str] = None,
         deepseek_api_key: Optional[str] = None,
-        meta_llama_api_key: Optional[str] = None,
         mistral_api_key: Optional[str] = None,
+        # llama_api_key: Optional[str] = None,
     ):
         self.config_dir = config_dir
         self.yaml_loader = YamlFileLoader()
@@ -66,11 +67,11 @@ class Runner:
         self.cli_openai_key = openai_api_key
         self.cli_gemini_key = gemini_api_key
         self.cli_qwen_key = qwen_api_key
-        self.cli_anthropic_key = anthropic_api_key
+        self.cli_claude_key = claude_api_key
         self.cli_grok_key = grok_api_key
         self.cli_deepseek_key = deepseek_api_key
-        self.cli_meta_llama_key = meta_llama_api_key
         self.cli_mistral_key = mistral_api_key
+        # self.cli_llama_key = llama_api_key
 
     async def close_cache_connection(self):
         """Closes the database connection if cache is enabled and connection exists."""
@@ -89,16 +90,16 @@ class Runner:
                     api_key_to_pass = self.cli_gemini_key
                 elif adapter_name.lower() == "qwen" and self.cli_qwen_key:
                     api_key_to_pass = self.cli_qwen_key
-                elif adapter_name.lower() == "claude" and self.cli_anthropic_key:
-                    api_key_to_pass = self.cli_anthropic_key
+                elif adapter_name.lower() == "claude" and self.cli_claude_key:
+                    api_key_to_pass = self.cli_claude_key
                 elif adapter_name.lower() == "grok" and self.cli_grok_key:
                     api_key_to_pass = self.cli_grok_key
                 elif adapter_name.lower() == "deepseek" and self.cli_deepseek_key:
                     api_key_to_pass = self.cli_deepseek_key
-                elif adapter_name.lower() == "llama" and self.cli_meta_llama_key:
-                    api_key_to_pass = self.cli_meta_llama_key
                 elif adapter_name.lower() == "mistral" and self.cli_mistral_key:
                     api_key_to_pass = self.cli_mistral_key
+                # elif adapter_name.lower() == "llama" and self.cli_llama_key:
+                #     api_key_to_pass = self.cli_llama_key
 
                 adapter_init_params = adapter_class.__init__.__code__.co_varnames
                 can_pass_base_url = 'base_url' in adapter_init_params

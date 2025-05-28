@@ -55,8 +55,8 @@ class GrokAdapterConfig(BaseAdapterConfig):
 
     def get_headers(self) -> Dict[str, str]:
         return GrokHeaders(
-            authorization=f"Bearer {self.api_key}"
-        ).model_dump()
+            Authorization=f"Bearer {self.api_key}"
+        ).model_dump(by_alias=True)
 
     def get_payload(
             self,
@@ -105,10 +105,7 @@ class GrokAdapter(Adapter):
         selected_model = config_override.default_model if config_override else self.config.default_model
         payload = self.config.get_payload(
             prompt,
-            model=selected_model,
-            temperature=config_override.temperature if config_override else None,
-            max_tokens=config_override.max_tokens if config_override else None,
-            system_prompt=config_override.system_prompt if config_override else None
+            config_override=config_override
         )
 
         response = GrokResponse(model_name=selected_model)

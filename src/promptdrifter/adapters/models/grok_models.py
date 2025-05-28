@@ -9,7 +9,8 @@ class GrokHeaders(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     def model_dump(self, **kwargs) -> Dict[str, str]:
-        return super().model_dump(by_alias=True, **kwargs)
+        kwargs.setdefault('by_alias', True)
+        return super().model_dump(**kwargs)
 
 class GrokMessage(BaseModel):
     role: str
@@ -23,7 +24,8 @@ class GrokPayload(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     def model_dump(self, **kwargs) -> Dict[str, Any]:
-        return super().model_dump(by_alias=True, **kwargs)
+        kwargs.setdefault('by_alias', True)
+        return super().model_dump(**kwargs)
 
 class GrokResponse(BaseModel):
     text_response: Optional[str] = None
