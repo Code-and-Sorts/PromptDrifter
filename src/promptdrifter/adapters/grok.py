@@ -59,24 +59,23 @@ class GrokAdapterConfig(BaseAdapterConfig):
         ).model_dump()
 
     def get_payload(
-        self,
-        prompt: str,
-        model: Optional[str] = None,
-        temperature: Optional[float] = None,
-        max_tokens: Optional[int] = None,
-        system_prompt: Optional[str] = None,
-        **kwargs: Any,
-    ) -> Dict[str, Any]:
-        selected_model = model or self.default_model
-        selected_max_tokens = max_tokens or self.max_tokens
+            self,
+            prompt: str,
+            config_override: Optional["GrokAdapterConfig"] = None
+        ) -> Dict[str, Any]:
+        selected_model = config_override.default_model if config_override else self.default_model
+        selected_max_tokens = config_override.max_tokens if config_override else self.max_tokens
+        selected_temperature = config_override.temperature if config_override else self.temperature
+        selected_system = config_override.system_prompt if config_override else None
+
         messages = [GrokMessage(role="user", content=prompt)]
-        if system_prompt:
-            messages.insert(0, GrokMessage(role="system", content=system_prompt))
+        if selected_system:
+            messages.insert(0, GrokMessage(role="system", content=selected_system))
         payload = GrokPayload(
             model=selected_model,
             messages=messages,
             max_tokens=selected_max_tokens,
-            temperature=temperature,
+            temperature=selected_temperature,
         )
         return payload.model_dump(exclude_none=True)
 
@@ -115,8 +114,9 @@ class GrokAdapter(Adapter):
         response = GrokResponse(model_name=selected_model)
 
         try:
+            endpoint = "/v1/chat/completions"
             http_response = await self.client.post(
-                "/chat/completions",
+                endpoint,
                 json=payload,
                 timeout=60.0
             )

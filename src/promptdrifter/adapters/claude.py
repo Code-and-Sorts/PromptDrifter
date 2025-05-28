@@ -62,7 +62,11 @@ class ClaudeAdapterConfig(BaseAdapterConfig):
         )
         return headers.model_dump()
 
-    def get_payload(self, prompt: str, config_override: Optional["ClaudeAdapterConfig"] = None) -> Dict[str, Any]:
+    def get_payload(
+            self,
+            prompt: str,
+            config_override: Optional["ClaudeAdapterConfig"] = None
+        ) -> Dict[str, Any]:
         selected_model = config_override.default_model if config_override else self.default_model
         selected_max_tokens = config_override.max_tokens if config_override else self.max_tokens
         selected_temperature = config_override.temperature if config_override else self.temperature
@@ -103,12 +107,13 @@ class ClaudeAdapter(Adapter):
         """
         selected_model = config_override.default_model if config_override else self.config.default_model
         payload = self.config.get_payload(prompt, config_override)
+        endpoint = "/messages"
 
         response = ClaudeResponse(model_name=selected_model)
 
         try:
             http_response = await self.client.post(
-                self.config.base_url,
+                endpoint,
                 json=payload,
                 timeout=60.0
             )

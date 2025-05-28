@@ -25,22 +25,22 @@ DEFAULT_MISTRAL_MODEL = "mistral-large-latest"
 API_KEY_ENV_VAR_MISTRAL = "MISTRAL_API_KEY"
 
 # Claude (Anthropic)
-CLAUDE_API_BASE_URL = "https://api.anthropic.com/v1/messages"
+CLAUDE_API_BASE_URL = "https://api.anthropic.com/v1"
 DEFAULT_CLAUDE_MODEL = "claude-3-opus-20240229"
-API_KEY_ENV_VAR_CLAUDE = "ANTHROPIC_API_KEY"
+API_KEY_ENV_VAR_CLAUDE = "CLAUDE_API_KEY"
 CLAUDE_API_VERSION = "2023-06-01"
 
 # Grok (xAI)
-GROK_API_BASE_URL = "https://api.grok.x.ai/v1/chat/completions"
+GROK_API_BASE_URL = "https://api.x.ai"
 DEFAULT_GROK_MODEL = "grok-1"
 API_KEY_ENV_VAR_GROK = "GROK_API_KEY"
 
 # DeepSeek
-DEEPSEEK_API_BASE_URL = "https://api.deepseek.com/chat/completions"
+DEEPSEEK_API_BASE_URL = "https://api.deepseek.com"
 DEFAULT_DEEPSEEK_MODEL = "deepseek-chat"
 API_KEY_ENV_VAR_DEEPSEEK = "DEEPSEEK_API_KEY"
 
 # Llama (Meta)
-LLAMA_API_BASE_URL = "https://llama-api.meta.ai/v1/chat/completions"
+LLAMA_API_BASE_URL = "https://llama-api.meta.ai/v1"
 DEFAULT_LLAMA_MODEL = "llama-3-70b-instruct"
 API_KEY_ENV_VAR_LLAMA = "META_LLAMA_API_KEY"

@@ -12,6 +12,7 @@ from ..config.adapter_settings import (
 from .base import Adapter, BaseAdapterConfig
 from .models.qwen_models import (
     QwenError,
+    QwenHeaders,
     QwenMessage,
     QwenPayload,
     QwenResponse,
@@ -54,13 +55,16 @@ class QwenAdapterConfig(BaseAdapterConfig):
             )
         return self
 
-    def get_headers(self) -> dict:
-        return {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json",
-        }
+    def get_headers(self) -> Dict[str, str]:
+        return QwenHeaders(
+            authorization=f"Bearer {self.api_key}"
+        ).model_dump()
 
-    def get_payload(self, prompt: str, config_override: Optional["QwenAdapterConfig"] = None) -> Dict[str, Any]:
+    def get_payload(
+            self,
+            prompt: str,
+            config_override: Optional["QwenAdapterConfig"] = None
+        ) -> Dict[str, Any]:
         effective_config = config_override or self
         messages = []
         if effective_config.system_prompt:

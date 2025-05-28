@@ -53,9 +53,15 @@ class MistralAdapterConfig(BaseAdapterConfig):
         return self
 
     def get_headers(self) -> Dict[str, str]:
-        return MistralHeaders(authorization=f"Bearer {self.api_key}").model_dump()
+        return MistralHeaders(
+            authorization=f"Bearer {self.api_key}"
+        ).model_dump()
 
-    def get_payload(self, prompt: str, config_override: Optional["MistralAdapterConfig"] = None) -> Dict[str, Any]:
+    def get_payload(
+            self,
+            prompt: str,
+            config_override: Optional["MistralAdapterConfig"] = None
+        ) -> Dict[str, Any]:
         selected_model = config_override.default_model if config_override else self.default_model
         selected_max_tokens = config_override.max_tokens if config_override else self.max_tokens
         selected_temperature = config_override.temperature if config_override else self.temperature

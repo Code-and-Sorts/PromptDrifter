@@ -22,15 +22,15 @@ from .cache import PromptCache
 from .yaml_loader import YamlFileLoader
 
 ADAPTER_REGISTRY: Dict[str, Type[Adapter]] = {
-    "openai": OpenAIAdapter,
-    "ollama": OllamaAdapter,
-    "gemini": GeminiAdapter,
-    "qwen": QwenAdapter,
     "claude": ClaudeAdapter,
-    "grok": GrokAdapter,
     "deepseek": DeepSeekAdapter,
+    "gemini": GeminiAdapter,
+    "grok": GrokAdapter,
     "llama": LlamaAdapter,
     "mistral": MistralAdapter,
+    "openai": OpenAIAdapter,
+    "ollama": OllamaAdapter,
+    "qwen": QwenAdapter,
 }
 
 
@@ -103,12 +103,13 @@ class Runner:
                 adapter_init_params = adapter_class.__init__.__code__.co_varnames
                 can_pass_base_url = 'base_url' in adapter_init_params
 
-                if can_pass_base_url and api_key_to_pass and base_url:
-                    return adapter_class(api_key=api_key_to_pass, base_url=base_url)
-                elif can_pass_base_url and base_url:
-                    return adapter_class(base_url=base_url)
-                elif api_key_to_pass:
-                    return adapter_class(api_key=api_key_to_pass)
+                config_class = getattr(adapter_class, 'config_class', None)
+                if config_class:
+                    config = config_class(
+                        api_key=api_key_to_pass,
+                        base_url=base_url if can_pass_base_url else None
+                    )
+                    return adapter_class(config=config)
                 else:
                     return adapter_class()
             except Exception as e:
@@ -268,11 +269,19 @@ class Runner:
                 if self.cache:
                     current_run_details["cache_status"] = "MISS"
                 try:
-                    llm_response_data = await adapter_instance.execute(
-                        prompt_text,
-                        model=model_name,
-                        **adapter_options,
+                    config_override = type(adapter_instance.config)(
+                        default_model=model_name,
+                        **adapter_options
                     )
+                    response = await adapter_instance.execute(
+                        prompt_text,
+                        config_override=config_override
+                    )
+                    llm_response_data = {
+                        "text_response": response.text_response,
+                        "raw_response": response.raw_response,
+                        "error": response.error
+                    }
                     if (
                         self.cache
                         and cache_key_options_component is not None

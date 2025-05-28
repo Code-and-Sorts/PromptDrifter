@@ -10,6 +10,7 @@ from ..config.adapter_settings import (
     OPENAI_API_BASE_URL,
 )
 from .base import Adapter, BaseAdapterConfig
+from .models.openai_models import OpenAIHeaders, StandardResponse
 
 
 class OpenAIAdapterConfig(BaseAdapterConfig):
@@ -39,13 +40,16 @@ class OpenAIAdapterConfig(BaseAdapterConfig):
             )
         return self
 
-    def get_headers(self) -> dict:
-        return {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json",
-        }
+    def get_headers(self) -> Dict[str, str]:
+        return OpenAIHeaders(
+            authorization=f"Bearer {self.api_key}"
+        ).model_dump()
 
-    def get_payload(self, prompt: str, config_override: Optional["OpenAIAdapterConfig"] = None) -> dict:
+    def get_payload(
+            self,
+            prompt: str,
+            config_override: Optional["OpenAIAdapterConfig"] = None
+        ) -> Dict[str, Any]:
         effective_config = config_override or self
         messages = []
         if effective_config.system_prompt:
@@ -81,27 +85,18 @@ class OpenAIAdapter(Adapter):
         self,
         prompt: str,
         config_override: Optional[OpenAIAdapterConfig] = None,
-    ) -> Dict[str, Any]:
+    ) -> StandardResponse:
         """Makes a request to the OpenAI Chat Completions API."""
         payload = self.config.get_payload(prompt, config_override)
-
-        response_dict = {
-            "text_response": None,
-            "raw_response": None,
-            "model_name": config_override.default_model if config_override else self.config.default_model,
-            "finish_reason": None,
-            "error": None,
-            "usage": None,
-        }
-
+        model_name = config_override.default_model if config_override else self.config.default_model
+        response = StandardResponse(model_name=model_name)
         try:
-            response = await self.client.post(
+            api_response = await self.client.post(
                 "/chat/completions", json=payload, timeout=60.0
             )
-            response.raise_for_status()
-            raw_response_content = response.json()
-            response_dict["raw_response"] = raw_response_content
-
+            api_response.raise_for_status()
+            raw_response_content = api_response.json()
+            response.raw_response = raw_response_content
             if (
                 raw_response_content.get("choices")
                 and isinstance(raw_response_content["choices"], list)
@@ -113,26 +108,23 @@ class OpenAIAdapter(Adapter):
                     and first_choice.get("message")
                     and isinstance(first_choice["message"], dict)
                 ):
-                    response_dict["text_response"] = first_choice["message"].get("content")
-                response_dict["finish_reason"] = first_choice.get("finish_reason")
-
-            response_dict["usage"] = raw_response_content.get("usage")
-
+                    response.text_response = first_choice["message"].get("content")
+                response.finish_reason = first_choice.get("finish_reason")
+            response.usage = raw_response_content.get("usage")
         except httpx.HTTPStatusError as e:
             error_content = e.response.text
-            response_dict["error"] = f"API Error (HTTP {e.response.status_code}): {error_content}"
-            response_dict["raw_response"] = {"error_detail": error_content}
-            response_dict["finish_reason"] = "error"
+            response.error = f"API Error (HTTP {e.response.status_code}): {error_content}"
+            response.raw_response = {"error_detail": error_content}
+            response.finish_reason = "error"
         except httpx.RequestError as e:
-            response_dict["error"] = f"HTTP Client Error: RequestError - {str(e)}"
-            response_dict["raw_response"] = {"error_detail": str(e)}
-            response_dict["finish_reason"] = "error"
+            response.error = f"HTTP Client Error: RequestError - {str(e)}"
+            response.raw_response = {"error_detail": str(e)}
+            response.finish_reason = "error"
         except Exception as e:
-            response_dict["error"] = f"An unexpected error occurred: {str(e)}"
-            response_dict["raw_response"] = {"error_detail": str(e)}
-            response_dict["finish_reason"] = "error"
-
-        return response_dict
+            response.error = f"An unexpected error occurred: {str(e)}"
+            response.raw_response = {"error_detail": str(e)}
+            response.finish_reason = "error"
+        return response
 
     async def close(self):
         """Close the underlying HTTPX client."""

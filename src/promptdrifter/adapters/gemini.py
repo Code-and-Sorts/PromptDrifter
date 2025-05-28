@@ -51,7 +51,11 @@ class GeminiAdapterConfig(BaseAdapterConfig):
     def get_headers(self) -> Dict[str, str]:
         return GeminiHeaders().model_dump()
 
-    def get_payload(self, prompt: str, config_override: Optional["GeminiAdapterConfig"] = None) -> Dict[str, Any]:
+    def get_payload(
+            self,
+            prompt: str,
+            config_override: Optional["GeminiAdapterConfig"] = None
+        ) -> Dict[str, Any]:
         effective_config = config_override or self
         generation_config = None
         if effective_config.temperature is not None or effective_config.max_tokens is not None:

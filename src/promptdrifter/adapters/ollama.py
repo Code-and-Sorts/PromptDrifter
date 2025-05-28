@@ -28,7 +28,12 @@ class OllamaAdapterConfig(BaseAdapterConfig):
     def get_headers(self) -> Dict[str, str]:
         return OllamaHeaders().model_dump()
 
-    def get_payload(self, prompt: str, config_override: Optional["OllamaAdapterConfig"] = None, stream: bool = False) -> Dict[str, Any]:
+    def get_payload(
+            self,
+            prompt: str,
+            config_override: Optional["OllamaAdapterConfig"] = None,
+            stream: bool = False
+        ) -> Dict[str, Any]:
         effective_model = config_override.default_model if config_override else self.default_model
         effective_max_tokens = config_override.max_tokens if config_override else self.max_tokens
         # Assuming temperature and other options might be added to OllamaAdapterConfig later

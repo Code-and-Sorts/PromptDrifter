@@ -54,10 +54,15 @@ class LlamaAdapterConfig(BaseAdapterConfig):
         return self
 
     def get_headers(self) -> Dict[str, str]:
-        headers = LlamaHeaders(authorization=f"Bearer {self.api_key}")
-        return headers.model_dump()
+        return LlamaHeaders(
+            authorization=f"Bearer {self.api_key}"
+        ).model_dump()
 
-    def get_payload(self, prompt: str, config_override: Optional["LlamaAdapterConfig"] = None) -> Dict[str, Any]:
+    def get_payload(
+            self,
+            prompt: str,
+            config_override: Optional["LlamaAdapterConfig"] = None
+        ) -> Dict[str, Any]:
         selected_model = config_override.default_model if config_override else self.default_model
         selected_max_tokens = config_override.max_tokens if config_override else self.max_tokens
         selected_temperature = config_override.temperature if config_override else self.temperature
@@ -83,8 +88,10 @@ class LlamaAdapter(Adapter):
         config: Optional[LlamaAdapterConfig] = None,
     ):
         self.config = config or LlamaAdapterConfig()
-        self.headers = self.config.get_headers()
-        self.client = httpx.AsyncClient()
+        self.client = httpx.AsyncClient(
+            base_url=self.config.base_url,
+            headers=self.config.get_headers(),
+        )
 
     async def execute(
         self,
@@ -97,11 +104,13 @@ class LlamaAdapter(Adapter):
         """
         selected_model = config_override.default_model if config_override else self.config.default_model
         payload = self.config.get_payload(prompt, config_override)
-        endpoint = self.config.base_url
+        endpoint = "/chat/completions"
         response = LlamaResponse(model_name=selected_model)
         try:
             http_response = await self.client.post(
-                endpoint, headers=self.headers, json=payload, timeout=60.0
+                endpoint,
+                json=payload,
+                timeout=60.0
             )
             http_response.raise_for_status()
             raw_response_content = http_response.json()
