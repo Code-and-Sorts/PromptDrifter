@@ -41,7 +41,9 @@ jobs:
           ${{ runner.os }}-python-${{ matrix.python-version }}-venv-
 
     - name: ✨ Lint with Ruff using uv
-      run: uv run ruff check .
+      run: |
+        uv pip install -e .[dev]
+        uv run ruff check .
 
     - name: 🧱 Build project with uv
       run: uv build
