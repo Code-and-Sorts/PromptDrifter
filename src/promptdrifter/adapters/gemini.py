@@ -94,7 +94,7 @@ class GeminiAdapter(Adapter):
     ) -> StandardResponse:
         """Makes a REST request to the Google Gemini API."""
         effective_model = config_override.default_model if config_override else self.config.default_model
-        endpoint = f"v1beta/models/{effective_model}:generateContent"
+        endpoint = f"/models/{effective_model}:generateContent"
         params = {"key": self.config.api_key}
         payload = self.config.get_payload(prompt, config_override)
 

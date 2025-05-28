@@ -6,7 +6,7 @@ DEFAULT_OPENAI_MODEL = "gpt-3.5-turbo"
 API_KEY_ENV_VAR_OPENAI = "OPENAI_API_KEY"
 
 # Google Gemini
-GEMINI_API_BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
+GEMINI_API_BASE_URL = "https://generativelanguage.googleapis.com/v1"
 DEFAULT_GEMINI_MODEL = "gemini-1.5-flash-latest"
 API_KEY_ENV_VAR_GEMINI = "GEMINI_API_KEY"
 

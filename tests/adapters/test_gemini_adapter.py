@@ -170,7 +170,7 @@ async def test_gemini_adapter_execute_success(adapter, patch_httpx_client):
     payload = call_kwargs["json"]
     query_params = call_kwargs["params"]
 
-    assert endpoint_url == "v1beta/models/gemini-pro-override:generateContent"
+    assert endpoint_url == "/models/gemini-pro-override:generateContent"
     assert query_params["key"] == adapter.config.api_key
     assert payload["contents"][0]["parts"][0]["text"] == prompt
     if "generationConfig" in payload:
