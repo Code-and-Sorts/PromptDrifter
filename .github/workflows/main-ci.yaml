@@ -42,7 +42,7 @@ jobs:
 
     - name: ✨ Lint with Ruff using uv
       run: |
-        uv pip install -e .[dev]
+        uv pip install --system -e .[dev]
         uv run ruff check .
 
     - name: 🧱 Build project with uv
