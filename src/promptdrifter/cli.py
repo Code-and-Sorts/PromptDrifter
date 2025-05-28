@@ -1,6 +1,7 @@
 import asyncio
 import importlib.resources
 import json
+import os
 from pathlib import Path
 from typing import List, Optional
 
@@ -142,6 +143,11 @@ def init(
         raise typer.Exit(code=1)
 
 
+def is_from_env(param_name: str, env_var: str) -> bool:
+    """Check if a parameter was provided via environment variable rather than CLI."""
+    return env_var in os.environ
+
+
 async def _run_async(
     files: List[Path],
     no_cache: bool,
@@ -158,14 +164,16 @@ async def _run_async(
 ):
     """Async implementation of the run command."""
     if (
-        openai_api_key
-        or gemini_api_key
-        or qwen_api_key
-        or claude_api_key
-        or grok_api_key
-        or deepseek_api_key
-        or mistral_api_key
-        # or llama_api_key
+        not(
+            is_from_env("openai_api_key", "OPENAI_API_KEY")
+            or is_from_env("gemini_api_key", "GEMINI_API_KEY")
+            or is_from_env("qwen_api_key", "QWEN_API_KEY")
+            or is_from_env("claude_api_key", "CLAUDE_API_KEY")
+            or is_from_env("grok_api_key", "GROK_API_KEY")
+            or is_from_env("deepseek_api_key", "DEEPSEEK_API_KEY")
+            or is_from_env("mistral_api_key", "MISTRAL_API_KEY")
+            # or is_from_env("llama_api_key", "LLAMA_API_KEY")
+        )
     ):
         _print_api_key_security_warning()
 
@@ -253,24 +261,28 @@ def run(
         None,
         "--openai-api-key",
         help="OpenAI API key. Overrides OPENAI_API_KEY env var. Warning: Exposes key in shell history.",
+        envvar="OPENAI_API_KEY",
         rich_help_panel="API Keys",
     ),
     gemini_api_key: Optional[str] = typer.Option(
         None,
         "--gemini-api-key",
         help="Google Gemini API key. Overrides GEMINI_API_KEY env var. Warning: Exposes key in shell history.",
+        envvar="GEMINI_API_KEY",
         rich_help_panel="API Keys",
     ),
     qwen_api_key: Optional[str] = typer.Option(
         None,
         "--qwen-api-key",
         help="Qwen API key (DashScope). Overrides QWEN_API_KEY or DASHSCOPE_API_KEY env var. Warning: Exposes key in shell history.",
+        envvar="QWEN_API_KEY",
         rich_help_panel="API Keys",
     ),
     claude_api_key: Optional[str] = typer.Option(
         None,
         "--claude-api-key",
         help="Anthropic Claude API key. Overrides CLAUDE_API_KEY env var. Warning: Exposes key in shell history.",
+        envvar="CLAUDE_API_KEY",
         rich_help_panel="API Keys",
     ),
     grok_api_key: Optional[str] = typer.Option(
