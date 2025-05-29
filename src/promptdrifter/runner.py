@@ -531,7 +531,7 @@ class Runner:
         table.add_column("Adapter", style="magenta", width=10, no_wrap=True)
         table.add_column("Model", style="blue", width=20, no_wrap=False, overflow="fold")
         table.add_column("Status", justify="center", no_wrap=True)
-        table.add_column("Reason/Details", width=50, overflow="fold", no_wrap=False)
+        table.add_column("Failure Details", width=50, overflow="fold", no_wrap=False)
         table.add_column("Cache", justify="center", no_wrap=True, width=10)
         table.add_column("Tags", width=15, overflow="fold", no_wrap=False)
 
