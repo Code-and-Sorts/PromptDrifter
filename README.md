@@ -112,9 +112,9 @@ PromptDrifter is designed to be extensible to various Large Language Models thro
 | **Grok (xAI)**          | ✅ Available   | `grok-3`, `grok-2`, etc.                                                 | N/A          |
 | **DeepSeek**            | ✅ Available   | `deepseek-r1`, `deepseek-v3-0324`, etc.                                  | N/A          |
 | **Mistral**             | ✅ Available   | `mistral-small-24b-instruct-2501`, `mistral-small-3.1-24b-instruct-2503` | N/A          |
-| **Azure OpenAI**        | TBD   | `gpt-3.5-turbo`, `gpt-4`, `gpt-4o`, etc. | N/A          |
-| **Azure Foundry**       | TBD   | `` | N/A          |
-| **Llama (Meta)**        | TBD   | `llama-4-maverick`, `llama-4-scout`, etc.                                | N/A          |
+| **Azure OpenAI**        | ✅ Available   | `gpt-3.5-turbo`, `gpt-4`, `gpt-4o`, etc.                                 | N/A          |
+| **Azure Foundry**       | 📋 To Do       | ``                                                                       | N/A          |
+| **Llama (Meta)**        | 📋 To Do       | `llama-4-maverick`, `llama-4-scout`, etc.                                | N/A          |
 
 
 If there's a model or provider you'd like to see supported, please [open a feature request](https://github.com/Code-and-Sorts/PromptDrifter/issues/new?assignees=&template=feature_request.md) or consider contributing an adapter!

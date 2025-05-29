@@ -569,5 +569,15 @@ def test_run_command_with_api_keys(mocker):
     )
 
 
-def test_version_command():
-    pass
+def test_version_command(mocker):
+    """Test that the version command displays the correct version."""
+    # Mock the get_version function to return a fixed version
+    mocker.patch("promptdrifter.cli.get_version", return_value="0.0.1.dev42")
+
+    result = cli_runner.invoke(app, ["version"])
+
+    # Check the command succeeded
+    assert result.exit_code == 0, strip_ansi(result.stdout)
+
+    # Check the version is displayed correctly
+    assert "Version: 0.0.1.dev42" in strip_ansi(result.stdout)

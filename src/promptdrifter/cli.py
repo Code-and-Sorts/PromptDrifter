@@ -1,7 +1,9 @@
 import asyncio
+import importlib.metadata
 import importlib.resources
 import json
 import os
+import tomllib
 from pathlib import Path
 from typing import List, Optional
 
@@ -17,13 +19,24 @@ console = Console()
 
 
 def get_version():
+    """Get the package version from pyproject.toml or package metadata."""
     try:
-        with open("pyproject.toml", "r") as f:
-            for line in f:
-                if line.startswith("version = "):
-                    return line.split("=")[1].strip().strip('"')
+        package_root = Path(__file__).parent.parent.parent
+        pyproject_path = package_root / "pyproject.toml"
+
+        if pyproject_path.exists():
+            with open(pyproject_path, "rb") as f:
+                toml_data = tomllib.load(f)
+                if "project" in toml_data and "version" in toml_data["project"]:
+                    version_raw = toml_data["project"]["version"]
+                    try:
+                        from packaging.version import Version
+                        return Version(version_raw).public
+                    except ImportError:
+                        return version_raw
+        return importlib.metadata.version("promptdrifter")
     except Exception:
-        return "unknown"
+        return "0.0.1"
 
 
 @app.command()
