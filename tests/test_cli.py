@@ -581,3 +581,53 @@ def test_version_command(mocker):
 
     # Check the version is displayed correctly
     assert "Version: 0.0.1.dev42" in strip_ansi(result.stdout)
+
+
+def test_test_assertion_exact_match_true(mocker):
+    """
+    Test the drift-type command with exact_match assertion that returns True.
+    """
+    result = cli_runner.invoke(app, ["drift-type", "exact_match", "hello", "hello"])
+    assert result.exit_code == 0
+    assert "Assertion: exact_match" in strip_ansi(result.stdout)
+    assert "Result: True" in strip_ansi(result.stdout)
+
+
+def test_test_assertion_exact_match_false(mocker):
+    """
+    Test the drift-type command with exact_match assertion that returns False.
+    """
+    result = cli_runner.invoke(app, ["drift-type", "exact_match", "hello", "world"])
+    assert result.exit_code == 0
+    assert "Assertion: exact_match" in strip_ansi(result.stdout)
+    assert "Result: False" in strip_ansi(result.stdout)
+
+
+def test_test_assertion_regex_match(mocker):
+    """
+    Test the drift-type command with regex_match assertion.
+    """
+    result = cli_runner.invoke(app, ["drift-type", "regex_match", "he.*o", "hello"])
+    assert result.exit_code == 0
+    assert "Assertion: regex_match" in strip_ansi(result.stdout)
+    assert "Result: True" in strip_ansi(result.stdout)
+
+
+def test_test_assertion_substring(mocker):
+    """
+    Test the drift-type command with expect_substring assertion.
+    """
+    result = cli_runner.invoke(app, ["drift-type", "expect_substring", "he", "hello"])
+    assert result.exit_code == 0
+    assert "Assertion: expect_substring" in strip_ansi(result.stdout)
+    assert "Result: True" in strip_ansi(result.stdout)
+
+
+def test_test_assertion_invalid_type(mocker):
+    """
+    Test the drift-type command with an invalid assertion type.
+    """
+    result = cli_runner.invoke(app, ["drift-type", "invalid_type", "hello", "hello"])
+    assert result.exit_code == 1
+    assert "Error: Invalid assertion type 'invalid_type'" in strip_ansi(result.stdout)
+    assert "Valid assertion types:" in strip_ansi(result.stdout)

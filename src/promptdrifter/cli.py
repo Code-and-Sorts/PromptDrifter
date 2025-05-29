@@ -31,6 +31,7 @@ def get_version():
                     version_raw = toml_data["project"]["version"]
                     try:
                         from packaging.version import Version
+
                         return Version(version_raw).public
                     except ImportError:
                         return version_raw
@@ -353,7 +354,10 @@ def record(
         help="Path to save recorded interactions",
     ),
     adapter: str = typer.Option(
-        ..., "--adapter", "-a", help="LLM adapter to use (e.g., openai, ollama, claude, grok)"
+        ...,
+        "--adapter",
+        "-a",
+        help="LLM adapter to use (e.g., openai, ollama, claude, grok)",
     ),
     model: str = typer.Option(
         ..., "--model", "-m", help="Model to use with the adapter"
@@ -409,6 +413,61 @@ def record(
             raise typer.Exit(code=1)
     else:
         console.print("[yellow]No interactions were recorded.[/yellow]")
+
+
+@app.command()
+def drift_type(
+    drift_type: str = typer.Argument(
+        ...,
+        help="Drift type to test (exact_match, regex_match, expect_substring, expect_substring_case_insensitive, text_similarity)",
+    ),
+    expected: str = typer.Argument(
+        ...,
+        help="The expected text or pattern",
+    ),
+    actual: str = typer.Argument(
+        ...,
+        help="The actual output to compare against",
+    ),
+):
+    """
+    Test an drift type with the provided inputs.
+    Returns the result of the assertion (True/False for boolean assertions, or a score for text_similarity).
+    """
+    from promptdrifter import assertions
+
+    assertion_functions = {
+        "exact_match": assertions.exact_match,
+        "regex_match": assertions.regex_match,
+        "expect_substring": assertions.expect_substring,
+        "expect_substring_case_insensitive": assertions.expect_substring_case_insensitive,
+        "text_similarity": assertions.text_similarity,
+    }
+
+    if drift_type not in assertion_functions:
+        valid_types = ", ".join(assertion_functions.keys())
+        console.print(
+            f"[bold red]Error: Invalid assertion type '{drift_type}'[/bold red]"
+        )
+        console.print(f"[bold]Valid assertion types:[/bold] {valid_types}")
+        raise typer.Exit(code=1)
+
+    try:
+        result = assertion_functions[drift_type](expected, actual)
+        if isinstance(result, bool):
+            result_str = "[green]True[/green]" if result else "[red]False[/red]"
+        else:
+            # For similarity score
+            color = "green" if result > 0.7 else "yellow" if result > 0.5 else "red"
+            result_str = f"[{color}]{result:.4f}[/{color}]"
+
+        console.print(f"Assertion: [bold]{drift_type}[/bold]")
+        console.print(f"Expected: {expected}")
+        console.print(f"Actual: {actual}")
+        console.print(f"Result: {result_str}")
+    except Exception as e:
+        console.print(f"[bold red]Error while testing assertion: {e}[/bold red]")
+        raise typer.Exit(code=1)
 
 
 if __name__ == "__main__":
