@@ -85,6 +85,7 @@ async def test_run_single_test_case_pass_exact_match(
         "prompt": "Say hello",
         "adapter": [{"type": "openai", "model": "test_model"}],
         "expect_exact": "Hello there",
+        "tags": ["test-tag", "example"],
     }
     test_case_model = TestCase(**test_data_dict)
 
@@ -129,6 +130,7 @@ async def test_run_single_test_case_fail_exact_match(
         "prompt": "Say hello",
         "adapter": [{"type": "openai", "model": "test_model_fail"}],
         "expect_exact": "Hello",
+        "tags": ["fail-test"],
     }
     test_case_model = TestCase(**test_data_dict)
 
@@ -183,6 +185,7 @@ async def test_run_single_test_case_cache_hit(
         "prompt": "Cached prompt",
         "adapter": [{"type": "openai", "model": "cached_model"}],
         "expect_exact": "Cached response",
+        "tags": ["cached", "test"],
     }
     test_case_model = TestCase(**test_data_dict)
     cached_llm_response = {

@@ -132,6 +132,7 @@ class Runner:
         test_id = test_case_model.id
         base_prompt = test_case_model.prompt
         inputs = test_case_model.inputs
+        tags = test_case_model.tags or []
 
         prompt_text = base_prompt
         if inputs:
@@ -152,6 +153,7 @@ class Runner:
                         "reason": f"Prompt templating error: {e}",
                         "prompt": base_prompt,
                         "inputs": inputs,
+                        "tags": tags,
                     }
                 ]
 
@@ -185,6 +187,7 @@ class Runner:
                 "cache_status": "N/A",
                 "actual_response": None,
                 "raw_adapter_response": None,
+                "tags": tags,
             }
 
             all_adapter_params = adapter_config_model.model_dump(
@@ -366,11 +369,21 @@ class Runner:
                 "error": response.error
             }
 
+            result = self._process_adapter_response(
+                run_details.copy(),
+                llm_response_data,
+                expect_exact,
+                expect_regex,
+                expect_substring,
+                expect_substring_case_insensitive
+            )
+
             if (
                 self.cache
                 and cache_key_options_component is not None
                 and llm_response_data
                 and not llm_response_data.get("error")
+                and result["status"] == "PASS"
             ):
                 self.cache.put(
                     prompt_text,
@@ -380,14 +393,7 @@ class Runner:
                     llm_response_data,
                 )
 
-            return self._process_adapter_response(
-                run_details.copy(),
-                llm_response_data,
-                expect_exact,
-                expect_regex,
-                expect_substring,
-                expect_substring_case_insensitive
-            )
+            return result
         except Exception as e:
             run_details["status"] = "ERROR"
             run_details["reason"] = f"Adapter execution error: {e}"
@@ -519,41 +525,90 @@ class Runner:
             self.console.print("[yellow]No test results to report.[/yellow]")
             return
 
-        table = Table(title="PromptDrifter Test Results")
-        table.add_column("File", style="dim", width=20)
-        table.add_column("ID", style="cyan", width=20)
-        table.add_column("Adapter", style="magenta", width=10)
-        table.add_column("Model", style="blue", width=15)
-        table.add_column("Status", justify="center")
-        table.add_column("Reason/Details", width=50, overflow="fold")
-        table.add_column("Cached", justify="center")
+        table = Table(title="PromptDrifter Test Results", padding=(1, 1, 1, 1))
+        table.add_column("File", style="dim", width=20, no_wrap=False, overflow="fold")
+        table.add_column("ID", style="cyan", width=20, no_wrap=False, overflow="fold")
+        table.add_column("Adapter", style="magenta", width=10, no_wrap=True)
+        table.add_column("Model", style="blue", width=20, no_wrap=False, overflow="fold")
+        table.add_column("Status", justify="center", no_wrap=True)
+        table.add_column("Reason/Details", width=50, overflow="fold", no_wrap=False)
+        table.add_column("Cache", justify="center", no_wrap=True, width=10)
+        table.add_column("Tags", width=15, overflow="fold", no_wrap=False)
 
         summary = {"PASS": 0, "FAIL": 0, "ERROR": 0, "SKIPPED": 0, "TOTAL": 0}
 
+        results_by_id = {}
         for result in self.results:
-            status = result.get("status", "SKIPPED")
-            summary[status] = summary.get(status, 0) + 1
-            summary["TOTAL"] += 1
+            file_name = result.get("file", "N/A")
+            test_id = result.get("id", "N/A")
+            key = f"{file_name}:{test_id}"
 
-            status_color = (
-                "green" if status == "PASS" else "red" if status == "FAIL" else "yellow"
-            )
+            if key not in results_by_id:
+                results_by_id[key] = []
+            results_by_id[key].append(result)
 
-            reason = str(result.get("reason", ""))
-            if status == "FAIL" and result.get("actual_response") is not None:
-                reason += f"\n----\nActual: '{str(result.get('actual_response'))}'"
-            elif status == "ERROR" and result.get("raw_adapter_response"):
-                reason += f"\nAdapter Raw Response: '{str(result.get('raw_adapter_response'))}'"
+        for idx, (key, group_results) in enumerate(results_by_id.items()):
+            file_name = group_results[0].get("file", "N/A")
+            test_id = group_results[0].get("id", "N/A")
 
-            table.add_row(
-                result.get("file", "N/A"),
-                result.get("id", "N/A"),
-                result.get("adapter", "N/A"),
-                result.get("model", "N/A"),
-                f"[{status_color}]{status}[/{status_color}]",
-                reason,
-                result.get("cache_status", "N/A"),
-            )
+            group_results.sort(key=lambda x: (x.get("adapter", ""), x.get("model", "")))
+            middle_row = len(group_results) // 2
+
+            for i, result in enumerate(group_results):
+                status = result.get("status", "SKIPPED")
+                summary[status] = summary.get(status, 0) + 1
+                summary["TOTAL"] += 1
+
+                status_color = (
+                    "green" if status == "PASS" else "red" if status == "FAIL" else "yellow"
+                )
+
+                reason = str(result.get("reason", ""))
+                if status == "FAIL" and result.get("actual_response") is not None:
+                    reason += f"\n----\nActual: '{str(result.get('actual_response'))}'"
+                elif status == "ERROR" and result.get("raw_adapter_response"):
+                    reason += f"\nAdapter Raw Response: '{str(result.get('raw_adapter_response'))}'"
+
+                display_file = file_name if i == middle_row else ""
+                display_id = test_id if i == middle_row else ""
+
+                cache_status = result.get("cache_status", "N/A")
+                if cache_status == "HIT":
+                    cache_display = f"[green]{cache_status}[/green]"
+                elif cache_status == "MISS":
+                    cache_display = f"[yellow]{cache_status}[/yellow]"
+                else:
+                    cache_display = f"[dim]{cache_status}[/dim]"
+
+                tags = result.get("tags", [])
+                if tags:
+                    formatted_tags = "\n".join([f"[bold #d655fe]#{tag}[/bold #d655fe]" for tag in tags])
+                else:
+                    formatted_tags = ""
+
+                table.add_row(
+                    display_file,
+                    display_id,
+                    result.get("adapter", "N/A"),
+                    result.get("model", "N/A"),
+                    f"[{status_color}]{status}[/{status_color}]",
+                    reason,
+                    cache_display,
+                    formatted_tags,
+                )
+
+            # Add a separator between different test IDs (except after the last group)
+            if idx < len(results_by_id) - 1:
+                table.add_row(
+                    "─" * 20,  # Separator for File column
+                    "─" * 20,  # Separator for ID column
+                    "─" * 10,  # Separator for Adapter column
+                    "─" * 20,  # Separator for Model column
+                    "─" * 10,  # Separator for Status column
+                    "─" * 50,  # Separator for Reason column
+                    "─" * 10,  # Separator for Cache column
+                    "─" * 15,  # Separator for Tags column
+                )
 
         self.console.print(table)
         self.console.print("\n[bold]Summary:[/bold]")
