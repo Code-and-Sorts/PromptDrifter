@@ -1,0 +1,100 @@
+/**
+ * CSS files with the .module.css suffix will be treated as CSS modules
+ * and scoped locally.
+ */
+
+.heroBanner {
+  padding: 4rem 0;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  background: #FEEB72;
+  color: #000000; /* Changed to black for better contrast on yellow */
+}
+
+@media screen and (max-width: 996px) {
+  .heroBanner {
+    padding: 2rem;
+  }
+}
+
+.buttons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.logoContainer {
+  margin-bottom: 2.5rem;
+  padding: 1rem;
+}
+
+.logo {
+  width: 300px;
+  height: auto;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
+}
+
+@media screen and (min-width: 996px) {
+  .logo {
+    width: 350px;
+  }
+  
+  .logoContainer {
+    margin-bottom: 3rem;
+  }
+}
+
+/* Highlights section */
+.highlights {
+  padding: 3rem 0;
+  background-color: #f8f9fa;
+}
+
+.highlightCard {
+  padding: 2rem;
+  text-align: center;
+  height: 100%;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+  background-color: white;
+  transition: all 0.3s ease;
+  margin-bottom: 1.5rem;
+  border-top: 4px solid #F47CC4;
+}
+
+.highlightCard:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+.highlightCard h3 {
+  color: #00BBF9;
+  margin-bottom: 1rem;
+}
+
+.highlightCard p {
+  color: #333;
+  line-height: 1.6;
+}
+
+/* Dark mode overrides */
+[data-theme='dark'] .highlights {
+  background-color: #242424;
+}
+
+[data-theme='dark'] .highlightCard {
+  background-color: #2a2a2a;
+  border-top: 4px solid #F47CC4;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme='dark'] .highlightCard h3 {
+  color: #1acaff;
+}
+
+[data-theme='dark'] .highlightCard p {
+  color: #e2e8f0;
+}

@@ -1,0 +1,101 @@
+.features {
+  display: flex;
+  align-items: center;
+  padding: 2rem 0;
+  width: 100%;
+}
+
+.highlights {
+  padding: 3rem 0;
+  background-color: #f8f9fa;
+}
+
+.featureSvg {
+  height: 200px;
+  width: 200px;
+  margin-bottom: 1.5rem;
+  color: #00BBF9;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 100%;
+}
+
+/* Responsive sizing for larger screens */
+@media screen and (min-width: 996px) {
+  .featureSvg {
+    height: 220px;
+    width: 220px;
+  }
+}
+
+/* Responsive sizing for smaller screens */
+@media screen and (max-width: 768px) {
+  .featureSvg {
+    height: 180px;
+    width: 180px;
+  }
+}
+
+.highlightCard {
+  padding: 2.5rem 2rem;
+  text-align: center;
+  height: 100%;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+  background-color: white;
+  transition: all 0.3s ease;
+  margin-bottom: 1.5rem;
+  border-top: 4px solid #F47CC4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.highlightCard:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+  border-top: 4px solid #4bcbf1;
+}
+
+.highlightCard h3 {
+  color: #F47CC4;
+  margin-bottom: 1rem;
+}
+
+.highlightCard p {
+  color: #333;
+  line-height: 1.6;
+}
+
+/* Dark mode overrides */
+[data-theme='dark'] .highlights {
+  background-color: #242424;
+}
+
+[data-theme='dark'] .highlightCard {
+  background-color: #2a2a2a;
+  border-top: 4px solid #F47CC4;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme='dark'] .highlightCard:hover {
+  border-top: 4px solid #4bcbf1;
+}
+
+[data-theme='dark'] .highlightCard h3 {
+  color: #F47CC4;
+}
+
+[data-theme='dark'] .highlightCard p {
+  color: #e2e8f0;
+}
+
+.svgContainer {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 1rem;
+}

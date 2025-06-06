@@ -17,6 +17,7 @@ class AdapterConfig(BaseModel):
     base_url: Optional[str] = None
     temperature: Optional[float] = Field(default=None, ge=0, le=2)
     max_tokens: Optional[int] = Field(default=None, ge=1)
+    skip: bool = Field(default=False, description="When true, this adapter will be skipped during test execution.")
 
 
 class TestCase(BaseModel):

@@ -27,7 +27,28 @@
 
 ## 🏃 Quick-Start
 
-TODO: add quick-start
+To start using PromptDrifter:
+
+1. **Install the package:**
+    ```bash
+    pip install promptdrifter
+    ```
+
+2. **Initialize a sample configuration:**
+    ```bash
+    promptdrifter init
+    ```
+
+This will create a `promptdrifter.yaml` file in your current directory.
+
+3. **Edit `promptdrifter.yaml`** to define your prompts and expected outcomes.
+
+4. **Run your tests:**
+    ```bash
+    promptdrifter run promptdrifter.yaml
+    ```
+
+TODO: add gif
 
 ## ❓ Why PromptDrifter?
 
@@ -127,6 +148,7 @@ If there's a model or provider you'd like to see supported, please [open a featu
 | **Regex** | `expect_regex` | Output should match regex pattern  | ✅ Available |
 | **Substring** | `expect_substring` | Output should contain the substring  | ✅ Available |
 | **Substring Case Insensitive** | `expect_substring_case_insensitive` | Output should contain the substring that is case insensitive (e.g. "hElLO" === "hello")  | ✅ Available |
+| **Text Similarity** | `text_similarity` | Output should be similar to the input using `sentence-transformers/all-MiniLM-L6-v2` | ✅ Available |
 
 ## ⚙️ GitHub Action
 
@@ -145,7 +167,17 @@ By using the action, you can ensure that any changes to your LLM's responses tha
 
 ## 📚 Docs
 
-// TODO: Link to docs. In docs, add references.
+Our documentation is built with Docusaurus and deployed to GitHub Pages.
+
+You can view the full documentation at: [https://code-and-sorts.github.io/PromptDrifter/](https://code-and-sorts.github.io/PromptDrifter/)
+
+The documentation includes:
+- Getting Started guide
+- Configuration options
+- API reference
+- Examples and tutorials
+
+If you want to contribute to the documentation, see the [docs/README.md](./docs/README.md) file for instructions.
 
 ## 🧑‍💻 Contributing
 

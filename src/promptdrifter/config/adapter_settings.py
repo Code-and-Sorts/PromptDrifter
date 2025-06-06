@@ -40,6 +40,11 @@ DEEPSEEK_API_BASE_URL = "https://api.deepseek.com"
 DEFAULT_DEEPSEEK_MODEL = "deepseek-chat"
 API_KEY_ENV_VAR_DEEPSEEK = "DEEPSEEK_API_KEY"
 
+# Azure OpenAI
+AZURE_OPENAI_API_BASE_URL = "https://api.openai.com/v1"
+DEFAULT_AZURE_OPENAI_MODEL = "gpt-3.5-turbo"
+API_KEY_ENV_VAR_AZURE_OPENAI = "AZURE_OPENAI_API_KEY"
+
 # Llama (Meta)
 LLAMA_API_BASE_URL = "https://llama-api.meta.ai/v1"
 DEFAULT_LLAMA_MODEL = "llama-3-70b-instruct"

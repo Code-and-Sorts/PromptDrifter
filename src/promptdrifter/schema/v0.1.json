@@ -106,6 +106,11 @@
                     "type": "integer",
                     "minimum": 1,
                     "description": "Maximum tokens to generate."
+                },
+                "skip": {
+                    "type": "boolean",
+                    "description": "When set to true, this adapter will be skipped during test execution.",
+                    "default": false
                 }
             },
             "required": ["type", "model"]

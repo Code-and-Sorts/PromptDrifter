@@ -227,6 +227,12 @@ class Runner:
             if base_url:
                 adapter_options["base_url"] = base_url
 
+            if adapter_options.pop("skip", False):
+                current_run_details["status"] = "SKIPPED"
+                current_run_details["reason"] = "Adapter explicitly skipped via configuration."
+                all_adapter_results.append(current_run_details)
+                continue
+
             cache_key_options_component = None
             cached_response = None
 
