@@ -40,6 +40,26 @@ def get_version():
         return "0.0.1"
 
 
+@app.callback(invoke_without_command=True)
+def callback(
+    ctx: typer.Context,
+    version: bool = typer.Option(
+        False, "--version", "-v", help="Show the application version and exit."
+    ),
+):
+    """
+    promptdrifter: A one-command CI guardrail that catches prompt drift.
+    """
+    if version:
+        console.print(f"promptdrifter v{get_version()}")
+        raise typer.Exit()
+    
+    if ctx.invoked_subcommand is None:
+        console.print(Panel.fit("Welcome to promptdrifter!", title="promptdrifter"))
+        console.print("\nRun with --help to see available commands.")
+        raise typer.Exit()
+
+
 @app.command()
 def version():
     """Display the current version of PromptDrifter."""

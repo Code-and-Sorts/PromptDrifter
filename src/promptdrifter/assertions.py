@@ -2,8 +2,6 @@ import os
 import re
 from typing import Pattern
 
-from sentence_transformers import SentenceTransformer, util
-
 
 def exact_match(expected_output: str, actual_output: str) -> bool:
     return expected_output == actual_output
@@ -28,6 +26,9 @@ def expect_substring_case_insensitive(substring: str, actual_output: str) -> boo
     return substring.lower() in actual_output.lower()
 
 def text_similarity(expected_output: str, actual_output: str) -> float:
+    # lazy import
+    from sentence_transformers import SentenceTransformer, util
+
     # force CPU (relevant on dev machines with GPUs)
     os.environ["CUDA_VISIBLE_DEVICES"] = ""
     model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2", device="cpu")

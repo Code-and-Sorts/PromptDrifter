@@ -19,7 +19,6 @@ from .adapters.openai import OpenAIAdapter
 from .adapters.qwen import QwenAdapter
 
 # from .adapters.llama import LlamaAdapter
-from .assertions import exact_match, regex_match
 from .cache import PromptCache
 from .yaml_loader import YamlFileLoader
 
@@ -416,6 +415,9 @@ class Runner:
         expect_substring_case_insensitive
     ):
         """Process an adapter response and determine test status."""
+        # lazy import
+        from .assertions import exact_match, regex_match
+
         if llm_response_data.get("error"):
             run_details["status"] = "ERROR"
             run_details["reason"] = f"Adapter error: {llm_response_data['error']}"
