@@ -17,6 +17,14 @@ const sidebars: SidebarsConfig = {
         'docs-configuration/usage',
       ],
     },
+    {
+      type: 'category',
+      label: 'Contributing',
+      items: [
+        'docs-contributing/welcome',
+        'docs-contributing/schema-versioning',
+      ],
+    },
   ],
 };
 
