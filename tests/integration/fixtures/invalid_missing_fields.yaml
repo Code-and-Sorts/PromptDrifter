@@ -1,0 +1,4 @@
+version: "0.1"
+adapters:
+  - id: incomplete-test
+    prompt: "What is 2+2?"

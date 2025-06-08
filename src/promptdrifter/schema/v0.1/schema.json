@@ -53,6 +53,10 @@
                     "type": "string",
                     "description": "Expect the model response to contain this string, case-insensitive."
                 },
+                "text_similarity": {
+                    "type": "string",
+                    "description": "Expected text for similarity comparison."
+                },
                 "tags": {
                     "type": "array",
                     "items": { "type": "string" },
@@ -68,10 +72,11 @@
             },
             "required": ["id", "prompt", "adapter"],
             "oneOf": [
-                { "required": ["expect_exact"], "not": { "required": ["expect_regex", "expect_substring", "expect_substring_case_insensitive"] } },
-                { "required": ["expect_regex"], "not": { "required": ["expect_exact", "expect_substring", "expect_substring_case_insensitive"] } },
-                { "required": ["expect_substring"], "not": { "required": ["expect_exact", "expect_regex", "expect_substring_case_insensitive"] } },
-                { "required": ["expect_substring_case_insensitive"], "not": { "required": ["expect_exact", "expect_regex", "expect_substring"] } }
+                { "required": ["expect_exact"], "not": { "required": ["expect_regex", "expect_substring", "expect_substring_case_insensitive", "text_similarity"] } },
+                { "required": ["expect_regex"], "not": { "required": ["expect_exact", "expect_substring", "expect_substring_case_insensitive", "text_similarity"] } },
+                { "required": ["expect_substring"], "not": { "required": ["expect_exact", "expect_regex", "expect_substring_case_insensitive", "text_similarity"] } },
+                { "required": ["expect_substring_case_insensitive"], "not": { "required": ["expect_exact", "expect_regex", "expect_substring", "text_similarity"] } },
+                { "required": ["text_similarity"], "not": { "required": ["expect_exact", "expect_regex", "expect_substring", "expect_substring_case_insensitive"] } }
             ]
         },
         "adapterConfiguration": {
@@ -89,7 +94,6 @@
                         "claude",
                         "grok",
                         "deepseek",
-                        "llama",
                         "mistral"
                     ]
                 },

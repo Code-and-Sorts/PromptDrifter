@@ -8,8 +8,13 @@ help: ## ⁉️ Displays this help message
 
 test-unit: ## 🧪 Runs unit tests with coverage
 	@echo "🧪 Running unit tests with coverage..."
-	uv run pytest --cov=src/promptdrifter -v
+	uv run pytest tests/unit/ --cov=src/promptdrifter -v
 	@echo "✅ Unit tests finished."
+
+test-integration: ## 🔗 Runs integration tests
+	@echo "🔗 Running integration tests..."
+	uv run pytest tests/integration/ -v
+	@echo "✅ Integration tests finished."
 
 lint: ## ✨ Runs linter (ruff check)
 	@echo "✨ Running linter..."
@@ -21,4 +26,4 @@ lint-fix: ## 🪄 Runs linter with auto-fix (ruff check --fix)
 	uv run ruff check --fix .
 	@echo "🎉 Linting and fixing finished."
 
-.PHONY: test-unit lint lint-fix help
+.PHONY: test-unit test-integration test-all lint lint-fix help

@@ -133,7 +133,7 @@ def init(
     try:
         sample_config_content = (
             importlib.resources.files("promptdrifter")
-            .joinpath("schema", "sample", "v0.1.yaml")
+            .joinpath("schema", "v0.1", "sample.yaml")
             .read_text()
         )
     except FileNotFoundError:
