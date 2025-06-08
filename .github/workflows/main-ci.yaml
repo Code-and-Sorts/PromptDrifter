@@ -6,7 +6,7 @@ on:
 
 jobs:
   build-lint-test:
-    uses: ./.github/workflows/shared/build-and-test.yaml
+    uses: ./.github/workflows/shared-build-and-test.yaml
     with:
       upload-artifacts: false
       update-version-for-pr: false

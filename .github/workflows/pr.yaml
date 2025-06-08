@@ -7,7 +7,7 @@ on:
 
 jobs:
   build-and-test:
-    uses: ./.github/workflows/shared/build-and-test.yaml
+    uses: ./.github/workflows/shared-build-and-test.yaml
     with:
       os-matrix: '["macos-latest", "windows-latest"]'
       upload-artifacts: true
@@ -16,7 +16,7 @@ jobs:
 
   publish-to-testpypi:
     needs: build-and-test
-    uses: ./.github/workflows/shared/publish-package.yaml
+    uses: ./.github/workflows/shared-publish-package.yaml
     with:
       is-test-pypi: true
     secrets: inherit
