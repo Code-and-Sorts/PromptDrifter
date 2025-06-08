@@ -20,3 +20,5 @@ jobs:
     with:
       is-test-pypi: true
     secrets: inherit
+    permissions:
+      pull-requests: write
