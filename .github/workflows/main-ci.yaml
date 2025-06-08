@@ -10,34 +10,4 @@ jobs:
     with:
       upload-artifacts: false
       update-version-for-pr: false
-
-  integration-test:
-    runs-on: windows-latest
-    steps:
-    - name: ⤵️ Checkout code
-      uses: actions/checkout@v4
-
-    - name: 🐍 Set up Python 3.13
-      uses: actions/setup-python@v5
-      with:
-        python-version: 3.13
-
-    - name: 🚀 Install uv with caching
-      uses: astral-sh/setup-uv@v6
-      with:
-        enable-cache: true
-
-    - name: 🔗 Check lock file consistency (uv.lock)
-      run: uv lock --check
-
-    - name: ♻️ Cache .venv
-      uses: actions/cache@v4
-      with:
-        path: .venv
-        key: ${{ runner.os }}-python- -venv-${{ hashFiles('pyproject.toml', 'scripts/pyproject.toml') }}-${{ hashFiles('uv.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-python-3.13-venv-${{ hashFiles('pyproject.toml', 'scripts/pyproject.toml') }}-
-          ${{ runner.os }}-python-3.13-venv-
-
-    - name: 🧪 Run integration tests with uv
-      run: uv run pytest tests/integration/ -v
+      run-integration-tests: true

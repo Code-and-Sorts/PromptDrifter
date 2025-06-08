@@ -28,6 +28,11 @@ on:
         required: false
         type: boolean
         default: false
+      run-integration-tests:
+        description: 'Whether to run integration tests'
+        required: false
+        type: boolean
+        default: false
     outputs:
       build-successful:
         description: 'Whether the build was successful'
@@ -91,3 +96,35 @@ jobs:
       with:
         name: ${{ inputs.artifact-name }}
         path: dist/
+
+  integration-test:
+    if: inputs.run-integration-tests
+    runs-on: windows-latest
+    steps:
+    - name: ⤵️ Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🐍 Set up Python ${{ inputs.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: 🚀 Install uv with caching
+      uses: astral-sh/setup-uv@v6
+      with:
+        enable-cache: true
+
+    - name: 🔗 Check lock file consistency (uv.lock)
+      run: uv lock --check
+
+    - name: ♻️ Cache .venv
+      uses: actions/cache@v4
+      with:
+        path: .venv
+        key: ${{ runner.os }}-python-${{ inputs.python-version }}-venv-${{ hashFiles('pyproject.toml', 'scripts/pyproject.toml') }}-${{ hashFiles('uv.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-python-${{ inputs.python-version }}-venv-${{ hashFiles('pyproject.toml', 'scripts/pyproject.toml') }}-
+          ${{ runner.os }}-python-${{ inputs.python-version }}-venv-
+
+    - name: 🧪 Run integration tests with uv
+      run: uv run pytest tests/integration/ -v

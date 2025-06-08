@@ -53,7 +53,7 @@ jobs:
 
     - name: Read version for comment
       id: version_reader
-      run: echo "published_version=$(cat dist/VERSION.txt)" >> $GITHUB_OUTPUT
+      run: echo "published_version=$(cat dist/VERSION.txt)" >> "$GITHUB_OUTPUT"
 
     - name: 💬 Comment on PR with deployed version
       uses: thollander/actions-comment-pull-request@v3
