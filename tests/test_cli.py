@@ -272,36 +272,6 @@ def test_init_command_default_path(mocker, tmp_path):
     if config_file.exists():  # Clean up
         config_file.unlink()
 
-
-def test_record_command(tmp_path, mocker):
-    output_json_file = tmp_path / "recorded.json"
-
-    mock_typer_prompt = mocker.patch("typer.prompt")
-    mock_typer_prompt.return_value = "exit"
-
-    result = cli_runner.invoke(
-        app,
-        [
-            "record",
-            "--adapter",
-            "dummy_adapter",
-            "--model",
-            "dummy_model",
-            "--output",
-            str(output_json_file),
-        ],
-    )
-
-    assert result.exit_code == 0, (
-        f"Exited with {result.exit_code}, stdout: {result.stdout}, stderr: {result.stderr}"
-    )
-    mock_typer_prompt.assert_called_once_with("\nEnter your prompt")
-
-    assert "Recording mode started. Type 'exit' to finish." in strip_ansi(result.stdout)
-    assert "No interactions were recorded." in strip_ansi(result.stdout)
-    assert not output_json_file.exists()
-
-
 def test_init_new_directory_success(mocker, tmp_path):
     """Test init command when target directory needs to be created."""
     base_dir = tmp_path / "new_project_dir"
@@ -569,65 +539,51 @@ def test_run_command_with_api_keys(mocker):
     )
 
 
-def test_version_command(mocker):
-    """Test that the version command displays the correct version."""
-    # Mock the get_version function to return a fixed version
-    mocker.patch("promptdrifter.cli.get_version", return_value="0.0.1.dev42")
-
-    result = cli_runner.invoke(app, ["version"])
-
-    # Check the command succeeded
-    assert result.exit_code == 0, strip_ansi(result.stdout)
-
-    # Check the version is displayed correctly
-    assert "Version: 0.0.1.dev42" in strip_ansi(result.stdout)
-
-
-def test_test_assertion_exact_match_true(mocker):
+def test_assertion_exact_match_true(mocker):
     """
     Test the drift-type command with exact_match assertion that returns True.
     """
-    result = cli_runner.invoke(app, ["drift-type", "exact_match", "hello", "hello"])
+    result = cli_runner.invoke(app, ["test-drift-type", "exact_match", "hello", "hello"])
     assert result.exit_code == 0
     assert "Assertion: exact_match" in strip_ansi(result.stdout)
     assert "Result: True" in strip_ansi(result.stdout)
 
 
-def test_test_assertion_exact_match_false(mocker):
+def test_assertion_exact_match_false(mocker):
     """
     Test the drift-type command with exact_match assertion that returns False.
     """
-    result = cli_runner.invoke(app, ["drift-type", "exact_match", "hello", "world"])
+    result = cli_runner.invoke(app, ["test-drift-type", "exact_match", "hello", "world"])
     assert result.exit_code == 0
     assert "Assertion: exact_match" in strip_ansi(result.stdout)
     assert "Result: False" in strip_ansi(result.stdout)
 
 
-def test_test_assertion_regex_match(mocker):
+def test_assertion_regex_match(mocker):
     """
     Test the drift-type command with regex_match assertion.
     """
-    result = cli_runner.invoke(app, ["drift-type", "regex_match", "he.*o", "hello"])
+    result = cli_runner.invoke(app, ["test-drift-type", "regex_match", "he.*o", "hello"])
     assert result.exit_code == 0
     assert "Assertion: regex_match" in strip_ansi(result.stdout)
     assert "Result: True" in strip_ansi(result.stdout)
 
 
-def test_test_assertion_substring(mocker):
+def test_assertion_substring(mocker):
     """
     Test the drift-type command with expect_substring assertion.
     """
-    result = cli_runner.invoke(app, ["drift-type", "expect_substring", "he", "hello"])
+    result = cli_runner.invoke(app, ["test-drift-type", "expect_substring", "he", "hello"])
     assert result.exit_code == 0
     assert "Assertion: expect_substring" in strip_ansi(result.stdout)
     assert "Result: True" in strip_ansi(result.stdout)
 
 
-def test_test_assertion_invalid_type(mocker):
+def test_assertion_invalid_type(mocker):
     """
     Test the drift-type command with an invalid assertion type.
     """
-    result = cli_runner.invoke(app, ["drift-type", "invalid_type", "hello", "hello"])
+    result = cli_runner.invoke(app, ["test-drift-type", "invalid_type", "hello", "hello"])
     assert result.exit_code == 1
     assert "Error: Invalid assertion type 'invalid_type'" in strip_ansi(result.stdout)
     assert "Valid assertion types:" in strip_ansi(result.stdout)

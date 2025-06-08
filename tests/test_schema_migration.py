@@ -1,6 +1,8 @@
 from unittest import mock
+
 import pytest
 from jsonschema.exceptions import ValidationError
+
 from promptdrifter.schema.migration import get_migration_function, migrate_config
 
 

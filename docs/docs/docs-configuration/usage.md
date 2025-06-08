@@ -150,16 +150,6 @@ promptdrifter run path/to/tests.yaml
 
 ## Advanced Usage
 
-### Recording Interactions
-
-Record interactions with an LLM for later use in test cases:
-
-```bash
-promptdrifter record --adapter openai --model gpt-4 --output recorded_interactions.json
-```
-
-This opens an interactive prompt where you can chat with the model and save responses for test cases.
-
 ### Drift Testing
 
 Test specific drift types:

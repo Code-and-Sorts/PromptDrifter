@@ -1,7 +1,9 @@
 from unittest import mock
+
 import pytest
 import yaml
 from typer.testing import CliRunner
+
 from promptdrifter.cli import app
 
 

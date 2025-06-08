@@ -1,7 +1,6 @@
 import asyncio
 import importlib.metadata
 import importlib.resources
-import json
 import os
 import tomllib
 from pathlib import Path
@@ -51,23 +50,9 @@ def callback(
         False, "--version", "-v", help="Show the application version and exit."
     ),
 ):
-    """
-    promptdrifter: A one-command CI guardrail that catches prompt drift.
-    """
-    if version:
-        console.print(f"promptdrifter v{get_version()}")
-        raise typer.Exit()
-
-    if ctx.invoked_subcommand is None:
-        console.print(Panel.fit("Welcome to promptdrifter!", title="promptdrifter"))
-        console.print("\nRun with --help to see available commands.")
-        raise typer.Exit()
-
-
-@app.command()
-def version():
     """Display the current version of PromptDrifter."""
-    ascii_logo = """
+    if version:
+        ascii_logo = """
                                              [bold #4bcbf1]▒▒▒▒▒▒▒▒▒▒▒▒▒
                                           ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
                                         ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
@@ -92,9 +77,9 @@ def version():
  ▒▒      ▒▒▒▒     ▒▒▒▒▒▒  ▒▒▒▒ ▒▒▒▒ ▒▒▒ ▒▒▒▒▒▒▒   ▒▒▒▒ ▒▒▒▒▒▒▒▒  ▒▒▒    ▒▒▒▒  ▒▒▒▒   ▒▒▒▒  ▒▒▒▒▒▒▒   ▒▒▒
                                         ▒▒▒
                                         ▒▒▒[/bold #9f4cf2]
-    """
-    console.print(ascii_logo)
-    console.print(f"Version: [bold #4bcbf1]{get_version()}[/bold #4bcbf1]")
+        """
+        console.print(ascii_logo)
+        console.print(f"Version: [bold #4bcbf1]{get_version()}[/bold #4bcbf1]")
 
 
 def _print_api_key_security_warning():
@@ -368,82 +353,11 @@ def run(
         )
     )
 
-
 @app.command()
-def record(
-    output_file: Path = typer.Option(
-        Path("recorded_interactions.json"),
-        "--output",
-        "-o",
-        help="Path to save recorded interactions",
-    ),
-    adapter: str = typer.Option(
-        ...,
-        "--adapter",
-        "-a",
-        help="LLM adapter to use (e.g., openai, ollama, claude, grok)",
-    ),
-    model: str = typer.Option(
-        ..., "--model", "-m", help="Model to use with the adapter"
-    ),
-):
-    """Record interactions with an LLM for later use in test cases."""
-    if not adapter or not model:
-        console.print(
-            "[bold red]Error: Both adapter and model are required.[/bold red]"
-        )
-        raise typer.Exit(code=1)
-
-    console.print("[bold]Recording mode started. Type 'exit' to finish.[/bold]")
-    interactions = []
-
-    while True:
-        try:
-            prompt = typer.prompt("\nEnter your prompt")
-            if prompt.lower() == "exit":
-                break
-
-            response = typer.prompt("Enter the expected response")
-
-            interaction = {
-                "prompt": prompt,
-                "expected_response": response,
-                "adapter": adapter,
-                "model": model,
-            }
-            interactions.append(interaction)
-            console.print("[green]Interaction recorded![/green]")
-
-        except KeyboardInterrupt:
-            console.print("\n[yellow]Recording interrupted.[/yellow]")
-            break
-
-    if interactions:
-        try:
-            with open(output_file, "w") as f:
-                json.dump(interactions, f, indent=2)
-            sane_output_file_str = str(output_file).replace("\u00a0", " ")
-            console.print(
-                f"[green]Recorded {len(interactions)} interactions to {sane_output_file_str}[/green]"
-            )
-            console.print("\n[bold]Next steps:[/bold]")
-            console.print("1. Review the recorded interactions")
-            console.print("2. Convert them to YAML test cases")
-            console.print(
-                "3. Run your tests with: promptdrifter run <your-test-file.yaml>"
-            )
-        except Exception as e:
-            console.print(f"[bold red]Error saving interactions: {e}[/bold red]")
-            raise typer.Exit(code=1)
-    else:
-        console.print("[yellow]No interactions were recorded.[/yellow]")
-
-
-@app.command()
-def drift_type(
+def test_drift_type(
     drift_type: str = typer.Argument(
         ...,
-        help="Drift type to test (exact_match, regex_match, expect_substring, expect_substring_case_insensitive, text_similarity)",
+        help="Test drift type (exact_match, regex_match, expect_substring, expect_substring_case_insensitive, text_similarity)",
     ),
     expected: str = typer.Argument(
         ...,
@@ -455,7 +369,7 @@ def drift_type(
     ),
 ):
     """
-    Test an drift type with the provided inputs.
+    Test a drift type with the provided inputs.
     Returns the result of the assertion (True/False for boolean assertions, or a score for text_similarity).
     """
     from promptdrifter import assertions

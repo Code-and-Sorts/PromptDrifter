@@ -1,5 +1,7 @@
 from unittest import mock
+
 import pytest
+
 from promptdrifter.schema.constants import SCHEMA_VERSIONS
 from promptdrifter.schema.update_symlinks import update_symlinks
 
