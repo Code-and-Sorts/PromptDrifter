@@ -186,3 +186,7 @@ Follow the [contributing guide](./.github/CONTRIBUTING.md).
 ## 🔖 Code of Conduct
 
 Please make sure you read the [Code of Conduct guide](./.github/CODE-OF-CONDUCT.md).
+
+## 📝 Changelog
+
+- [0.0.x](./changelogs/0.0.x.md)
