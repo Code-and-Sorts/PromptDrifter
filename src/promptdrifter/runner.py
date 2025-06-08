@@ -416,7 +416,7 @@ class Runner:
     ):
         """Process an adapter response and determine test status."""
         # lazy import
-        from .assertions import exact_match, regex_match
+        from .drift_types import exact_match, regex_match
 
         if llm_response_data.get("error"):
             run_details["status"] = "ERROR"

@@ -372,14 +372,14 @@ def test_drift_type(
     Test a drift type with the provided inputs.
     Returns the result of the assertion (True/False for boolean assertions, or a score for text_similarity).
     """
-    from promptdrifter import assertions
+    from promptdrifter import drift_types
 
     assertion_functions = {
-        "exact_match": assertions.exact_match,
-        "regex_match": assertions.regex_match,
-        "expect_substring": assertions.expect_substring,
-        "expect_substring_case_insensitive": assertions.expect_substring_case_insensitive,
-        "text_similarity": assertions.text_similarity,
+        "exact_match": drift_types.exact_match,
+        "regex_match": drift_types.regex_match,
+        "expect_substring": drift_types.expect_substring,
+        "expect_substring_case_insensitive": drift_types.expect_substring_case_insensitive,
+        "text_similarity": drift_types.text_similarity,
     }
 
     if drift_type not in assertion_functions:

@@ -1,6 +1,6 @@
 import pytest
 
-from promptdrifter.assertions import (
+from promptdrifter.drift_types import (
     exact_match,
     expect_substring,
     expect_substring_case_insensitive,
