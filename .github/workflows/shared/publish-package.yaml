@@ -1,0 +1,62 @@
+name: Publish Package
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: 'Python version to use'
+        required: false
+        type: string
+        default: '3.13'
+      is-test-pypi:
+        description: 'Whether to publish to TestPyPI or PyPI'
+        required: false
+        type: boolean
+        default: true
+    outputs:
+      published-version:
+        description: 'The version that was published'
+        value: 'published'
+
+jobs:
+  publish-package:
+    runs-on: macos-latest
+    environment: ${{ inputs.is-test-pypi && 'testpypi' || 'pypi' }}
+    env:
+      pypi-repository: ${{ inputs.is-test-pypi && 'testpypi' || 'pypi' }}
+    permissions:
+      pull-requests: write
+
+    steps:
+    - name: 🐍 Set up Python ${{ inputs.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: 🚀 Install uv
+      uses: astral-sh/setup-uv@v6
+
+    - name: ⤵️ Download dist artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: python-package-dist
+        path: dist/
+
+    - name: Install Twine
+      run: uv pip install twine --system
+
+    - name: 📦 Publish to ${{ env.pypi-repository }}
+      env:
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ inputs.is-test-pypi && secrets.TEST_PYPI_API_TOKEN || secrets.PYPI_API_TOKEN }}
+      run: twine upload --verbose --repository ${{ env.pypi-repository }} dist/*.whl dist/*.tar.gz
+
+    - name: Read version for comment
+      id: version_reader
+      run: echo "published_version=$(cat dist/VERSION.txt)" >> $GITHUB_OUTPUT
+
+    - name: 💬 Comment on PR with deployed version
+      uses: thollander/actions-comment-pull-request@v3
+      with:
+        message: |
+          Successfully published version **${{ steps.version_reader.outputs.published_version }}** to TestPyPI. 🚀

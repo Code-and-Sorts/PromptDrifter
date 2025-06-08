@@ -6,22 +6,21 @@ on:
 
 jobs:
   build-lint-test:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        # os: [ubuntu-latest, macos-latest, windows-latest]
-        os: [macos-latest, windows-latest]
-        python-version: ['3.13']
+    uses: ./.github/workflows/shared/build-and-test.yaml
+    with:
+      upload-artifacts: false
+      update-version-for-pr: false
 
+  integration-test:
+    runs-on: windows-latest
     steps:
     - name: ⤵️ Checkout code
       uses: actions/checkout@v4
 
-    - name: 🐍 Set up Python ${{ matrix.python-version }}
+    - name: 🐍 Set up Python 3.13
       uses: actions/setup-python@v5
       with:
-        python-version: ${{ matrix.python-version }}
+        python-version: 3.13
 
     - name: 🚀 Install uv with caching
       uses: astral-sh/setup-uv@v6
@@ -35,18 +34,10 @@ jobs:
       uses: actions/cache@v4
       with:
         path: .venv
-        key: ${{ runner.os }}-python-${{ matrix.python-version }}-venv-${{ hashFiles('pyproject.toml') }}-${{ hashFiles('uv.lock') }}
+        key: ${{ runner.os }}-python- -venv-${{ hashFiles('pyproject.toml', 'scripts/pyproject.toml') }}-${{ hashFiles('uv.lock') }}
         restore-keys: |
-          ${{ runner.os }}-python-${{ matrix.python-version }}-venv-${{ hashFiles('pyproject.toml') }}-
-          ${{ runner.os }}-python-${{ matrix.python-version }}-venv-
+          ${{ runner.os }}-python-3.13-venv-${{ hashFiles('pyproject.toml', 'scripts/pyproject.toml') }}-
+          ${{ runner.os }}-python-3.13-venv-
 
-    - name: ✨ Lint with Ruff using uv
-      run: |
-        uv pip install --system -e .[dev]
-        uv run ruff check .
-
-    - name: 🧱 Build project with uv
-      run: uv build
-
-    - name: 🧪 Run tests with uv
-      run: uv run pytest --cov=src/promptdrifter
+    - name: 🧪 Run integration tests with uv
+      run: uv run pytest tests/integration/ -v
