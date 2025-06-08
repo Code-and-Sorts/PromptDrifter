@@ -7,7 +7,7 @@ on:
         description: 'Python version to use'
         required: false
         type: string
-        default: '3.13'
+        default: '3.11'
       os-matrix:
         description: 'Operating systems to test on (JSON array)'
         required: false

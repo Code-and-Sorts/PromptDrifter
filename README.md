@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./docs/static/img/promptdrifer-logo.svg" alt="PromptDrifter Logo" width="500"/>
+  <img src="./docs/static/img/promptdrifter-logo.svg" alt="PromptDrifter Logo" width="500"/>
 </p>
 
 <br />
@@ -27,23 +27,33 @@
 
 ## 🏃 Quick-Start
 
+### Basic Installation
+```bash
+pip install promptdrifter
+```
+
+### With Text Similarity Support
+```bash
+pip install 'promptdrifter[similarity]'
+```
+
+### Development Installation
+```bash
+pip install 'promptdrifter[dev,similarity]'
+```
+
 To start using PromptDrifter:
 
-1. **Install the package:**
-    ```bash
-    pip install promptdrifter
-    ```
-
-2. **Initialize a sample configuration:**
+1. **Initialize a sample configuration:**
     ```bash
     promptdrifter init
     ```
 
 This will create a `promptdrifter.yaml` file in your current directory.
 
-3. **Edit `promptdrifter.yaml`** to define your prompts and expected outcomes.
+2. **Edit `promptdrifter.yaml`** to define your prompts and expected outcomes.
 
-4. **Run your tests:**
+3. **Run your tests:**
     ```bash
     promptdrifter run promptdrifter.yaml
     ```
@@ -142,13 +152,13 @@ If there's a model or provider you'd like to see supported, please [open a featu
 
 ## 🧪 Supported Drift Tests
 
-| Name | Config key | Description | Implementation Status|
-| :---------------------- | :------------- | :-------------------------------------------------------- | :------------------------------------- |
-| **Exact Match** | `expect_exact` | Output should match be an exact match | ✅ Available |
-| **Regex** | `expect_regex` | Output should match regex pattern  | ✅ Available |
-| **Substring** | `expect_substring` | Output should contain the substring  | ✅ Available |
-| **Substring Case Insensitive** | `expect_substring_case_insensitive` | Output should contain the substring that is case insensitive (e.g. "hElLO" === "hello")  | ✅ Available |
-| **Text Similarity** | `text_similarity` | Output should be similar to the input using `sentence-transformers/all-MiniLM-L6-v2` | ✅ Available |
+| Name | Config key | Description | Installation |
+| :--- | :--------- | :---------- | :----------- |
+| **Exact Match** | `expect_exact` | Output should be an exact match | ✅ Core |
+| **Regex** | `expect_regex` | Output should match regex pattern | ✅ Core |
+| **Substring** | `expect_substring` | Output should contain the substring | ✅ Core |
+| **Substring Case Insensitive** | `expect_substring_case_insensitive` | Case insensitive substring match | ✅ Core |
+| **Text Similarity** | `text_similarity` | Semantic similarity using sentence transformers | `pip install 'promptdrifter[similarity]'` |
 
 ## ⚙️ GitHub Action
 

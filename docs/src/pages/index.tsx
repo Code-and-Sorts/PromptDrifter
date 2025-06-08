@@ -14,7 +14,7 @@ function HomepageHeader() {
         <div className={styles.logoContainer}>
           <img
             className={styles.logo}
-            src="img/promptdrifer-logo.svg"
+            src="img/promptdrifter-logo.svg"
             alt="PromptDrifter Logo"
 
           />

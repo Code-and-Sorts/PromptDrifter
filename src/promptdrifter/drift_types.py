@@ -26,15 +26,18 @@ def expect_substring_case_insensitive(substring: str, actual_output: str) -> boo
     return substring.lower() in actual_output.lower()
 
 def text_similarity(expected_output: str, actual_output: str) -> float:
-    # lazy import
-    from sentence_transformers import SentenceTransformer, util
+    try:
+        from sentence_transformers import SentenceTransformer, util
+    except ImportError:
+        raise ImportError(
+            "text_similarity requires the 'sentence-transformers' package. "
+            "Install it with: pip install 'promptdrifter[similarity]' "
+            "or: pip install sentence-transformers"
+        )
 
-    # force CPU (relevant on dev machines with GPUs)
     os.environ["CUDA_VISIBLE_DEVICES"] = ""
     model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2", device="cpu")
 
-    emb = model.encode([expected_output,
-                        actual_output],
-                       convert_to_tensor=True)
+    emb = model.encode([expected_output, actual_output], convert_to_tensor=True)
     score = util.cos_sim(*emb).item()
     return score

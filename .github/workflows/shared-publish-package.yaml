@@ -7,7 +7,7 @@ on:
         description: 'Python version to use'
         required: false
         type: string
-        default: '3.13'
+        default: '3.11'
       is-test-pypi:
         description: 'Whether to publish to TestPyPI or PyPI'
         required: false

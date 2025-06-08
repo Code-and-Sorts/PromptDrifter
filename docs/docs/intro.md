@@ -58,26 +58,6 @@ Run your tests:
 promptdrifter test
 ```
 
-### CI Integration
-
-Add PromptDrifter to your CI pipeline:
-
-```yaml
-# GitHub Actions example
-steps:
-  - uses: actions/checkout@v3
-  - name: Set up Python
-    uses: actions/setup-python@v4
-    with:
-      python-version: '3.13'
-  - name: Install dependencies
-    run: |
-      python -m pip install --upgrade pip
-      pip install promptdrifter
-  - name: Test for prompt drift
-    run: promptdrifter run
-```
-
 ## Key Features
 
 - **Multiple Test Types**: Exact match, regex, substring, and semantic similarity tests.
