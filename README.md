@@ -1,5 +1,5 @@
 <p align="center">
-  <img src=".docs/promptdrifer-logo.svg" alt="PromptDrifter Logo" width="500"/>
+  <img src="./docs/static/img/promptdrifer-logo.svg" alt="PromptDrifter Logo" width="500"/>
 </p>
 
 <br />
