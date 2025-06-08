@@ -8,11 +8,15 @@ from pathlib import Path
 from typing import List, Optional
 
 import typer
+import yaml
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
 
 from promptdrifter.runner import Runner
+from promptdrifter.schema.constants import SCHEMA_VERSIONS
+from promptdrifter.schema.migration import migrate_config
+from promptdrifter.yaml_loader import YamlFileLoader
 
 app = typer.Typer(no_args_is_help=True)
 console = Console()
@@ -53,7 +57,7 @@ def callback(
     if version:
         console.print(f"promptdrifter v{get_version()}")
         raise typer.Exit()
-    
+
     if ctx.invoked_subcommand is None:
         console.print(Panel.fit("Welcome to promptdrifter!", title="promptdrifter"))
         console.print("\nRun with --help to see available commands.")
@@ -487,6 +491,113 @@ def drift_type(
         console.print(f"Result: {result_str}")
     except Exception as e:
         console.print(f"[bold red]Error while testing assertion: {e}[/bold red]")
+        raise typer.Exit(code=1)
+
+
+@app.command()
+def validate(
+    files: List[Path] = typer.Argument(
+        ..., help="Paths to YAML configuration files to validate."
+    ),
+):
+    """
+    Validate YAML configuration files against the schema.
+
+    This command performs both JSON Schema validation and Pydantic model validation
+    without actually running any tests against LLM providers.
+    """
+    loader = YamlFileLoader()
+    exit_code = 0
+
+    for file_path in files:
+        try:
+            console.print(f"Validating [cyan]{file_path}[/cyan]...")
+            loader.load_and_validate_yaml(file_path)
+            console.print(f"✅ [green]Valid[/green]: {file_path}")
+        except FileNotFoundError:
+            console.print(f"❌ [bold red]File not found[/bold red]: {file_path}")
+            exit_code = 1
+        except ValueError as e:
+            console.print(f"❌ [bold red]Validation failed[/bold red]: {file_path}")
+            console.print(str(e))
+            exit_code = 1
+        except Exception as e:
+            console.print(f"❌ [bold red]Unexpected error[/bold red]: {file_path}")
+            console.print(f"Error: {type(e).__name__} - {e}")
+            exit_code = 1
+
+    if exit_code == 0:
+        console.print("\n[bold green]All configuration files are valid![/bold green]")
+    else:
+        console.print("\n[bold red]Validation failed for one or more files.[/bold red]")
+
+    raise typer.Exit(code=exit_code)
+
+
+@app.command()
+def migrate(
+    input_file: Path = typer.Argument(
+        ..., help="Path to input configuration file"
+    ),
+    output_file: Optional[Path] = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Path to save migrated configuration (defaults to input file with .new extension)"
+    ),
+    target_version: Optional[str] = typer.Option(
+        None,
+        "--to",
+        "-t",
+        help=f"Target schema version (defaults to latest: {SCHEMA_VERSIONS.latest_version})"
+    ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        "-f",
+        help="Force migration even if target file exists"
+    ),
+):
+    """
+    Migrate a configuration file to a newer schema version.
+
+    This command helps you upgrade your configuration files when
+    new schema versions are released.
+    """
+    if not input_file.exists():
+        console.print(f"❌ [bold red]Input file not found[/bold red]: {input_file}")
+        raise typer.Exit(code=1)
+
+    if output_file is None:
+        output_file = input_file.with_suffix(input_file.suffix + ".new")
+
+    if output_file.exists() and not force:
+        console.print(
+            f"❌ [bold red]Output file already exists[/bold red]: {output_file}\n"
+            "Use --force to overwrite"
+        )
+        raise typer.Exit(code=1)
+
+    try:
+        with open(input_file, "r") as f:
+            config_data = yaml.safe_load(f)
+    except Exception as e:
+        console.print(f"❌ [bold red]Error reading input file[/bold red]: {e}")
+        raise typer.Exit(code=1)
+
+    try:
+        console.print(f"Migrating [cyan]{input_file}[/cyan] to version [cyan]{target_version or SCHEMA_VERSIONS.latest_version}[/cyan]...")
+        migrated_data = migrate_config(config_data, target_version)
+    except Exception as e:
+        console.print(f"❌ [bold red]Migration failed[/bold red]: {e}")
+        raise typer.Exit(code=1)
+
+    try:
+        with open(output_file, "w") as f:
+            yaml.dump(migrated_data, f, sort_keys=False, default_flow_style=False)
+        console.print(f"✅ [green]Migration successful[/green]. Saved to {output_file}")
+    except Exception as e:
+        console.print(f"❌ [bold red]Error writing output file[/bold red]: {e}")
         raise typer.Exit(code=1)
 
 

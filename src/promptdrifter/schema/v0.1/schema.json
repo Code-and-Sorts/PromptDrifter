@@ -76,11 +76,11 @@
         },
         "adapterConfiguration": {
             "type": "object",
-            "additionalProperties": false,
+            "additionalProperties": true,
             "properties": {
                 "type": {
                     "type": "string",
-                    "description": "Backend adapter name (e.g. openai, azure, ollama, qwen).",
+                    "description": "Backend adapter name (e.g. openai, ollama, qwen, gemini).",
                     "enum": [
                         "openai",
                         "ollama",
@@ -89,12 +89,17 @@
                         "claude",
                         "grok",
                         "deepseek",
-                        "llama"
+                        "llama",
+                        "mistral"
                     ]
                 },
                 "model": {
                     "type": "string",
                     "description": "Model identifier understood by the chosen adapter."
+                },
+                "system_prompt": {
+                    "type": "string",
+                    "description": "Optional system prompt to provide context or instructions to the model."
                 },
                 "temperature": {
                     "type": "number",

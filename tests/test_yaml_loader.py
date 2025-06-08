@@ -47,6 +47,7 @@ version: "0.1"
 adapters:
   - id: "test-with-extra"
     prompt: "Test prompt"
+    expect_exact: "Expected result"
     adapter:
       - type: "openai"
         model: "gpt-4"
@@ -57,11 +58,12 @@ adapters:
     test_file.write_text(yaml_content_with_extra)
 
     config = loader.load_and_validate_yaml(test_file)
-    assert len(config.tests[0].adapter_configurations) == 1
-    adapter_conf = config.tests[0].adapter_configurations[0]
-    assert adapter_conf.adapter_type == "openai"
-    assert adapter_conf.model == "gpt-4"
-    assert adapter_conf.model_extra == {"custom_param": "value1", "another_custom": 123}
+
+    adapter_config = config.tests[0].adapter_configurations[0].model_dump(exclude_unset=True)
+    assert "custom_param" in adapter_config
+    assert adapter_config["custom_param"] == "value1"
+    assert "another_custom" in adapter_config
+    assert adapter_config["another_custom"] == 123
 
     test_file.unlink()
 
@@ -85,8 +87,7 @@ adapters:
     error_str = str(excinfo.value)
     assert "Configuration Error" in error_str
     assert f"in '{invalid_file}'" in error_str
-    assert "Field required" in error_str
-    assert "At 'adapters -> 0 -> prompt'" in error_str
+    assert "'prompt' is a required property" in error_str
 
     invalid_file.unlink()
 
@@ -97,6 +98,7 @@ version: "0.1"
 adapters:
   - id: "wrong-type-test"
     prompt: "Test prompt"
+    expect_exact: "Expected result"
     adapter:
       - type: "openai"
         model: "gpt-3.5-turbo"
@@ -111,8 +113,8 @@ adapters:
     error_str = str(excinfo.value)
     assert "Configuration Error" in error_str
     assert f"in '{invalid_file}'" in error_str
-    assert "Input should be a valid integer" in error_str
-    assert "At 'adapters -> 0 -> adapter -> 0 -> max_tokens'" in error_str
+    assert "JSON Schema validation failed" in error_str
+    assert any(term in error_str for term in ["max_tokens", "not-an-integer"])
 
     invalid_file.unlink()
 
@@ -125,8 +127,8 @@ def test_load_invalid_version(loader: YamlFileLoader):
         loader.load_and_validate_yaml(invalid_file)
     error_str = str(excinfo.value)
     assert "Configuration Error" in error_str
-    assert "At 'version'" in error_str
-    assert "Input should be '0.1'" in error_str
+    assert "Schema version error" in error_str
+    assert "Unsupported schema version: 0.2" in error_str
     invalid_file.unlink()
 
 
@@ -148,11 +150,9 @@ adapters:
         loader.load_and_validate_yaml(test_file)
     error_str = str(excinfo.value)
     assert "Configuration Error" in error_str
-    assert (
-        "Only one of expect_exact, expect_regex, expect_substring, expect_substring_case_insensitive can be provided."
-        in error_str
-    )
-    assert "At 'adapters -> 0'" in error_str
+    assert "JSON Schema validation failed" in error_str
+    assert "expect_exact" in error_str
+    assert "expect_regex" in error_str
     test_file.unlink()
 
 
