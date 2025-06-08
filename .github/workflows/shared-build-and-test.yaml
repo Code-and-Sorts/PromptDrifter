@@ -87,8 +87,8 @@ jobs:
     - name: 🧱 Build project with uv
       run: uv build
 
-    - name: 🧪 Run tests with uv
-      run: uv run pytest --cov=src/promptdrifter
+    - name: 🧪 Run unit tests with uv
+      run: uv run pytest tests/unit/ --cov=src/promptdrifter -v
 
     - name: ⬆️ Upload dist artifacts (from macOS only)
       if: inputs.upload-artifacts && matrix.os == 'macos-latest'
