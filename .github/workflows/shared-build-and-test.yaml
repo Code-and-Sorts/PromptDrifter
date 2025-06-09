@@ -126,5 +126,8 @@ jobs:
           ${{ runner.os }}-python-${{ inputs.python-version }}-venv-${{ hashFiles('pyproject.toml', 'scripts/pyproject.toml') }}-
           ${{ runner.os }}-python-${{ inputs.python-version }}-venv-
 
+    - name: 📦 Install dependencies
+      run: uv pip install --system -e .[dev]
+
     - name: 🧪 Run integration tests with uv
       run: uv run pytest tests/integration/ -v
