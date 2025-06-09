@@ -58,7 +58,11 @@ This will create a `promptdrifter.yaml` file in your current directory.
     promptdrifter run promptdrifter.yaml
     ```
 
-TODO: add gif
+#### 🏃💨 Sample Run
+
+<p align="center">
+  <img src="./docs/static/img/promptdrifter-demo.gif" alt="PromptDrifter Demo" width="700"/>
+</p>
 
 ## ❓ Why PromptDrifter?
 
@@ -127,7 +131,23 @@ Build with greater confidence, knowing you have a safety net that monitors the s
 
 ## 🎬 Demo
 
-TODO: add demo with screenshots and GIFs
+### Running with cache
+
+<p align="center">
+  <img src="./docs/static/img/promptdrifter-demo.gif" alt="PromptDrifter Demo" width="700"/>
+</p>
+
+### Running without cache
+
+<p align="center">
+  <img src="./docs/static/img/promptdrifter-demo-no-cache.gif" alt="PromptDrifter Demo" width="700"/>
+</p>
+
+### Running and experiencing a failure
+
+<p align="center">
+  <img src="./docs/static/img/promptdrifter-demo-failure.gif" alt="PromptDrifter Demo" width="700"/>
+</p>
 
 ## 🤖 Supported LLM Adapters
 
