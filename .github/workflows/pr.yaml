@@ -13,6 +13,7 @@ jobs:
       upload-artifacts: true
       artifact-name: 'python-package-dist'
       update-version-for-pr: true
+      run-integration-tests: true
 
   publish-to-testpypi:
     needs: build-and-test
