@@ -1,3 +1,4 @@
+import re
 import subprocess
 from pathlib import Path
 from typing import List, Optional
@@ -42,10 +43,16 @@ def execute_cli_command(
         pytest.fail(f"Command execution failed: {e}")
 
 
+def strip_ansi_codes(text: str) -> str:
+    ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+    return ansi_escape.sub('', text)
+
+
 def verify_cli_success(result: CLICommandResult, expected_output_contains: Optional[str] = None):
     assert result.exit_code == 0, f"Command failed with exit code {result.exit_code}. stderr: {result.stderr}"
     if expected_output_contains:
-        assert expected_output_contains in result.stdout, f"Expected '{expected_output_contains}' in output: {result.stdout}"
+        clean_stdout = strip_ansi_codes(result.stdout)
+        assert expected_output_contains in clean_stdout, f"Expected '{expected_output_contains}' in output: {clean_stdout}"
 
 
 def verify_cli_failure(result: CLICommandResult, expected_exit_code: int = 1, expected_error_contains: Optional[str] = None):

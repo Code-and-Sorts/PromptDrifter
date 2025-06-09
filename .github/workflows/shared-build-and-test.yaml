@@ -132,7 +132,7 @@ jobs:
     - name: 📦 Install built package and dev dependencies
       run: |
         uv pip install --system dist/*.whl
-        uv pip install --system .[dev]
+        uv pip install --system .[dev,similarity]
 
     - name: 🧪 Run integration tests with uv
       run: uv run pytest tests/integration/ -v
