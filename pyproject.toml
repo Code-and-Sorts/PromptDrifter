@@ -48,7 +48,6 @@ promptdrifter = "promptdrifter.cli:app"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/promptdrifter"]
-include = ["src/promptdrifter/schema/*.json"]
 
 [project.optional-dependencies]
 dev = [

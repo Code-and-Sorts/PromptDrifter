@@ -15,7 +15,16 @@ def get_schema_path(version: str = SCHEMA_VERSIONS.current_version) -> pathlib.P
             f"Supported versions: {', '.join(SCHEMA_VERSIONS.supported_versions)}"
         )
 
-    return pathlib.Path(__file__).parent / f"v{version}" / "schema.json"
+    schema_dir = pathlib.Path(__file__).parent
+    version_path = schema_dir / f"v{version}" / "schema.json"
+
+    # Fallback to 'latest' if version directory doesn't exist (for packaged installs)
+    if not version_path.exists():
+        latest_path = schema_dir / "latest" / "schema.json"
+        if latest_path.exists():
+            return latest_path
+
+    return version_path
 
 
 def load_schema(version: str = SCHEMA_VERSIONS.current_version) -> Dict[str, Any]:
