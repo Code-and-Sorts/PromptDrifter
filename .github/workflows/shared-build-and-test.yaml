@@ -99,7 +99,7 @@ jobs:
 
   integration-test:
     if: inputs.run-integration-tests
-    runs-on: windows-latest
+    runs-on: macos-latest
     steps:
     - name: ⤵️ Checkout code
       uses: actions/checkout@v4
@@ -126,8 +126,13 @@ jobs:
           ${{ runner.os }}-python-${{ inputs.python-version }}-venv-${{ hashFiles('pyproject.toml', 'scripts/pyproject.toml') }}-
           ${{ runner.os }}-python-${{ inputs.python-version }}-venv-
 
-    - name: 📦 Install dependencies
-      run: uv pip install --system -e .[dev]
+    - name: 🧱 Build project with uv
+      run: uv build
+
+    - name: 📦 Install built package and dev dependencies
+      run: |
+        uv pip install --system dist/*.whl
+        uv pip install --system .[dev]
 
     - name: 🧪 Run integration tests with uv
       run: uv run pytest tests/integration/ -v
