@@ -35,9 +35,16 @@ def text_similarity(expected_output: str, actual_output: str) -> float:
             "or: pip install sentence-transformers"
         )
 
-    os.environ["CUDA_VISIBLE_DEVICES"] = ""
-    model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2", device="cpu")
+    original_cuda_visible_devices = os.environ.get("CUDA_VISIBLE_DEVICES")
+    try:
+        os.environ["CUDA_VISIBLE_DEVICES"] = ""
+        model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2", device="cpu")
 
-    emb = model.encode([expected_output, actual_output], convert_to_tensor=True)
-    score = util.cos_sim(*emb).item()
-    return score
+        emb = model.encode([expected_output, actual_output], convert_to_tensor=True)
+        score = util.cos_sim(*emb).item()
+        return score
+    finally:
+        if original_cuda_visible_devices is None:
+            os.environ.pop("CUDA_VISIBLE_DEVICES", None)
+        else:
+            os.environ["CUDA_VISIBLE_DEVICES"] = original_cuda_visible_devices
