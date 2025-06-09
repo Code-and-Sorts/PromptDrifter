@@ -1,34 +1,85 @@
 import asyncio
+import importlib.metadata
 import importlib.resources
-import json
+import os
+import tomllib
 from pathlib import Path
 from typing import List, Optional
 
 import typer
+import yaml
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
 
 from promptdrifter.runner import Runner
+from promptdrifter.schema.constants import SCHEMA_VERSIONS
+from promptdrifter.schema.migration import migrate_config
+from promptdrifter.yaml_loader import YamlFileLoader
 
 app = typer.Typer(no_args_is_help=True)
 console = Console()
 
 
 def get_version():
+    """Get the package version from pyproject.toml or package metadata."""
     try:
-        with open("pyproject.toml", "r") as f:
-            for line in f:
-                if line.startswith("version = "):
-                    return line.split("=")[1].strip().strip('"')
+        package_root = Path(__file__).parent.parent.parent
+        pyproject_path = package_root / "pyproject.toml"
+
+        if pyproject_path.exists():
+            with open(pyproject_path, "rb") as f:
+                toml_data = tomllib.load(f)
+                if "project" in toml_data and "version" in toml_data["project"]:
+                    version_raw = toml_data["project"]["version"]
+                    try:
+                        from packaging.version import Version
+
+                        return Version(version_raw).public
+                    except ImportError:
+                        return version_raw
+        return importlib.metadata.version("promptdrifter")
     except Exception:
-        return "unknown"
+        return "0.0.1"
 
 
-@app.command()
-def version():
+@app.callback(invoke_without_command=True)
+def callback(
+    ctx: typer.Context,
+    version: bool = typer.Option(
+        False, "--version", "-v", help="Show the application version and exit."
+    ),
+):
     """Display the current version of PromptDrifter."""
-    console.print(f"PromptDrifter version: [bold blue]{get_version()}[/bold blue]")
+    if version:
+        ascii_logo = """
+                                             [bold #4bcbf1]▒▒▒▒▒▒▒▒▒▒▒▒▒
+                                          ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+                                        ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+                                       ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+                                      ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒    ▒▒▒▒▒▒▒
+                                      ▒▒▒▒▒▒▒▒▒▒▒        ▒▒▒▒▒▒▒▒
+                                     ▒▒▒▒▒▒▒▒▒▒▒  ▒▒▒   ▒▒▒▒▒▒▒▒▒▒
+                                     ▒▒▒▒▒▒▒▒▒▒  ▒▒▒▒▒ ▒▒▒▒▒▒▒▒▒▒▒
+                                      ▒▒▒▒▒▒▒▒        ▒▒▒▒▒▒▒▒▒▒▒
+                                      ▒▒▒▒▒▒▒▒    ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+                                       ▒▒▒▒▒▒ ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+                                        ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+                                         ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+                                            ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+                                                ▒▒▒▒▒▒▒[/bold #4bcbf1]
+
+ [bold #9f4cf2]▒▒▒▒▒▒▒                                          ▒▒▒  ▒▒▒▒▒▒▒▒         ▒▒▒▒  ▒▒▒▒▒  ▒▒▒
+ ▒▒  ▒▒▒ ▒▒▒▒▒▒▒  ▒▒▒▒▒▒  ▒▒▒▒▒▒▒▒▒▒▒▒  ▒▒▒▒▒▒▒ ▒▒▒▒▒▒ ▒▒▒▒  ▒▒▒ ▒▒▒▒▒▒      ▒▒▒▒▒▒ ▒▒▒▒▒▒   ▒▒▒▒▒▒  ▒▒▒▒▒▒
+ ▒▒▒▒▒▒▒ ▒▒▒▒▒▒▒ ▒▒▒  ▒▒▒ ▒▒▒▒ ▒▒▒▒ ▒▒▒ ▒▒▒ ▒▒▒▒  ▒▒▒  ▒▒▒▒  ▒▒▒ ▒▒▒▒▒▒ ▒▒▒▒  ▒▒▒▒   ▒▒▒  ▒▒▒▒ ▒▒▒▒▒ ▒▒▒▒▒▒
+ ▒▒▒▒▒   ▒▒▒▒    ▒▒▒  ▒▒▒ ▒▒▒▒ ▒▒▒▒ ▒▒▒ ▒▒▒  ▒▒▒  ▒▒▒  ▒▒▒▒  ▒▒▒ ▒▒▒    ▒▒▒▒  ▒▒▒▒   ▒▒▒  ▒▒▒▒▒▒▒▒▒  ▒▒▒
+ ▒▒      ▒▒▒▒    ▒▒▒  ▒▒▒ ▒▒▒▒ ▒▒▒▒ ▒▒▒ ▒▒▒  ▒▒▒  ▒▒▒  ▒▒▒▒ ▒▒▒▒ ▒▒▒    ▒▒▒▒  ▒▒▒▒   ▒▒▒  ▒▒▒▒       ▒▒▒
+ ▒▒      ▒▒▒▒     ▒▒▒▒▒▒  ▒▒▒▒ ▒▒▒▒ ▒▒▒ ▒▒▒▒▒▒▒   ▒▒▒▒ ▒▒▒▒▒▒▒▒  ▒▒▒    ▒▒▒▒  ▒▒▒▒   ▒▒▒▒  ▒▒▒▒▒▒▒   ▒▒▒
+                                        ▒▒▒
+                                        ▒▒▒[/bold #9f4cf2]
+        """
+        console.print(ascii_logo)
+        console.print(f"Version: [bold #4bcbf1]{get_version()}[/bold #4bcbf1]")
 
 
 def _print_api_key_security_warning():
@@ -82,7 +133,7 @@ def init(
     try:
         sample_config_content = (
             importlib.resources.files("promptdrifter")
-            .joinpath("schema", "sample", "v0.1.yaml")
+            .joinpath("schema", "v0.1", "sample.yaml")
             .read_text()
         )
     except FileNotFoundError:
@@ -115,6 +166,11 @@ def init(
         raise typer.Exit(code=1)
 
 
+def is_from_env(param_name: str, env_var: str) -> bool:
+    """Check if a parameter was provided via environment variable rather than CLI."""
+    return env_var in os.environ
+
+
 async def _run_async(
     files: List[Path],
     no_cache: bool,
@@ -123,9 +179,23 @@ async def _run_async(
     openai_api_key: Optional[str],
     gemini_api_key: Optional[str],
     qwen_api_key: Optional[str],
+    claude_api_key: Optional[str],
+    grok_api_key: Optional[str],
+    deepseek_api_key: Optional[str],
+    mistral_api_key: Optional[str],
+    # llama_api_key: Optional[str],
 ):
     """Async implementation of the run command."""
-    if openai_api_key or gemini_api_key or qwen_api_key:
+    if (
+        (openai_api_key and not is_from_env("openai_api_key", "OPENAI_API_KEY"))
+        or (gemini_api_key and not is_from_env("gemini_api_key", "GEMINI_API_KEY"))
+        or (qwen_api_key and not is_from_env("qwen_api_key", "QWEN_API_KEY"))
+        or (claude_api_key and not is_from_env("claude_api_key", "CLAUDE_API_KEY"))
+        or (grok_api_key and not is_from_env("grok_api_key", "GROK_API_KEY"))
+        or (deepseek_api_key and not is_from_env("deepseek_api_key", "DEEPSEEK_API_KEY"))
+        or (mistral_api_key and not is_from_env("mistral_api_key", "MISTRAL_API_KEY"))
+        # or (llama_api_key and not is_from_env("llama_api_key", "LLAMA_API_KEY"))
+    ):
         _print_api_key_security_warning()
 
     if not files:
@@ -172,6 +242,11 @@ async def _run_async(
             openai_api_key=openai_api_key,
             gemini_api_key=gemini_api_key,
             qwen_api_key=qwen_api_key,
+            claude_api_key=claude_api_key,
+            grok_api_key=grok_api_key,
+            deepseek_api_key=deepseek_api_key,
+            mistral_api_key=mistral_api_key,
+            # llama_api_key=llama_api_key,
         )
         overall_success = await runner_instance.run_suite(yaml_files_str)
         if not overall_success:
@@ -207,20 +282,58 @@ def run(
         None,
         "--openai-api-key",
         help="OpenAI API key. Overrides OPENAI_API_KEY env var. Warning: Exposes key in shell history.",
+        envvar="OPENAI_API_KEY",
         rich_help_panel="API Keys",
     ),
     gemini_api_key: Optional[str] = typer.Option(
         None,
         "--gemini-api-key",
         help="Google Gemini API key. Overrides GEMINI_API_KEY env var. Warning: Exposes key in shell history.",
+        envvar="GEMINI_API_KEY",
         rich_help_panel="API Keys",
     ),
     qwen_api_key: Optional[str] = typer.Option(
         None,
         "--qwen-api-key",
         help="Qwen API key (DashScope). Overrides QWEN_API_KEY or DASHSCOPE_API_KEY env var. Warning: Exposes key in shell history.",
+        envvar="QWEN_API_KEY",
         rich_help_panel="API Keys",
     ),
+    claude_api_key: Optional[str] = typer.Option(
+        None,
+        "--claude-api-key",
+        help="Anthropic Claude API key. Overrides CLAUDE_API_KEY env var. Warning: Exposes key in shell history.",
+        envvar="CLAUDE_API_KEY",
+        rich_help_panel="API Keys",
+    ),
+    grok_api_key: Optional[str] = typer.Option(
+        None,
+        "--grok-api-key",
+        help="Grok API key (can also be set via GROK_API_KEY env var. Warning: Exposes key in shell history.)",
+        envvar="GROK_API_KEY",
+        rich_help_panel="API Keys",
+    ),
+    deepseek_api_key: Optional[str] = typer.Option(
+        None,
+        "--deepseek-api-key",
+        help="DeepSeek API key (can also be set via DEEPSEEK_API_KEY env var. Warning: Exposes key in shell history.)",
+        envvar="DEEPSEEK_API_KEY",
+        rich_help_panel="API Keys",
+    ),
+    mistral_api_key: Optional[str] = typer.Option(
+        None,
+        "--mistral-api-key",
+        help="Mistral API key (can also be set via MISTRAL_API_KEY env var. Warning: Exposes key in shell history.)",
+        envvar="MISTRAL_API_KEY",
+        rich_help_panel="API Keys",
+    ),
+    # llama_api_key: Optional[str] = typer.Option(
+    #     None,
+    #     "--llama-api-key",
+    #     help="Meta Llama API key (can also be set via LLAMA_API_KEY env var. Warning: Exposes key in shell history.)",
+    #     envvar="LLAMA_API_KEY",
+    #     rich_help_panel="API Keys",
+    # ),
 ):
     """Run a suite of prompt tests from one or more YAML files."""
     asyncio.run(
@@ -232,75 +345,174 @@ def run(
             openai_api_key,
             gemini_api_key,
             qwen_api_key,
+            claude_api_key,
+            grok_api_key,
+            deepseek_api_key,
+            mistral_api_key,
+            # llama_api_key,
         )
     )
 
-
 @app.command()
-def record(
-    output_file: Path = typer.Option(
-        Path("recorded_interactions.json"),
-        "--output",
-        "-o",
-        help="Path to save recorded interactions",
+def test_drift_type(
+    drift_type: str = typer.Argument(
+        ...,
+        help="Test drift type (exact_match, regex_match, expect_substring, expect_substring_case_insensitive, text_similarity)",
     ),
-    adapter: str = typer.Option(
-        ..., "--adapter", "-a", help="LLM adapter to use (e.g., openai, ollama)"
+    expected: str = typer.Argument(
+        ...,
+        help="The expected text or pattern",
     ),
-    model: str = typer.Option(
-        ..., "--model", "-m", help="Model to use with the adapter"
+    actual: str = typer.Argument(
+        ...,
+        help="The actual output to compare against",
     ),
 ):
-    """Record interactions with an LLM for later use in test cases."""
-    if not adapter or not model:
+    """
+    Test a drift type with the provided inputs.
+    Returns the result of the assertion (True/False for boolean assertions, or a score for text_similarity).
+    """
+    from promptdrifter import drift_types
+
+    assertion_functions = {
+        "exact_match": drift_types.exact_match,
+        "regex_match": drift_types.regex_match,
+        "expect_substring": drift_types.expect_substring,
+        "expect_substring_case_insensitive": drift_types.expect_substring_case_insensitive,
+        "text_similarity": drift_types.text_similarity,
+    }
+
+    if drift_type not in assertion_functions:
+        valid_types = ", ".join(assertion_functions.keys())
         console.print(
-            "[bold red]Error: Both adapter and model are required.[/bold red]"
+            f"[bold red]Error: Invalid assertion type '{drift_type}'[/bold red]"
+        )
+        console.print(f"[bold]Valid assertion types:[/bold] {valid_types}")
+        raise typer.Exit(code=1)
+
+    try:
+        result = assertion_functions[drift_type](expected, actual)
+        if isinstance(result, bool):
+            result_str = "[green]True[/green]" if result else "[red]False[/red]"
+        else:
+            # For similarity score
+            color = "green" if result > 0.7 else "yellow" if result > 0.5 else "red"
+            result_str = f"[{color}]{result:.4f}[/{color}]"
+
+        console.print(f"Assertion: [bold]{drift_type}[/bold]")
+        console.print(f"Expected: {expected}")
+        console.print(f"Actual: {actual}")
+        console.print(f"Result: {result_str}")
+    except Exception as e:
+        console.print(f"[bold red]Error while testing assertion: {e}[/bold red]")
+        raise typer.Exit(code=1)
+
+
+@app.command()
+def validate(
+    files: List[Path] = typer.Argument(
+        ..., help="Paths to YAML configuration files to validate."
+    ),
+):
+    """
+    Validate YAML configuration files against the schema.
+
+    This command performs both JSON Schema validation and Pydantic model validation
+    without actually running any tests against LLM providers.
+    """
+    loader = YamlFileLoader()
+    exit_code = 0
+
+    for file_path in files:
+        try:
+            console.print(f"Validating [cyan]{file_path}[/cyan]...")
+            loader.load_and_validate_yaml(file_path)
+            console.print(f"✅ [green]Valid[/green]: {file_path}")
+        except FileNotFoundError:
+            console.print(f"❌ [bold red]File not found[/bold red]: {file_path}")
+            exit_code = 1
+        except ValueError as e:
+            console.print(f"❌ [bold red]Validation failed[/bold red]: {file_path}")
+            console.print(str(e))
+            exit_code = 1
+        except Exception as e:
+            console.print(f"❌ [bold red]Unexpected error[/bold red]: {file_path}")
+            console.print(f"Error: {type(e).__name__} - {e}")
+            exit_code = 1
+
+    if exit_code == 0:
+        console.print("\n[bold green]All configuration files are valid![/bold green]")
+    else:
+        console.print("\n[bold red]Validation failed for one or more files.[/bold red]")
+
+    raise typer.Exit(code=exit_code)
+
+
+@app.command()
+def migrate(
+    input_file: Path = typer.Argument(
+        ..., help="Path to input configuration file"
+    ),
+    output_file: Optional[Path] = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Path to save migrated configuration (defaults to input file with .new extension)"
+    ),
+    target_version: Optional[str] = typer.Option(
+        None,
+        "--to",
+        "-t",
+        help=f"Target schema version (defaults to latest: {SCHEMA_VERSIONS.latest_version})"
+    ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        "-f",
+        help="Force migration even if target file exists"
+    ),
+):
+    """
+    Migrate a configuration file to a newer schema version.
+
+    This command helps you upgrade your configuration files when
+    new schema versions are released.
+    """
+    if not input_file.exists():
+        console.print(f"❌ [bold red]Input file not found[/bold red]: {input_file}")
+        raise typer.Exit(code=1)
+
+    if output_file is None:
+        output_file = input_file.with_suffix(input_file.suffix + ".new")
+
+    if output_file.exists() and not force:
+        console.print(
+            f"❌ [bold red]Output file already exists[/bold red]: {output_file}\n"
+            "Use --force to overwrite"
         )
         raise typer.Exit(code=1)
 
-    console.print("[bold]Recording mode started. Type 'exit' to finish.[/bold]")
-    interactions = []
+    try:
+        with open(input_file, "r") as f:
+            config_data = yaml.safe_load(f)
+    except Exception as e:
+        console.print(f"❌ [bold red]Error reading input file[/bold red]: {e}")
+        raise typer.Exit(code=1)
 
-    while True:
-        try:
-            prompt = typer.prompt("\nEnter your prompt")
-            if prompt.lower() == "exit":
-                break
+    try:
+        console.print(f"Migrating [cyan]{input_file}[/cyan] to version [cyan]{target_version or SCHEMA_VERSIONS.latest_version}[/cyan]...")
+        migrated_data = migrate_config(config_data, target_version)
+    except Exception as e:
+        console.print(f"❌ [bold red]Migration failed[/bold red]: {e}")
+        raise typer.Exit(code=1)
 
-            response = typer.prompt("Enter the expected response")
-
-            interaction = {
-                "prompt": prompt,
-                "expected_response": response,
-                "adapter": adapter,
-                "model": model,
-            }
-            interactions.append(interaction)
-            console.print("[green]Interaction recorded![/green]")
-
-        except KeyboardInterrupt:
-            console.print("\n[yellow]Recording interrupted.[/yellow]")
-            break
-
-    if interactions:
-        try:
-            with open(output_file, "w") as f:
-                json.dump(interactions, f, indent=2)
-            sane_output_file_str = str(output_file).replace("\u00a0", " ")
-            console.print(
-                f"[green]Recorded {len(interactions)} interactions to {sane_output_file_str}[/green]"
-            )
-            console.print("\n[bold]Next steps:[/bold]")
-            console.print("1. Review the recorded interactions")
-            console.print("2. Convert them to YAML test cases")
-            console.print(
-                "3. Run your tests with: promptdrifter run <your-test-file.yaml>"
-            )
-        except Exception as e:
-            console.print(f"[bold red]Error saving interactions: {e}[/bold red]")
-            raise typer.Exit(code=1)
-    else:
-        console.print("[yellow]No interactions were recorded.[/yellow]")
+    try:
+        with open(output_file, "w") as f:
+            yaml.dump(migrated_data, f, sort_keys=False, default_flow_style=False)
+        console.print(f"✅ [green]Migration successful[/green]. Saved to {output_file}")
+    except Exception as e:
+        console.print(f"❌ [bold red]Error writing output file[/bold red]: {e}")
+        raise typer.Exit(code=1)
 
 
 if __name__ == "__main__":

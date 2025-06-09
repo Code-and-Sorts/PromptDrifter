@@ -1,7 +1,6 @@
 import os
 import pathlib
-
-import tomlkit
+import tomllib
 
 
 def main():
@@ -13,7 +12,6 @@ def main():
         print("This script is intended for CI contexts. Skipping version update.")
         exit(0)
 
-    # Path to the main pyproject.toml, one level up from the script's location
     root_dir = pathlib.Path(__file__).parent.parent
     pyproject_path = root_dir / "pyproject.toml"
     dist_dir = root_dir / "dist"
@@ -22,10 +20,8 @@ def main():
     print(f"Attempting to update version in {pyproject_path} (from {os.getcwd()})")
 
     try:
-        with open(pyproject_path, "r", encoding="utf-8") as f:
-            content = f.read()
-
-        data = tomlkit.parse(content)
+        with open(pyproject_path, "rb") as f:
+            data = tomllib.load(f)
 
         if "project" not in data or "version" not in data["project"]:
             print(f"Error: Could not find ['project']['version'] in {pyproject_path}")
@@ -46,7 +42,6 @@ def main():
             print(
                 f"Version {current_full_version} already ends with {expected_dev_suffix}. Assuming already updated."
             )
-            # Still ensure VERSION.txt is written for subsequent steps
             new_version = current_full_version
         else:
             new_version = f"{base_version}.dev{run_number}"
@@ -54,14 +49,19 @@ def main():
         print(f"Original full version in {pyproject_path}: {current_full_version}")
         print(f"Base version for new construction: {base_version}")
         print(f"Updating to PR dev version: {new_version} (PR: {pr_number})")
-        data["project"]["version"] = new_version
+
+        with open(pyproject_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        version_pattern = f'version = "{current_full_version}"'
+        new_version_line = f'version = "{new_version}"'
+        updated_content = content.replace(version_pattern, new_version_line)
 
         with open(pyproject_path, "w", encoding="utf-8") as f:
-            f.write(tomlkit.dumps(data))
+            f.write(updated_content)
 
         print(f"Successfully updated {pyproject_path} to version {new_version}")
 
-        # Create dist/ directory if it doesn't exist and write VERSION.txt
         dist_dir.mkdir(exist_ok=True)
         with open(version_file_path, "w", encoding="utf-8") as vf:
             vf.write(new_version)

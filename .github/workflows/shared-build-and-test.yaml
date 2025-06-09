@@ -1,0 +1,139 @@
+name: Build and Test
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: 'Python version to use'
+        required: false
+        type: string
+        default: '3.11'
+      os-matrix:
+        description: 'Operating systems to test on (JSON array)'
+        required: false
+        type: string
+        default: '["macos-latest", "windows-latest"]'
+      upload-artifacts:
+        description: 'Whether to upload build artifacts'
+        required: false
+        type: boolean
+        default: true
+      artifact-name:
+        description: 'Name for the uploaded artifacts'
+        required: false
+        type: string
+        default: 'python-package-dist'
+      update-version-for-pr:
+        description: 'Whether to update version for PR builds'
+        required: false
+        type: boolean
+        default: false
+      run-integration-tests:
+        description: 'Whether to run integration tests'
+        required: false
+        type: boolean
+        default: false
+    outputs:
+      build-successful:
+        description: 'Whether the build was successful'
+        value: 'true'
+
+jobs:
+  build-and-test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ${{ fromJson(inputs.os-matrix) }}
+
+    steps:
+    - name: ⤵️ Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🐍 Set up Python ${{ inputs.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: 🚀 Install uv with caching
+      uses: astral-sh/setup-uv@v6
+      with:
+        enable-cache: true
+
+    - name: 🔗 Check lock file consistency (uv.lock)
+      run: uv lock --check
+
+    - name: ♻️ Cache .venv
+      uses: actions/cache@v4
+      with:
+        path: .venv
+        key: ${{ runner.os }}-python-${{ inputs.python-version }}-venv-${{ hashFiles('pyproject.toml', 'scripts/pyproject.toml') }}-${{ hashFiles('uv.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-python-${{ inputs.python-version }}-venv-${{ hashFiles('pyproject.toml', 'scripts/pyproject.toml') }}-
+          ${{ runner.os }}-python-${{ inputs.python-version }}-venv-
+
+    - name: ✨ Lint with Ruff using uv
+      run: |
+        uv pip install --system -e .[dev]
+        uv run ruff check .
+
+    - name: ⬆️ Update version in pyproject.toml for PR
+      if: inputs.update-version-for-pr
+      env:
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        RUN_NUMBER: ${{ github.run_number }}
+      run: cd scripts && uv run python update_pr_version.py
+
+    - name: 🧱 Build project with uv
+      run: uv build
+
+    - name: 🧪 Run unit tests with uv
+      run: uv run pytest tests/unit/ --cov=src/promptdrifter -v
+
+    - name: ⬆️ Upload dist artifacts (from macOS only)
+      if: inputs.upload-artifacts && matrix.os == 'macos-latest'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: dist/
+
+  integration-test:
+    needs: build-and-test
+    if: inputs.run-integration-tests
+    runs-on: macos-latest
+    steps:
+    - name: ⤵️ Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🐍 Set up Python ${{ inputs.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: 🚀 Install uv with caching
+      uses: astral-sh/setup-uv@v6
+      with:
+        enable-cache: true
+
+    - name: 🔗 Check lock file consistency (uv.lock)
+      run: uv lock --check
+
+    - name: ♻️ Cache .venv
+      uses: actions/cache@v4
+      with:
+        path: .venv
+        key: ${{ runner.os }}-python-${{ inputs.python-version }}-venv-${{ hashFiles('pyproject.toml', 'scripts/pyproject.toml') }}-${{ hashFiles('uv.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-python-${{ inputs.python-version }}-venv-${{ hashFiles('pyproject.toml', 'scripts/pyproject.toml') }}-
+          ${{ runner.os }}-python-${{ inputs.python-version }}-venv-
+
+    - name: 🧱 Build project with uv
+      run: uv build
+
+    - name: 📦 Install built package and test dependencies
+      run: |
+        uv pip install dist/*.whl
+        uv pip install pytest pytest-asyncio pytest-cov pytest-mock respx sentence-transformers
+
+    - name: 🧪 Run integration tests with uv
+      run: uv run pytest tests/integration/ -v

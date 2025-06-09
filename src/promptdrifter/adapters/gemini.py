@@ -2,27 +2,38 @@ import os
 from typing import Any, Dict, Optional
 
 import httpx
-from pydantic import BaseModel, Field, model_validator
+from pydantic import Field, model_validator
 
 from ..config.adapter_settings import (
     API_KEY_ENV_VAR_GEMINI,
     DEFAULT_GEMINI_MODEL,
     GEMINI_API_BASE_URL,
 )
-from .base import Adapter
+from .base import Adapter, BaseAdapterConfig
+from .models.gemini_models import (
+    GeminiContent,
+    GeminiGenerationConfig,
+    GeminiHeaders,
+    GeminiPart,
+    GeminiPayload,
+    GeminiResponse,
+    StandardResponse,
+)
 
 
-class GeminiAdapterConfig(BaseModel):
-    api_key: Optional[str] = Field(default=None, validate_default=True)
+class GeminiAdapterConfig(BaseAdapterConfig):
     base_url: str = GEMINI_API_BASE_URL
     default_model: str = DEFAULT_GEMINI_MODEL
+    api_key: Optional[str] = Field(default=None, validate_default=True)
+    max_tokens: Optional[int] = Field(default=2048, validate_default=True)
+    temperature: Optional[float] = None
+    system_prompt: Optional[str] = None
 
     @model_validator(mode="before")
     @classmethod
     def load_api_key(cls, values: Dict[str, Any]) -> Dict[str, Any]:
         if values.get("api_key"):
             return values
-
         api_key_from_env = os.getenv(API_KEY_ENV_VAR_GEMINI)
         if api_key_from_env:
             values["api_key"] = api_key_from_env
@@ -37,6 +48,31 @@ class GeminiAdapterConfig(BaseModel):
             )
         return self
 
+    def get_headers(self) -> Dict[str, str]:
+        return GeminiHeaders().model_dump()
+
+    def get_payload(
+            self,
+            prompt: str,
+            config_override: Optional["GeminiAdapterConfig"] = None
+        ) -> Dict[str, Any]:
+        effective_config = config_override or self
+        generation_config = None
+        if effective_config.temperature is not None or effective_config.max_tokens is not None:
+            generation_config = GeminiGenerationConfig(
+                temperature=effective_config.temperature,
+                maxOutputTokens=effective_config.max_tokens
+            )
+
+        payload = GeminiPayload(
+            contents=[GeminiContent(parts=[GeminiPart(text=prompt)])],
+            generationConfig=generation_config
+        )
+        payload_dict = payload.model_dump(exclude_none=True)
+        if effective_config.system_prompt:
+            payload_dict["system_instruction"] = {"parts": [{"text": effective_config.system_prompt}]}
+        return payload_dict
+
 
 class GeminiAdapter(Adapter):
     """Adapter for interacting with Google Gemini API via REST using httpx."""
@@ -44,139 +80,74 @@ class GeminiAdapter(Adapter):
     def __init__(
         self,
         config: Optional[GeminiAdapterConfig] = None,
-        api_key: Optional[str] = None,
-        base_url: Optional[str] = None,
     ):
-        if config:
-            self.config = config
-        else:
-            config_data = {}
-            if api_key:
-                config_data["api_key"] = api_key
-            if base_url:
-                config_data["base_url"] = base_url
-            self.config = GeminiAdapterConfig(**config_data)
-
-        self.client = httpx.AsyncClient(base_url=self.config.base_url)
+        self.config = config or GeminiAdapterConfig()
+        self.client = httpx.AsyncClient(
+            base_url=self.config.base_url,
+            headers=self.config.get_headers(),
+        )
 
     async def execute(
         self,
         prompt: str,
-        model: Optional[str] = None,
-        temperature: Optional[float] = None,
-        max_tokens: Optional[int] = None,
-        **kwargs: Any,
-    ) -> Dict[str, Any]:
+        config_override: Optional[GeminiAdapterConfig] = None,
+    ) -> StandardResponse:
         """Makes a REST request to the Google Gemini API."""
-        effective_model = model or self.config.default_model
+        effective_model = config_override.default_model if config_override else self.config.default_model
         endpoint = f"/models/{effective_model}:generateContent"
         params = {"key": self.config.api_key}
+        payload = self.config.get_payload(prompt, config_override)
 
-        payload = {"contents": [{"parts": [{"text": prompt}]}]}
-
-        generation_config: Dict[str, Any] = {}
-        if temperature is not None:
-            generation_config["temperature"] = temperature
-        if max_tokens is not None:
-            generation_config["maxOutputTokens"] = max_tokens
-
-        generation_config.update(kwargs.get("generation_config", {}))
-
-        if generation_config:
-            payload["generationConfig"] = generation_config
-
-        if "safetySettings" in kwargs:
-            payload["safetySettings"] = kwargs["safetySettings"]
+        response = StandardResponse(model_name=effective_model)
 
         try:
-            response = await self.client.post(
+            api_response = await self.client.post(
                 endpoint, params=params, json=payload, timeout=60.0
             )
-            response.raise_for_status()
-            response_data = response.json()
+            api_response.raise_for_status()
+            gemini_response = GeminiResponse.model_validate(api_response.json())
+            response.raw_response = gemini_response.model_dump()
 
-            text_response = None
-            finish_reason = None
-            usage_metadata = response_data.get("usageMetadata")
-            safety_ratings = None
+            if gemini_response.candidates:
+                first_candidate = gemini_response.candidates[0]
+                if first_candidate.content.parts:
+                    response.text_response = first_candidate.content.parts[0].text
+                response.finish_reason = first_candidate.finishReason
 
-            parsing_error_message = None
-
-            try:
-                candidates = response_data.get("candidates")
-                if candidates and isinstance(candidates, list) and len(candidates) > 0:
-                    first_candidate = candidates[0]
-                    finish_reason = first_candidate.get("finishReason")
-                    safety_ratings = first_candidate.get("safetyRatings")
-
-                    content = first_candidate.get("content")
-                    if content and isinstance(content, dict):
-                        parts = content.get("parts")
-                        if parts and isinstance(parts, list) and len(parts) > 0:
-                            first_part = parts[0]
-                            if isinstance(first_part, dict) and "text" in first_part:
-                                text_response = first_part["text"]
-                            else:
-                                parsing_error_message = "Text not found in the first part of the first candidate."
-                        else:
-                            parsing_error_message = "Parts not found or empty in the first candidate's content."
-                    else:
-                        parsing_error_message = (
-                            "Content not found in the first candidate."
-                        )
-                else:
-                    parsing_error_message = (
-                        "Candidates not found, empty, or not a list in the response."
-                    )
-
-            except (KeyError, IndexError, TypeError) as e:
-                parsing_error_message = f"Error parsing Gemini response structure: {e}"
-
-            if text_response is None and parsing_error_message:
-                return {
-                    "error": parsing_error_message,
-                    "raw_response": response_data,
-                    "text_response": None,
-                    "model_used": effective_model,
+            if gemini_response.promptFeedback:
+                response.usage = {
+                    "prompt_tokens": gemini_response.promptFeedback.promptTokenCount,
+                    "completion_tokens": gemini_response.candidates[0].tokenCount if gemini_response.candidates else None,
                 }
+                # If no candidates, treat as prompt blocked
+                if not gemini_response.candidates:
+                    block_reason = gemini_response.promptFeedback.blockReason
+                    block_message = gemini_response.promptFeedback.blockReasonMessage
+                    response.error = f"Prompt blocked: {block_reason}. {block_message if block_message else ''}"
+                    response.finish_reason = block_reason
 
-            return {
-                "raw_response": response_data,
-                "text_response": text_response,
-                "model_used": effective_model,
-                "finish_reason": finish_reason,
-                "usage_metadata": usage_metadata,
-                "safety_ratings": safety_ratings,
-            }
         except httpx.HTTPStatusError as e:
             error_detail = "Unknown error"
             try:
                 error_data = e.response.json()
-                error_detail = error_data.get("error", {}).get(
-                    "message", e.response.text
-                )
+                error_detail = error_data.get("error", {}).get("message", error_detail)
             except Exception:
                 error_detail = e.response.text
-            return {
-                "error": f"HTTP error {e.response.status_code} from Gemini API: {error_detail}",
-                "raw_response": error_detail,
-                "text_response": None,
-                "model_used": effective_model,
-            }
+            response.error = f"API Error (HTTP {e.response.status_code}): {error_detail}"
+            response.raw_response = {"error_detail": error_detail}
+            response.finish_reason = "error"
+
         except httpx.RequestError as e:
-            return {
-                "error": f"Request error connecting to Gemini API: {e}",
-                "raw_response": None,
-                "text_response": None,
-                "model_used": effective_model,
-            }
+            response.error = f"HTTP Client Error: RequestError - {str(e)}"
+            response.raw_response = {"error_detail": str(e)}
+            response.finish_reason = "error"
+
         except Exception as e:
-            return {
-                "error": f"An unexpected error occurred: {e}",
-                "raw_response": None,
-                "text_response": None,
-                "model_used": effective_model,
-            }
+            response.error = f"An unexpected error occurred: {str(e)}"
+            response.raw_response = {"error_detail": str(e)}
+            response.finish_reason = "error"
+
+        return response
 
     async def close(self):
         """Close the underlying httpx client."""

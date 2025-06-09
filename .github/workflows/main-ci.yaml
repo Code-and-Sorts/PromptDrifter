@@ -6,45 +6,8 @@ on:
 
 jobs:
   build-lint-test:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        # os: [ubuntu-latest, macos-latest, windows-latest]
-        os: [macos-latest, windows-latest]
-        python-version: ['3.13']
-
-    steps:
-    - name: ⤵️ Checkout code
-      uses: actions/checkout@v4
-
-    - name: 🐍 Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.python-version }}
-
-    - name: 🚀 Install uv with caching
-      uses: astral-sh/setup-uv@v6
-      with:
-        enable-cache: true
-
-    - name: 🔗 Check lock file consistency (uv.lock)
-      run: uv lock --check
-
-    - name: ♻️ Cache .venv
-      uses: actions/cache@v4
-      with:
-        path: .venv
-        key: ${{ runner.os }}-python-${{ matrix.python-version }}-venv-${{ hashFiles('pyproject.toml') }}-${{ hashFiles('uv.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-python-${{ matrix.python-version }}-venv-${{ hashFiles('pyproject.toml') }}-
-          ${{ runner.os }}-python-${{ matrix.python-version }}-venv-
-
-    - name: ✨ Lint with Ruff using uv
-      run: uv run ruff check .
-
-    - name: 🧱 Build project with uv
-      run: uv build
-
-    - name: 🧪 Run tests with uv
-      run: uv run pytest --cov=src/promptdrifter
+    uses: ./.github/workflows/shared-build-and-test.yaml
+    with:
+      upload-artifacts: false
+      update-version-for-pr: false
+      run-integration-tests: true

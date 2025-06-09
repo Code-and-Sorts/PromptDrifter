@@ -1,0 +1,128 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://promptdrifter.dev/schema/v0.1.json",
+    "title": "PromptDrifter Configuration (v0.1)",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "version": {
+            "type": "string",
+            "const": "0.1",
+            "description": "Schema version sentinel."
+        },
+        "adapters": {
+            "type": "array",
+            "description": "A list of test definitions. Each definition specifies a prompt, inputs, expectations, and one or more adapter configurations to run against.",
+            "items": { "$ref": "#/$defs/testDefinition" }
+        }
+    },
+    "required": ["version", "adapters"],
+    "$defs": {
+        "testDefinition": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9\\-]{1,48}[a-z0-9]$",
+                    "description": "Slug-friendly unique identifier (2-50 chars, lowercase, dash allowed)."
+                },
+                "prompt": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The prompt text; may contain {{var}} placeholders."
+                },
+                "inputs": {
+                    "type": "object",
+                    "description": "Map of placeholder variables to substitution strings.",
+                    "additionalProperties": { "type": "string" }
+                },
+                "expect_exact": {
+                    "type": "string",
+                    "description": "Expect the model response to match this string byte-for-byte."
+                },
+                "expect_regex": {
+                    "type": "string",
+                    "description": "Python-style regular expression the response must satisfy."
+                },
+                "expect_substring": {
+                    "type": "string",
+                    "description": "Expect the model response to contain this string."
+                },
+                "expect_substring_case_insensitive": {
+                    "type": "string",
+                    "description": "Expect the model response to contain this string, case-insensitive."
+                },
+                "text_similarity": {
+                    "type": "string",
+                    "description": "Expected text for similarity comparison."
+                },
+                "tags": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "uniqueItems": true,
+                    "description": "Arbitrary labels for filtering (e.g. smoke, regression)."
+                },
+                "adapter": {
+                    "type": "array",
+                    "description": "List of adapter configurations to run this test against.",
+                    "minItems": 1,
+                    "items": { "$ref": "#/$defs/adapterConfiguration" }
+                }
+            },
+            "required": ["id", "prompt", "adapter"],
+            "oneOf": [
+                { "required": ["expect_exact"], "not": { "required": ["expect_regex", "expect_substring", "expect_substring_case_insensitive", "text_similarity"] } },
+                { "required": ["expect_regex"], "not": { "required": ["expect_exact", "expect_substring", "expect_substring_case_insensitive", "text_similarity"] } },
+                { "required": ["expect_substring"], "not": { "required": ["expect_exact", "expect_regex", "expect_substring_case_insensitive", "text_similarity"] } },
+                { "required": ["expect_substring_case_insensitive"], "not": { "required": ["expect_exact", "expect_regex", "expect_substring", "text_similarity"] } },
+                { "required": ["text_similarity"], "not": { "required": ["expect_exact", "expect_regex", "expect_substring", "expect_substring_case_insensitive"] } }
+            ]
+        },
+        "adapterConfiguration": {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "description": "Backend adapter name (e.g. openai, ollama, qwen, gemini).",
+                    "enum": [
+                        "openai",
+                        "ollama",
+                        "gemini",
+                        "qwen",
+                        "claude",
+                        "grok",
+                        "deepseek",
+                        "mistral"
+                    ]
+                },
+                "model": {
+                    "type": "string",
+                    "description": "Model identifier understood by the chosen adapter."
+                },
+                "system_prompt": {
+                    "type": "string",
+                    "description": "Optional system prompt to provide context or instructions to the model."
+                },
+                "temperature": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 2,
+                    "description": "Override default sampling temperature."
+                },
+                "max_tokens": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Maximum tokens to generate."
+                },
+                "skip": {
+                    "type": "boolean",
+                    "description": "When set to true, this adapter will be skipped during test execution.",
+                    "default": false
+                }
+            },
+            "required": ["type", "model"]
+        }
+    }
+}

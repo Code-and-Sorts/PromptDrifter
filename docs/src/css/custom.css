@@ -1,0 +1,124 @@
+/**
+ * Any CSS included here will be global. The classic template
+ * bundles Infima by default. Infima is a CSS framework designed to
+ * work well for content-centric websites.
+ */
+
+/* You can override the default Infima variables here. */
+:root {
+  /* Primary: Blue */
+  --ifm-color-primary: #00BBF9;
+  --ifm-color-primary-dark: #00a8e0;
+  --ifm-color-primary-darker: #0099d1;
+  --ifm-color-primary-darkest: #007eac;
+  --ifm-color-primary-light: #0dc5ff;
+  --ifm-color-primary-lighter: #1acaff;
+  --ifm-color-primary-lightest: #3dd3ff;
+  --ifm-code-font-size: 95%;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+
+  /* Secondary: Pink */
+  --ifm-color-secondary: #F47CC4;
+  --ifm-color-secondary-dark: #f25db7;
+  --ifm-color-secondary-darker: #f14eaf;
+  --ifm-color-secondary-darkest: #ec1896;
+  --ifm-color-secondary-light: #f69bd1;
+  --ifm-color-secondary-lighter: #f7aad9;
+  --ifm-color-secondary-lightest: #fbd7ef;
+
+  /* Accent: Blue from logo */
+  --ifm-color-accent: #4bcbf1;
+  --ifm-color-accent-dark: #31c3ef;
+  --ifm-color-accent-darker: #24bfee;
+  --ifm-color-accent-darkest: #0ea4d3;
+  --ifm-color-accent-light: #65d3f3;
+  --ifm-color-accent-lighter: #72d7f4;
+  --ifm-color-accent-lightest: #9be3f8;
+
+  --ifm-background-color: #ffffff;
+  --ifm-navbar-background-color: #ffffff;
+  --ifm-footer-background-color: #202020;
+}
+
+/* For readability concerns, you should choose a lighter palette in dark mode. */
+[data-theme='dark'] {
+  /* Primary in dark mode */
+  --ifm-color-primary: #1acaff;
+  --ifm-color-primary-dark: #00c1ff;
+  --ifm-color-primary-darker: #00b7f2;
+  --ifm-color-primary-darkest: #0097c8;
+  --ifm-color-primary-light: #35d1ff;
+  --ifm-color-primary-lighter: #50d7ff;
+  --ifm-color-primary-lightest: #7be2ff;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+
+  /* Secondary colors in dark mode */
+  --ifm-color-secondary: #f69bd1;
+  --ifm-color-secondary-dark: #f47cc4;
+  --ifm-color-secondary-darker: #f36cbc;
+  --ifm-color-secondary-darkest: #ee2aa0;
+  --ifm-color-secondary-light: #f8badd;
+  --ifm-color-secondary-lighter: #fac9e6;
+  --ifm-color-secondary-lightest: #fef8fc;
+
+  /* Accent in dark mode */
+  --ifm-color-accent: #65d3f3;
+  --ifm-color-accent-dark: #4bcbf1;
+  --ifm-color-accent-darker: #31c3ef;
+  --ifm-color-accent-darkest: #0ea4d3;
+  --ifm-color-accent-light: #7fdaf5;
+  --ifm-color-accent-lighter: #98e2f7;
+  --ifm-color-accent-lightest: #c9f0fb;
+
+  --ifm-background-color: #242424;
+  --ifm-navbar-background-color: #242424;
+  --ifm-footer-background-color: #1a1a1a;
+}
+
+/* Custom button styles */
+.button--primary {
+  background-color: var(--ifm-color-primary);
+  border-color: var(--ifm-color-primary);
+}
+
+.button--secondary {
+  background-color: var(--ifm-color-secondary);
+  border-color: var(--ifm-color-secondary);
+}
+
+/* Custom link styling */
+article a {
+  color: var(--ifm-color-primary-dark);
+  font-weight: 500;
+}
+
+[data-theme='dark'] article a {
+  color: var(--ifm-color-primary-light);
+}
+
+/* Code blocks styling */
+code {
+  background-color: rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
+  padding: 0.2rem 0.4rem;
+}
+
+[data-theme='dark'] code {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Tag styling */
+.tag {
+  background-color: var(--ifm-color-accent);
+  color: #000;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-right: 0.5rem;
+}
+
+/* Make GIFs loop infinitely */
+.announcementBar img {
+  animation: infinite-loop 0s infinite;
+}

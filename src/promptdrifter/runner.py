@@ -1,3 +1,4 @@
+import asyncio
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Type
 
@@ -8,19 +9,29 @@ from rich.table import Table
 from promptdrifter.models.config import TestCase
 
 from .adapters.base import Adapter
+from .adapters.claude import ClaudeAdapter
+from .adapters.deepseek import DeepSeekAdapter
 from .adapters.gemini import GeminiAdapter
+from .adapters.grok import GrokAdapter
+from .adapters.mistral import MistralAdapter
 from .adapters.ollama import OllamaAdapter
 from .adapters.openai import OpenAIAdapter
 from .adapters.qwen import QwenAdapter
-from .assertions import exact_match, regex_match
+
+# from .adapters.llama import LlamaAdapter
 from .cache import PromptCache
 from .yaml_loader import YamlFileLoader
 
 ADAPTER_REGISTRY: Dict[str, Type[Adapter]] = {
+    "claude": ClaudeAdapter,
+    "deepseek": DeepSeekAdapter,
+    "gemini": GeminiAdapter,
+    "grok": GrokAdapter,
+    "mistral": MistralAdapter,
     "openai": OpenAIAdapter,
     "ollama": OllamaAdapter,
-    "gemini": GeminiAdapter,
     "qwen": QwenAdapter,
+    # "llama": LlamaAdapter,
 }
 
 
@@ -35,6 +46,11 @@ class Runner:
         openai_api_key: Optional[str] = None,
         gemini_api_key: Optional[str] = None,
         qwen_api_key: Optional[str] = None,
+        claude_api_key: Optional[str] = None,
+        grok_api_key: Optional[str] = None,
+        deepseek_api_key: Optional[str] = None,
+        mistral_api_key: Optional[str] = None,
+        # llama_api_key: Optional[str] = None,
     ):
         self.config_dir = config_dir
         self.yaml_loader = YamlFileLoader()
@@ -48,30 +64,53 @@ class Runner:
         self.console = Console()
         self.results: List[Dict[str, Any]] = []
         self.overall_success = True
-        self.cli_openai_api_key = openai_api_key
-        self.cli_gemini_api_key = gemini_api_key
-        self.cli_qwen_api_key = qwen_api_key
+        self.cli_openai_key = openai_api_key
+        self.cli_gemini_key = gemini_api_key
+        self.cli_qwen_key = qwen_api_key
+        self.cli_claude_key = claude_api_key
+        self.cli_grok_key = grok_api_key
+        self.cli_deepseek_key = deepseek_api_key
+        self.cli_mistral_key = mistral_api_key
+        # self.cli_llama_key = llama_api_key
 
     async def close_cache_connection(self):
         """Closes the database connection if cache is enabled and connection exists."""
         if self.cache and hasattr(self.cache, "close"):
             self.cache.close()
 
-    def _get_adapter_instance(self, adapter_name: str) -> Optional[Adapter]:
+    def _get_adapter_instance(self, adapter_name: str, base_url: Optional[str] = None) -> Optional[Adapter]:
         """Retrieves an initialized adapter instance from the registry."""
         adapter_class = ADAPTER_REGISTRY.get(adapter_name.lower())
         if adapter_class:
             try:
                 api_key_to_pass = None
-                if adapter_name.lower() == "openai" and self.cli_openai_api_key:
-                    api_key_to_pass = self.cli_openai_api_key
-                elif adapter_name.lower() == "gemini" and self.cli_gemini_api_key:
-                    api_key_to_pass = self.cli_gemini_api_key
-                elif adapter_name.lower() == "qwen" and self.cli_qwen_api_key:
-                    api_key_to_pass = self.cli_qwen_api_key
+                if adapter_name.lower() == "openai" and self.cli_openai_key:
+                    api_key_to_pass = self.cli_openai_key
+                elif adapter_name.lower() == "gemini" and self.cli_gemini_key:
+                    api_key_to_pass = self.cli_gemini_key
+                elif adapter_name.lower() == "qwen" and self.cli_qwen_key:
+                    api_key_to_pass = self.cli_qwen_key
+                elif adapter_name.lower() == "claude" and self.cli_claude_key:
+                    api_key_to_pass = self.cli_claude_key
+                elif adapter_name.lower() == "grok" and self.cli_grok_key:
+                    api_key_to_pass = self.cli_grok_key
+                elif adapter_name.lower() == "deepseek" and self.cli_deepseek_key:
+                    api_key_to_pass = self.cli_deepseek_key
+                elif adapter_name.lower() == "mistral" and self.cli_mistral_key:
+                    api_key_to_pass = self.cli_mistral_key
+                # elif adapter_name.lower() == "llama" and self.cli_llama_key:
+                #     api_key_to_pass = self.cli_llama_key
 
-                if api_key_to_pass:
-                    return adapter_class(api_key=api_key_to_pass)
+                adapter_init_params = adapter_class.__init__.__code__.co_varnames
+                can_pass_base_url = 'base_url' in adapter_init_params
+
+                config_class = getattr(adapter_class, 'config_class', None)
+                if config_class:
+                    config = config_class(
+                        api_key=api_key_to_pass,
+                        base_url=base_url if can_pass_base_url else None
+                    )
+                    return adapter_class(config=config)
                 else:
                     return adapter_class()
             except Exception as e:
@@ -85,13 +124,14 @@ class Runner:
     async def _run_single_test_case(
         self,
         test_case_path: Path,
-        test_case_model: TestCase,  # Changed type hint
+        test_case_model: TestCase,
     ) -> List[Dict[str, Any]]:
         all_adapter_results = []
 
         test_id = test_case_model.id
         base_prompt = test_case_model.prompt
-        inputs = test_case_model.inputs  # Already defaults to {} if not present
+        inputs = test_case_model.inputs
+        tags = test_case_model.tags or []
 
         prompt_text = base_prompt
         if inputs:
@@ -112,6 +152,7 @@ class Runner:
                         "reason": f"Prompt templating error: {e}",
                         "prompt": base_prompt,
                         "inputs": inputs,
+                        "tags": tags,
                     }
                 ]
 
@@ -121,6 +162,9 @@ class Runner:
         expect_substring_case_insensitive = (
             test_case_model.expect_substring_case_insensitive
         )
+
+        adapter_instances = []
+        adapter_details = []
 
         for adapter_config_model in test_case_model.adapter_configurations:
             adapter_name = adapter_config_model.adapter_type
@@ -142,9 +186,16 @@ class Runner:
                 "cache_status": "N/A",
                 "actual_response": None,
                 "raw_adapter_response": None,
+                "tags": tags,
             }
 
-            adapter_instance = self._get_adapter_instance(adapter_name)
+            all_adapter_params = adapter_config_model.model_dump(
+                by_alias=True, exclude_none=True
+            )
+
+            base_url = all_adapter_params.get("base_url")
+
+            adapter_instance = self._get_adapter_instance(adapter_name, base_url)
             if adapter_instance is None:
                 current_run_details["reason"] = (
                     f"Adapter '{adapter_name}' not found or failed to initialize."
@@ -153,10 +204,6 @@ class Runner:
                 all_adapter_results.append(current_run_details)
                 self.overall_success = False
                 continue
-
-            all_adapter_params = adapter_config_model.model_dump(
-                by_alias=True, exclude_none=True
-            )
 
             known_options_to_pass = {}
             if "temperature" in all_adapter_params:
@@ -168,6 +215,7 @@ class Runner:
                     "max_tokens"
                 )
 
+            all_adapter_params.pop("base_url", None)
             all_adapter_params.pop("type", None)
             all_adapter_params.pop("model", None)
 
@@ -175,131 +223,246 @@ class Runner:
 
             adapter_options = {**known_options_to_pass, **additional_adapter_kwargs}
 
-            llm_response_data: Optional[Dict[str, Any]] = None
+            if base_url:
+                adapter_options["base_url"] = base_url
+
+            if adapter_options.pop("skip", False):
+                current_run_details["status"] = "SKIPPED"
+                current_run_details["reason"] = "Adapter explicitly skipped via configuration."
+                all_adapter_results.append(current_run_details)
+                continue
+
             cache_key_options_component = None
+            cached_response = None
 
             if self.cache:
                 assertion_details_for_cache = []
                 if test_case_model.expect_exact is not None:
                     assertion_details_for_cache.append(("_assertion_type", "exact"))
-                    assertion_details_for_cache.append(("_assertion_value", test_case_model.expect_exact))
+                    assertion_details_for_cache.append(
+                        ("_assertion_value", test_case_model.expect_exact)
+                    )
                 elif test_case_model.expect_regex is not None:
                     assertion_details_for_cache.append(("_assertion_type", "regex"))
-                    assertion_details_for_cache.append(("_assertion_value", test_case_model.expect_regex))
+                    assertion_details_for_cache.append(
+                        ("_assertion_value", test_case_model.expect_regex)
+                    )
                 elif test_case_model.expect_substring is not None:
                     assertion_details_for_cache.append(("_assertion_type", "substring"))
-                    assertion_details_for_cache.append(("_assertion_value", test_case_model.expect_substring))
+                    assertion_details_for_cache.append(
+                        ("_assertion_value", test_case_model.expect_substring)
+                    )
                 elif test_case_model.expect_substring_case_insensitive is not None:
-                    assertion_details_for_cache.append(("_assertion_type", "substring_case_insensitive"))
-                    assertion_details_for_cache.append(("_assertion_value", test_case_model.expect_substring_case_insensitive))
+                    assertion_details_for_cache.append(
+                        ("_assertion_type", "substring_case_insensitive")
+                    )
+                    assertion_details_for_cache.append(
+                        (
+                            "_assertion_value",
+                            test_case_model.expect_substring_case_insensitive,
+                        )
+                    )
 
-                sorted_adapter_options_items = sorted(list(adapter_options.items()), key=lambda item: item[0])
-                combined_options_for_cache_key = sorted_adapter_options_items + assertion_details_for_cache
+                sorted_adapter_options_items = sorted(
+                    list(adapter_options.items()), key=lambda item: item[0]
+                )
+                combined_options_for_cache_key = (
+                    sorted_adapter_options_items + assertion_details_for_cache
+                )
                 cache_key_options_component = frozenset(combined_options_for_cache_key)
 
                 cached_response = self.cache.get(
                     prompt_text, adapter_name, model_name, cache_key_options_component
                 )
                 if cached_response:
-                    llm_response_data = cached_response
                     current_run_details["cache_status"] = "HIT"
 
-            if not llm_response_data:
+            if cached_response:
+                current_run_details["cache_status"] = "HIT"
+                all_adapter_results.append(self._process_adapter_response(
+                    current_run_details,
+                    cached_response,
+                    expect_exact,
+                    expect_regex,
+                    expect_substring,
+                    expect_substring_case_insensitive
+                ))
+            else:
                 if self.cache:
                     current_run_details["cache_status"] = "MISS"
+
                 try:
-                    llm_response_data = await adapter_instance.execute(
-                        prompt_text,
-                        model=model_name,
-                        **adapter_options,
+                    config_override = type(adapter_instance.config)(
+                        default_model=model_name,
+                        **adapter_options
                     )
-                    if (
-                        self.cache
-                        and cache_key_options_component is not None
-                        and llm_response_data
-                        and not llm_response_data.get("error")
-                    ):
-                        self.cache.put(
-                            prompt_text,
-                            adapter_name,
-                            model_name,
-                            cache_key_options_component,
-                            llm_response_data,
-                        )
+
+                    adapter_details.append({
+                        "run_details": current_run_details,
+                        "adapter_instance": adapter_instance,
+                        "prompt": prompt_text,
+                        "config_override": config_override,
+                        "cache_key": cache_key_options_component
+                    })
+                    adapter_instances.append(adapter_instance)
                 except Exception as e:
                     current_run_details["status"] = "ERROR"
-                    current_run_details["reason"] = f"Adapter execution error: {e}"
+                    current_run_details["reason"] = f"Adapter configuration error: {e}"
                     all_adapter_results.append(current_run_details)
                     self.overall_success = False
-                    if hasattr(adapter_instance, "close"):
-                        await adapter_instance.close()
-                    continue
 
-            if hasattr(adapter_instance, "close"):
-                await adapter_instance.close()
-
-            if not llm_response_data:
-                current_run_details["status"] = "ERROR"
-                current_run_details["reason"] = "No response from adapter."
-                all_adapter_results.append(current_run_details)
-                self.overall_success = False
-                continue
-
-            if llm_response_data.get("error"):
-                current_run_details["status"] = "ERROR"
-                current_run_details["reason"] = (
-                    f"Adapter error: {llm_response_data['error']}"
+        if adapter_details:
+            tasks = [
+                self._execute_adapter_task(
+                    details["adapter_instance"],
+                    details["prompt"],
+                    details["config_override"],
+                    details["run_details"],
+                    details["cache_key"],
+                    expect_exact,
+                    expect_regex,
+                    expect_substring,
+                    expect_substring_case_insensitive
                 )
-                current_run_details["actual_response"] = llm_response_data.get(
-                    "raw_response"
-                )
-                all_adapter_results.append(current_run_details)
-                self.overall_success = False
-                continue
+                for details in adapter_details
+            ]
 
-            actual_text_response = llm_response_data.get("text_response")
-            current_run_details["actual_response"] = actual_text_response
-            current_run_details["raw_adapter_response"] = llm_response_data.get(
-                "raw_response"
-            )
+            task_results = await asyncio.gather(*tasks, return_exceptions=True)
 
-            if actual_text_response is None:
-                current_run_details["status"] = "FAIL"
-                current_run_details["reason"] = "Adapter returned no text_response."
-                all_adapter_results.append(current_run_details)
-                self.overall_success = False
-                continue
+            for result in task_results:
+                if isinstance(result, Exception):
+                    error_details = {
+                        "file": str(test_case_path.name),
+                        "id": test_id,
+                        "adapter": "N/A",
+                        "model": "N/A",
+                        "status": "ERROR",
+                        "reason": f"Concurrent execution error: {str(result)}",
+                    }
+                    all_adapter_results.append(error_details)
+                    self.overall_success = False
+                else:
+                    all_adapter_results.append(result)
 
-            passed = False
-            assertion_reason = ""
-            if expect_exact:
-                passed = exact_match(expect_exact, actual_text_response)
-                if not passed:
-                    assertion_reason = f"Exact match failed. Expected: '{expect_exact}'"
-            elif expect_regex:
-                passed = regex_match(expect_regex, actual_text_response)
-                if not passed:
-                    assertion_reason = f"Regex match failed. Pattern: '{expect_regex}'"
-            elif expect_substring:
-                passed = expect_substring in actual_text_response
-                if not passed:
-                    assertion_reason = f"Substring match failed. Expected to find: '{expect_substring}'"
-            elif expect_substring_case_insensitive:
-                passed = (
-                    expect_substring_case_insensitive.lower()
-                    in actual_text_response.lower()
-                )
-                if not passed:
-                    assertion_reason = f"Case-insensitive substring match failed. Expected to find: '{expect_substring_case_insensitive}'"
-
-            current_run_details["status"] = "PASS" if passed else "FAIL"
-            if not passed:
-                current_run_details["reason"] = assertion_reason
-                self.overall_success = False
-
-            all_adapter_results.append(current_run_details)
+            close_tasks = [instance.close() for instance in adapter_instances if hasattr(instance, "close")]
+            if close_tasks:
+                await asyncio.gather(*close_tasks, return_exceptions=True)
 
         return all_adapter_results
+
+    async def _execute_adapter_task(
+        self,
+        adapter_instance,
+        prompt_text,
+        config_override,
+        run_details,
+        cache_key_options_component,
+        expect_exact,
+        expect_regex,
+        expect_substring,
+        expect_substring_case_insensitive
+    ):
+        """Execute a single adapter task and process its result."""
+        try:
+            response = await adapter_instance.execute(
+                prompt_text,
+                config_override=config_override
+            )
+            llm_response_data = {
+                "text_response": response.text_response,
+                "raw_response": response.raw_response,
+                "error": response.error
+            }
+
+            result = self._process_adapter_response(
+                run_details.copy(),
+                llm_response_data,
+                expect_exact,
+                expect_regex,
+                expect_substring,
+                expect_substring_case_insensitive
+            )
+
+            if (
+                self.cache
+                and cache_key_options_component is not None
+                and llm_response_data
+                and not llm_response_data.get("error")
+                and result["status"] == "PASS"
+            ):
+                self.cache.put(
+                    prompt_text,
+                    run_details["adapter"],
+                    run_details["model"],
+                    cache_key_options_component,
+                    llm_response_data,
+                )
+
+            return result
+        except Exception as e:
+            run_details["status"] = "ERROR"
+            run_details["reason"] = f"Adapter execution error: {e}"
+            self.overall_success = False
+            return run_details
+
+    def _process_adapter_response(
+        self,
+        run_details,
+        llm_response_data,
+        expect_exact,
+        expect_regex,
+        expect_substring,
+        expect_substring_case_insensitive
+    ):
+        """Process an adapter response and determine test status."""
+        # lazy import
+        from .drift_types import exact_match, regex_match
+
+        if llm_response_data.get("error"):
+            run_details["status"] = "ERROR"
+            run_details["reason"] = f"Adapter error: {llm_response_data['error']}"
+            run_details["actual_response"] = llm_response_data.get("raw_response")
+            self.overall_success = False
+            return run_details
+
+        actual_text_response = llm_response_data.get("text_response")
+        run_details["actual_response"] = actual_text_response
+        run_details["raw_adapter_response"] = llm_response_data.get("raw_response")
+
+        if actual_text_response is None:
+            run_details["status"] = "FAIL"
+            run_details["reason"] = "Adapter returned no text_response."
+            self.overall_success = False
+            return run_details
+
+        passed = False
+        assertion_reason = ""
+        if expect_exact:
+            passed = exact_match(expect_exact, actual_text_response)
+            if not passed:
+                assertion_reason = f"Exact match failed. Expected: '{expect_exact}'"
+        elif expect_regex:
+            passed = regex_match(expect_regex, actual_text_response)
+            if not passed:
+                assertion_reason = f"Regex match failed. Pattern: '{expect_regex}'"
+        elif expect_substring:
+            passed = expect_substring in actual_text_response
+            if not passed:
+                assertion_reason = f"Substring match failed. Expected to find: '{expect_substring}'"
+        elif expect_substring_case_insensitive:
+            passed = (
+                expect_substring_case_insensitive.lower()
+                in actual_text_response.lower()
+            )
+            if not passed:
+                assertion_reason = f"Case-insensitive substring match failed. Expected to find: '{expect_substring_case_insensitive}'"
+
+        run_details["status"] = "PASS" if passed else "FAIL"
+        if not passed:
+            run_details["reason"] = assertion_reason
+            self.overall_success = False
+
+        return run_details
 
     async def run_suite(self, test_file_paths: List[Path]):
         """Loads YAML files from a directory and runs all test cases defined within them."""
@@ -370,41 +533,90 @@ class Runner:
             self.console.print("[yellow]No test results to report.[/yellow]")
             return
 
-        table = Table(title="PromptDrifter Test Results")
-        table.add_column("File", style="dim", width=20)
-        table.add_column("ID", style="cyan", width=20)
-        table.add_column("Adapter", style="magenta", width=10)
-        table.add_column("Model", style="blue", width=15)
-        table.add_column("Status", justify="center")
-        table.add_column("Reason/Details", width=50, overflow="fold")
-        table.add_column("Cached", justify="center")
+        table = Table(title="PromptDrifter Test Results", padding=(1, 1, 1, 1))
+        table.add_column("File", style="dim", width=20, no_wrap=False, overflow="fold")
+        table.add_column("ID", style="cyan", width=20, no_wrap=False, overflow="fold")
+        table.add_column("Adapter", style="magenta", width=10, no_wrap=True)
+        table.add_column("Model", style="blue", width=20, no_wrap=False, overflow="fold")
+        table.add_column("Status", justify="center", no_wrap=True)
+        table.add_column("Failure Details", width=50, overflow="fold", no_wrap=False)
+        table.add_column("Cache", justify="center", no_wrap=True, width=10)
+        table.add_column("Tags", width=15, overflow="fold", no_wrap=False)
 
         summary = {"PASS": 0, "FAIL": 0, "ERROR": 0, "SKIPPED": 0, "TOTAL": 0}
 
+        results_by_id = {}
         for result in self.results:
-            status = result.get("status", "SKIPPED")
-            summary[status] = summary.get(status, 0) + 1
-            summary["TOTAL"] += 1
+            file_name = result.get("file", "N/A")
+            test_id = result.get("id", "N/A")
+            key = f"{file_name}:{test_id}"
 
-            status_color = (
-                "green" if status == "PASS" else "red" if status == "FAIL" else "yellow"
-            )
+            if key not in results_by_id:
+                results_by_id[key] = []
+            results_by_id[key].append(result)
 
-            reason = str(result.get("reason", ""))
-            if status == "FAIL" and result.get("actual_response") is not None:
-                reason += f"\n----\nActual: '{str(result.get('actual_response'))}'"
-            elif status == "ERROR" and result.get("raw_adapter_response"):
-                reason += f"\nAdapter Raw Response: '{str(result.get('raw_adapter_response'))}'"
+        for idx, (key, group_results) in enumerate(results_by_id.items()):
+            file_name = group_results[0].get("file", "N/A")
+            test_id = group_results[0].get("id", "N/A")
 
-            table.add_row(
-                result.get("file", "N/A"),
-                result.get("id", "N/A"),
-                result.get("adapter", "N/A"),
-                result.get("model", "N/A"),
-                f"[{status_color}]{status}[/{status_color}]",
-                reason,
-                result.get("cache_status", "N/A"),
-            )
+            group_results.sort(key=lambda x: (x.get("adapter", ""), x.get("model", "")))
+            middle_row = len(group_results) // 2
+
+            for i, result in enumerate(group_results):
+                status = result.get("status", "SKIPPED")
+                summary[status] = summary.get(status, 0) + 1
+                summary["TOTAL"] += 1
+
+                status_color = (
+                    "green" if status == "PASS" else "red" if status == "FAIL" else "yellow"
+                )
+
+                reason = str(result.get("reason", ""))
+                if status == "FAIL" and result.get("actual_response") is not None:
+                    reason += f"\n----\nActual: '{str(result.get('actual_response'))}'"
+                elif status == "ERROR" and result.get("raw_adapter_response"):
+                    reason += f"\nAdapter Raw Response: '{str(result.get('raw_adapter_response'))}'"
+
+                display_file = file_name if i == middle_row else ""
+                display_id = test_id if i == middle_row else ""
+
+                cache_status = result.get("cache_status", "N/A")
+                if cache_status == "HIT":
+                    cache_display = f"[green]{cache_status}[/green]"
+                elif cache_status == "MISS":
+                    cache_display = f"[yellow]{cache_status}[/yellow]"
+                else:
+                    cache_display = f"[dim]{cache_status}[/dim]"
+
+                tags = result.get("tags", [])
+                if tags:
+                    formatted_tags = "\n".join([f"[bold #d655fe]#{tag}[/bold #d655fe]" for tag in tags])
+                else:
+                    formatted_tags = ""
+
+                table.add_row(
+                    display_file,
+                    display_id,
+                    result.get("adapter", "N/A"),
+                    result.get("model", "N/A"),
+                    f"[{status_color}]{status}[/{status_color}]",
+                    reason,
+                    cache_display,
+                    formatted_tags,
+                )
+
+            # Add a separator between different test IDs (except after the last group)
+            if idx < len(results_by_id) - 1:
+                table.add_row(
+                    "─" * 20,  # Separator for File column
+                    "─" * 20,  # Separator for ID column
+                    "─" * 10,  # Separator for Adapter column
+                    "─" * 20,  # Separator for Model column
+                    "─" * 10,  # Separator for Status column
+                    "─" * 50,  # Separator for Reason column
+                    "─" * 10,  # Separator for Cache column
+                    "─" * 15,  # Separator for Tags column
+                )
 
         self.console.print(table)
         self.console.print("\n[bold]Summary:[/bold]")

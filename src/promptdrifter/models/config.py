@@ -8,10 +8,16 @@ class AdapterConfig(BaseModel):
         extra="allow", validate_assignment=True, populate_by_name=True
     )
 
-    adapter_type: Literal["openai", "ollama", "gemini", "qwen"] = Field(..., alias="type")
+    adapter_type: Literal[
+        "openai", "ollama", "gemini", "qwen", "claude", "grok", "deepseek", "llama", "mistral"
+    ] = Field(
+        ..., alias="type"
+    )
     model: str
+    base_url: Optional[str] = None
     temperature: Optional[float] = Field(default=None, ge=0, le=2)
     max_tokens: Optional[int] = Field(default=None, ge=1)
+    skip: bool = Field(default=False, description="When true, this adapter will be skipped during test execution.")
 
 
 class TestCase(BaseModel):

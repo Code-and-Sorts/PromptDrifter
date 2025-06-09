@@ -1,0 +1,11 @@
+version: "99.9"
+adapters:
+  - id: test-invalid-version
+    prompt: "What is 2+2?"
+    expect_exact: "4"
+    adapter:
+      - type: openai
+        model: gpt-4
+        temperature: 0.0
+    tags:
+      - test

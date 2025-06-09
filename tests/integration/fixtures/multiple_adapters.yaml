@@ -1,0 +1,39 @@
+version: "0.1"
+adapters:
+  - id: test-multiple-adapters-openai
+    prompt: "Explain photosynthesis"
+    expect_substring: "plant"
+    adapter:
+      - type: openai
+        model: gpt-4
+        temperature: 0.0
+      - type: gemini
+        model: gemini-2.0-flash
+        temperature: 0.0
+        max_tokens: 1000
+      - type: qwen
+        model: qwen-2.5-coder-32b
+        temperature: 0.0
+        max_tokens: 1000
+      - type: mistral
+        model: mistral-7b-instruct
+        temperature: 0.0
+        max_tokens: 1000
+      - type: deepseek
+        model: deepseek-chat
+        temperature: 0.0
+        max_tokens: 1000
+      - type: grok
+        model: grok-2-1212
+        temperature: 0.0
+    tags:
+      - test
+  - id: test-multiple-adapters-claude
+    prompt: "Explain photosynthesis"
+    expect_substring: "plant"
+    adapter:
+      - type: claude
+        model: claude-3-sonnet
+        temperature: 0.0
+    tags:
+      - test
