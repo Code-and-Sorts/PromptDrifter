@@ -134,5 +134,21 @@ jobs:
         uv pip install --system dist/*.whl
         uv pip install --system pytest pytest-asyncio pytest-cov pytest-mock respx sentence-transformers
 
+    - name: 🔍 Debug - Check installed packages
+      run: |
+        echo "=== Installed packages ==="
+        uv pip list | grep -E "(sentence|promptdrifter|pytest)" || true
+        echo "=== Test sentence-transformers import ==="
+        python -c "import sentence_transformers; print('sentence-transformers imported successfully')" || echo "Import failed"
+        echo "=== Test CLI command directly with full output ==="
+        promptdrifter test-drift-type text_similarity "test" "test" 2>&1 || echo "CLI command failed with exit code $?"
+        echo "=== Python path and version ==="
+        python -c "import sys; print('Python:', sys.version); print('Path:', sys.path[:3])"
+
+    - name: 🔍 Debug - Run one failing test with verbose output
+      run: |
+        echo "=== Running single text similarity test with full output ==="
+        python -m pytest tests/integration/test_drift_type_command.py::test_text_similarity_high_score -v -s --tb=short || echo "Test failed with exit code $?"
+
     - name: 🧪 Run integration tests with uv
       run: uv run pytest tests/integration/ -v
