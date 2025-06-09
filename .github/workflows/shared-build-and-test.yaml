@@ -98,6 +98,7 @@ jobs:
         path: dist/
 
   integration-test:
+    needs: build-and-test
     if: inputs.run-integration-tests
     runs-on: macos-latest
     steps:
