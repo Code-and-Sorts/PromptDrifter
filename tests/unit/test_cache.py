@@ -246,12 +246,14 @@ def test_put_non_serializable_data(sut: PromptCache):
     # Functions are not JSON serializable by default
     non_serializable_response = {"data": lambda x: x}
 
-    # The current .put() method has a try-except for TypeError and returns.
-    # It doesn't raise an error, so we check that no entry is made.
-    sut.put(prompt, adapter, model, options, non_serializable_response)
+    # The updated .put() method now raises ValueError for non-serializable data
+    with pytest.raises(ValueError, match="Failed to serialize response_data"):
+        sut.put(prompt, adapter, model, options, non_serializable_response)
+    
+    # Verify that no entry was created
     assert sut.get(prompt, adapter, model, options) is None
 
-    # Verify that the DB does not contain an entry for this (it shouldn't if put failed silently)
+    # Verify that the DB does not contain an entry for this
     fingerprint = sut._generate_fingerprint(prompt, adapter, model, options)
     with sut._get_connection() as conn:
         cursor = conn.cursor()
@@ -259,3 +261,90 @@ def test_put_non_serializable_data(sut: PromptCache):
             "SELECT count(*) FROM prompt_cache WHERE fingerprint = ?", (fingerprint,)
         )
         assert cursor.fetchone()[0] == 0
+
+
+def test_fingerprint_input_validation(sut: PromptCache):
+    """Test that fingerprint generation validates inputs properly."""
+    # Test invalid prompt type
+    with pytest.raises(TypeError, match="prompt must be a string"):
+        sut._generate_fingerprint(123, "adapter", "model", {})
+    
+    # Test invalid adapter_name type
+    with pytest.raises(TypeError, match="adapter_name must be a string"):
+        sut._generate_fingerprint("prompt", 123, "model", {})
+    
+    # Test invalid model_id type
+    with pytest.raises(TypeError, match="model_id must be a string or None"):
+        sut._generate_fingerprint("prompt", "adapter", 123, {})
+    
+    # Test oversized prompt
+    large_prompt = "x" * 1_000_001
+    with pytest.raises(ValueError, match="prompt exceeds maximum allowed size"):
+        sut._generate_fingerprint(large_prompt, "adapter", "model", {})
+    
+    # Test oversized adapter_name
+    large_adapter = "x" * 1001
+    with pytest.raises(ValueError, match="adapter_name exceeds maximum allowed size"):
+        sut._generate_fingerprint("prompt", large_adapter, "model", {})
+    
+    # Test oversized model_id
+    large_model = "x" * 1001
+    with pytest.raises(ValueError, match="model_id exceeds maximum allowed size"):
+        sut._generate_fingerprint("prompt", "adapter", large_model, {})
+
+
+def test_put_input_validation(sut: PromptCache):
+    """Test that put method validates inputs properly."""
+    # Test invalid response_data type
+    with pytest.raises(TypeError, match="response_data must be a dictionary"):
+        sut.put("prompt", "adapter", "model", {}, "not a dict")
+    
+    # Test invalid ttl_seconds
+    with pytest.raises(ValueError, match="ttl_seconds must be a positive integer"):
+        sut.put("prompt", "adapter", "model", {}, {}, ttl_seconds=-1)
+    
+    with pytest.raises(ValueError, match="ttl_seconds must be a positive integer"):
+        sut.put("prompt", "adapter", "model", {}, {}, ttl_seconds=0)
+    
+    # Test oversized response data
+    large_response = {"data": "x" * 10_000_000}  # Over 10MB limit
+    with pytest.raises(ValueError, match="response_data exceeds maximum allowed size"):
+        sut.put("prompt", "adapter", "model", {}, large_response)
+
+
+def test_delete_input_validation(sut: PromptCache):
+    """Test that delete method validates fingerprint input."""
+    # Test invalid fingerprint type
+    with pytest.raises(TypeError, match="fingerprint must be a string"):
+        sut.delete(123)
+    
+    # Test invalid fingerprint length
+    with pytest.raises(ValueError, match="fingerprint must be a valid SHA256 hash"):
+        sut.delete("short")
+    
+    # Test invalid fingerprint characters
+    with pytest.raises(ValueError, match="fingerprint must contain only hexadecimal characters"):
+        sut.delete("z" * 64)
+
+
+def test_get_stats(sut: PromptCache):
+    """Test cache statistics functionality."""
+    # Add some test data
+    sut.put("prompt1", "adapter1", "model1", {}, {"response": "test1"})
+    sut.put("prompt2", "adapter2", "model2", {}, {"response": "test2"})
+    
+    stats = sut.get_stats()
+    
+    assert isinstance(stats, dict)
+    assert "total_entries" in stats
+    assert "active_entries" in stats
+    assert "expired_entries" in stats
+    assert "total_size_bytes" in stats
+    assert "adapter_breakdown" in stats
+    assert "db_path" in stats
+    
+    assert stats["total_entries"] >= 2
+    assert stats["active_entries"] >= 2
+    assert stats["total_size_bytes"] > 0
+    assert "adapter1" in stats["adapter_breakdown"]
+    assert "adapter2" in stats["adapter_breakdown"]
