@@ -24,7 +24,7 @@ def auto_patch_httpx_client():
     mock_client_instance = MagicMock(spec=httpx.AsyncClient)
     mock_client_instance.post = AsyncMock()
     mock_client_instance.aclose = AsyncMock()
-    with patch("promptdrifter.adapters.llama.httpx.AsyncClient", return_value=mock_client_instance) as patched_client:
+    with patch("promptdrifter.adapters.llama.get_shared_client", return_value=mock_client_instance) as patched_client:
         yield patched_client
 
 @pytest.fixture
@@ -59,7 +59,7 @@ def mock_http_response():
 
 @pytest.fixture
 def mock_http_client(mock_http_response):
-    with patch("httpx.AsyncClient") as mock_client:
+    with patch("promptdrifter.adapters.llama.get_shared_client") as mock_client:
         mock_client.return_value.post = AsyncMock(return_value=mock_http_response)
         yield mock_client
 
@@ -213,9 +213,9 @@ async def test_execute_request_error(adapter, auto_patch_httpx_client):
     assert result.raw_response == {"error_detail": error_message}
 
 async def test_close_client(adapter, auto_patch_httpx_client):
-    mock_client = auto_patch_httpx_client.return_value
     await adapter.close()
-    mock_client.aclose.assert_called_once()
+    # With shared client manager, we don't close the client directly
+    assert adapter._client is None
 
 async def test_llama_adapter_execute_success(mock_http_client):
     config = LlamaAdapterConfig(api_key="test_key")

@@ -20,6 +20,7 @@ from promptdrifter.config.adapter_settings import (
     DEEPSEEK_API_BASE_URL,
     DEFAULT_DEEPSEEK_MODEL,
 )
+from promptdrifter.http_client_manager import get_shared_client
 
 console = Console()
 
@@ -87,11 +88,16 @@ class DeepSeekAdapter(Adapter):
         config: Optional[DeepSeekAdapterConfig] = None,
     ):
         self.config = config or DeepSeekAdapterConfig()
+        self._client = None
 
-        self.client = httpx.AsyncClient(
-            base_url=self.config.base_url,
-            headers=self.config.get_headers(),
-        )
+    async def _get_client(self) -> httpx.AsyncClient:
+        """Get shared HTTP client with connection pooling."""
+        if self._client is None:
+            self._client = await get_shared_client(
+                base_url=self.config.base_url,
+                headers=self.config.get_headers()
+            )
+        return self._client
 
     async def execute(
         self,
@@ -109,7 +115,8 @@ class DeepSeekAdapter(Adapter):
         response = DeepSeekResponse(model_name=selected_model)
 
         try:
-            http_response = await self.client.post(
+            client = await self._get_client()
+            http_response = await client.post(
                 endpoint, json=payload, timeout=60.0
             )
             http_response.raise_for_status()
@@ -143,8 +150,8 @@ class DeepSeekAdapter(Adapter):
         return response
 
     async def close(self):
-        """Close the underlying HTTPX client."""
-        await self.client.aclose()
+        """Close method - HTTP connections managed by shared client manager."""
+        self._client = None
 
     def _extract_error_message(self, response) -> str:
         try:

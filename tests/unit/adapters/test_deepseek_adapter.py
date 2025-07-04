@@ -13,13 +13,34 @@ from promptdrifter.config.adapter_settings import (
 
 pytestmark = pytest.mark.asyncio
 
+@pytest.fixture
+def mock_response():
+    response = MagicMock(spec=httpx.Response)
+    response.status_code = 200
+    response.raise_for_status = MagicMock()
+    response.json = MagicMock()
+    return response
+
+@pytest.fixture
+def mock_httpx_client():
+    client = MagicMock(spec=httpx.AsyncClient)
+    client.post = AsyncMock()
+    client.aclose = AsyncMock()
+    return client
+
 @pytest.fixture(autouse=True)
-def auto_patch_httpx_client():
-    mock_client_instance = MagicMock(spec=httpx.AsyncClient)
-    mock_client_instance.post = AsyncMock()
-    mock_client_instance.aclose = AsyncMock()
-    with patch("promptdrifter.adapters.deepseek.httpx.AsyncClient", return_value=mock_client_instance) as patched_client:
-        yield patched_client
+def patch_shared_client(mock_httpx_client):
+    async_mock = AsyncMock(return_value=mock_httpx_client)
+    with patch(
+        "promptdrifter.adapters.deepseek.get_shared_client",
+        async_mock,
+    ) as patched_get_shared_client:
+        yield patched_get_shared_client
+
+@pytest.fixture
+def auto_patch_httpx_client(mock_httpx_client):
+    """Compatibility fixture to maintain test interface"""
+    return MagicMock(return_value=mock_httpx_client)
 
 @pytest.fixture
 def adapter_config_data():
@@ -31,13 +52,13 @@ def adapter_config_data():
     )
 
 @pytest.fixture
-def adapter(adapter_config_data, monkeypatch, auto_patch_httpx_client):
+def adapter(adapter_config_data, monkeypatch, patch_shared_client):
     monkeypatch.setenv(API_KEY_ENV_VAR_DEEPSEEK, adapter_config_data.api_key)
     config = adapter_config_data
     adapter_instance = DeepSeekAdapter(config=config)
     return adapter_instance
 
-async def test_deepseek_adapter_init_with_direct_params(monkeypatch, auto_patch_httpx_client):
+async def test_deepseek_adapter_init_with_direct_params(monkeypatch, patch_shared_client):
     monkeypatch.delenv(API_KEY_ENV_VAR_DEEPSEEK, raising=False)
     config = DeepSeekAdapterConfig(
         api_key="direct_ds_key",
@@ -51,7 +72,7 @@ async def test_deepseek_adapter_init_with_direct_params(monkeypatch, auto_patch_
     assert adapter_instance.config.default_model == "custom_ds_model"
     assert adapter_instance.config.max_tokens == 1000
 
-async def test_deepseek_adapter_init_with_env_key_and_defaults(monkeypatch, auto_patch_httpx_client):
+async def test_deepseek_adapter_init_with_env_key_and_defaults(monkeypatch, patch_shared_client):
     monkeypatch.setenv(API_KEY_ENV_VAR_DEEPSEEK, "env_ds_key")
     adapter_instance = DeepSeekAdapter()
     assert adapter_instance.config.api_key == "env_ds_key"
@@ -184,6 +205,6 @@ async def test_execute_unexpected_exception(adapter, auto_patch_httpx_client):
     assert result.raw_response == {"error": error_message}
 
 async def test_close_client(adapter, auto_patch_httpx_client):
-    mock_client = auto_patch_httpx_client.return_value
     await adapter.close()
-    mock_client.aclose.assert_called_once()
+    # With shared client manager, we don't close the client directly
+    assert adapter._client is None

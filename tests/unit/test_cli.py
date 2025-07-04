@@ -29,6 +29,7 @@ async def test_cli_run_logic_success(mocker, tmp_path):
         no_cache=False,
         cache_db=None,
         config_dir=Path("."),
+        max_concurrent_prompt_tests=10,
         openai_api_key=None,
         gemini_api_key=None,
         qwen_api_key=None,
@@ -42,6 +43,7 @@ async def test_cli_run_logic_success(mocker, tmp_path):
         config_dir=Path("."),
         cache_db_path=None,
         use_cache=True,
+        max_concurrent_prompt_tests=10,
         openai_api_key=None,
         gemini_api_key=None,
         qwen_api_key=None,
@@ -69,6 +71,7 @@ async def test_cli_run_logic_failure_from_suite(mocker, tmp_path):
             no_cache=False,
             cache_db=None,
             config_dir=Path("."),
+            max_concurrent_prompt_tests=10,
             openai_api_key=None,
             gemini_api_key=None,
             qwen_api_key=None,
@@ -82,6 +85,7 @@ async def test_cli_run_logic_failure_from_suite(mocker, tmp_path):
         config_dir=Path("."),
         cache_db_path=None,
         use_cache=True,
+        max_concurrent_prompt_tests=10,
         openai_api_key=None,
         gemini_api_key=None,
         qwen_api_key=None,
@@ -107,6 +111,7 @@ async def test_cli_run_logic_runner_init_exception(mocker, tmp_path, capsys):
             no_cache=False,
             cache_db=None,
             config_dir=Path("."),
+            max_concurrent_prompt_tests=10,
             openai_api_key=None,
             gemini_api_key=None,
             qwen_api_key=None,
@@ -136,6 +141,7 @@ async def test_cli_run_logic_suite_exception(mocker, tmp_path, capsys):
             no_cache=False,
             cache_db=None,
             config_dir=Path("."),
+            max_concurrent_prompt_tests=10,
             openai_api_key=None,
             gemini_api_key=None,
             qwen_api_key=None,
@@ -168,6 +174,7 @@ async def test_cli_run_logic_multiple_files(mocker, tmp_path):
         no_cache=False,
         cache_db=None,
         config_dir=Path("."),
+        max_concurrent_prompt_tests=10,
         openai_api_key=None,
         gemini_api_key=None,
         qwen_api_key=None,
@@ -181,6 +188,7 @@ async def test_cli_run_logic_multiple_files(mocker, tmp_path):
         config_dir=Path("."),
         cache_db_path=None,
         use_cache=True,
+        max_concurrent_prompt_tests=10,
         openai_api_key=None,
         gemini_api_key=None,
         qwen_api_key=None,
@@ -203,6 +211,7 @@ async def test_cli_run_logic_file_not_found(mocker, capsys):
             no_cache=False,
             cache_db=None,
             config_dir=Path("."),
+            max_concurrent_prompt_tests=10,
             openai_api_key=None,
             gemini_api_key=None,
             qwen_api_key=None,
@@ -228,6 +237,7 @@ async def test_cli_run_logic_no_files_provided(mocker, capsys):
             no_cache=False,
             cache_db=None,
             config_dir=Path("."),
+            max_concurrent_prompt_tests=10,
             openai_api_key=None,
             gemini_api_key=None,
             qwen_api_key=None,
@@ -394,6 +404,7 @@ async def test_cli_run_prints_security_warning(mocker, tmp_path, capsys):
         no_cache=False,
         cache_db=None,
         config_dir=Path("."),
+        max_concurrent_prompt_tests=10,
         openai_api_key="cli_key_here",
         gemini_api_key=None,
         qwen_api_key=None,
@@ -414,6 +425,7 @@ async def test_cli_run_prints_security_warning(mocker, tmp_path, capsys):
         no_cache=False,
         cache_db=None,
         config_dir=Path("."),
+        max_concurrent_prompt_tests=10,
         openai_api_key=None,
         gemini_api_key=None,
         qwen_api_key=None,
@@ -466,6 +478,7 @@ def test_run_command_with_api_keys(mocker):
         True,  # no_cache (positional)
         dummy_cache_db,  # cache_db (positional)
         dummy_config_dir,  # config_dir (positional)
+        10,  # max_concurrent_prompt_tests (positional)
         "key1",  # openai_api_key (positional)
         "key2",  # gemini_api_key (positional)
         "test_qwen_key",  # qwen_api_key (positional)
@@ -496,6 +509,7 @@ def test_run_command_with_api_keys(mocker):
         True,
         dummy_cache_db,
         dummy_config_dir,
+        10,  # max_concurrent_prompt_tests
         None,  # No OpenAI key
         None,  # No Gemini key
         None,  # No Qwen key
@@ -528,6 +542,7 @@ def test_run_command_with_api_keys(mocker):
         True,
         dummy_cache_db,
         dummy_config_dir,
+        10,  # max_concurrent_prompt_tests
         None,  # No OpenAI key
         "just_gemini_key",  # Only Gemini key provided
         None,  # No Qwen key

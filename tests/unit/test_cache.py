@@ -2,6 +2,7 @@ import json
 import time
 from pathlib import Path
 from typing import Generator
+from unittest.mock import patch
 
 import pytest
 
@@ -123,24 +124,29 @@ def test_item_expiry(sut: PromptCache):
     response_data = {"data": "this will expire"}
     ttl_short = 1  # 1 second TTL
 
-    sut.put(prompt, adapter, model, options, response_data, ttl_seconds=ttl_short)
+    with patch('time.time') as mock_time:
+        # Start at time 0
+        mock_time.return_value = 0
 
-    # Cache hit immediately
-    assert sut.get(prompt, adapter, model, options) == response_data
+        sut.put(prompt, adapter, model, options, response_data, ttl_seconds=ttl_short)
 
-    time.sleep(ttl_short + 1)  # Wait for item to expire
+        # Cache hit immediately (still at time 0)
+        assert sut.get(prompt, adapter, model, options) == response_data
 
-    # Cache miss after expiry, and item should be deleted by get()
-    assert sut.get(prompt, adapter, model, options) is None
+        # Advance time past TTL
+        mock_time.return_value = 2  # 2 seconds later
 
-    # Verify it was deleted from DB after the get() call found it expired
-    fingerprint = sut._generate_fingerprint(prompt, adapter, model, options)
-    with sut._get_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT * FROM prompt_cache WHERE fingerprint = ?", (fingerprint,)
-        )
-        assert cursor.fetchone() is None
+        # Cache miss after expiry, and item should be deleted by get()
+        assert sut.get(prompt, adapter, model, options) is None
+
+        # Verify it was deleted from DB after the get() call found it expired
+        fingerprint = sut._generate_fingerprint(prompt, adapter, model, options)
+        with sut._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT * FROM prompt_cache WHERE fingerprint = ?", (fingerprint,)
+            )
+            assert cursor.fetchone() is None
 
 
 def test_purge_expired(sut: PromptCache):
@@ -154,32 +160,37 @@ def test_purge_expired(sut: PromptCache):
     response_B = {"data": "B"}
     options_B = {"id": "B"}
 
-    # Put one item with short TTL, one with default (long) TTL
-    sut.put(prompt_A, adapter_A, model_A, options_A, response_A, ttl_seconds=1)
-    sut.put(
-        prompt_B, adapter_A, model_A, options_B, response_B
-    )  # Uses default_ttl_seconds
+    with patch('time.time') as mock_time:
+        # Start at time 0
+        mock_time.return_value = 0
 
-    assert sut.get(prompt_A, adapter_A, model_A, options_A) is not None  # Hit A
-    assert sut.get(prompt_B, adapter_A, model_A, options_B) is not None  # Hit B
+        # Put one item with short TTL, one with default (long) TTL
+        sut.put(prompt_A, adapter_A, model_A, options_A, response_A, ttl_seconds=1)
+        sut.put(
+            prompt_B, adapter_A, model_A, options_B, response_B
+        )  # Uses default_ttl_seconds
 
-    time.sleep(2)  # Ensure prompt_A is expired
+        assert sut.get(prompt_A, adapter_A, model_A, options_A) is not None  # Hit A
+        assert sut.get(prompt_B, adapter_A, model_A, options_B) is not None  # Hit B
 
-    sut.purge_expired()
+        # Advance time to expire prompt_A
+        mock_time.return_value = 2  # 2 seconds later
 
-    # Prompt A should now be purged (None)
-    # Note: get() itself also deletes expired items, so this primarily tests purge_expired's direct effect
-    # For a stricter test of purge_expired, we'd query the DB directly before/after.
-    with sut._get_connection() as conn:
-        cursor = conn.cursor()
-        fp_A = sut._generate_fingerprint(prompt_A, adapter_A, model_A, options_A)
-        cursor.execute("SELECT * FROM prompt_cache WHERE fingerprint = ?", (fp_A,))
-        assert cursor.fetchone() is None, "Expired item A was not purged"
+        sut.purge_expired()
 
-    # Prompt B should still be there
-    assert sut.get(prompt_B, adapter_A, model_A, options_B) is not None, (
-        "Non-expired item B was purged"
-    )
+        # Prompt A should now be purged (None)
+        # Note: get() itself also deletes expired items, so this primarily tests purge_expired's direct effect
+        # For a stricter test of purge_expired, we'd query the DB directly before/after.
+        with sut._get_connection() as conn:
+            cursor = conn.cursor()
+            fp_A = sut._generate_fingerprint(prompt_A, adapter_A, model_A, options_A)
+            cursor.execute("SELECT * FROM prompt_cache WHERE fingerprint = ?", (fp_A,))
+            assert cursor.fetchone() is None, "Expired item A was not purged"
+
+        # Prompt B should still be there
+        assert sut.get(prompt_B, adapter_A, model_A, options_B) is not None, (
+            "Non-expired item B was purged"
+        )
 
 
 def test_delete_item(sut: PromptCache):
@@ -249,7 +260,7 @@ def test_put_non_serializable_data(sut: PromptCache):
     # The updated .put() method now raises ValueError for non-serializable data
     with pytest.raises(ValueError, match="Failed to serialize response_data"):
         sut.put(prompt, adapter, model, options, non_serializable_response)
-    
+
     # Verify that no entry was created
     assert sut.get(prompt, adapter, model, options) is None
 
@@ -268,25 +279,25 @@ def test_fingerprint_input_validation(sut: PromptCache):
     # Test invalid prompt type
     with pytest.raises(TypeError, match="prompt must be a string"):
         sut._generate_fingerprint(123, "adapter", "model", {})
-    
+
     # Test invalid adapter_name type
     with pytest.raises(TypeError, match="adapter_name must be a string"):
         sut._generate_fingerprint("prompt", 123, "model", {})
-    
+
     # Test invalid model_id type
     with pytest.raises(TypeError, match="model_id must be a string or None"):
         sut._generate_fingerprint("prompt", "adapter", 123, {})
-    
+
     # Test oversized prompt
     large_prompt = "x" * 1_000_001
     with pytest.raises(ValueError, match="prompt exceeds maximum allowed size"):
         sut._generate_fingerprint(large_prompt, "adapter", "model", {})
-    
+
     # Test oversized adapter_name
     large_adapter = "x" * 1001
     with pytest.raises(ValueError, match="adapter_name exceeds maximum allowed size"):
         sut._generate_fingerprint("prompt", large_adapter, "model", {})
-    
+
     # Test oversized model_id
     large_model = "x" * 1001
     with pytest.raises(ValueError, match="model_id exceeds maximum allowed size"):
@@ -298,14 +309,14 @@ def test_put_input_validation(sut: PromptCache):
     # Test invalid response_data type
     with pytest.raises(TypeError, match="response_data must be a dictionary"):
         sut.put("prompt", "adapter", "model", {}, "not a dict")
-    
+
     # Test invalid ttl_seconds
     with pytest.raises(ValueError, match="ttl_seconds must be a positive integer"):
         sut.put("prompt", "adapter", "model", {}, {}, ttl_seconds=-1)
-    
+
     with pytest.raises(ValueError, match="ttl_seconds must be a positive integer"):
         sut.put("prompt", "adapter", "model", {}, {}, ttl_seconds=0)
-    
+
     # Test oversized response data
     large_response = {"data": "x" * 10_000_000}  # Over 10MB limit
     with pytest.raises(ValueError, match="response_data exceeds maximum allowed size"):
@@ -317,11 +328,11 @@ def test_delete_input_validation(sut: PromptCache):
     # Test invalid fingerprint type
     with pytest.raises(TypeError, match="fingerprint must be a string"):
         sut.delete(123)
-    
+
     # Test invalid fingerprint length
     with pytest.raises(ValueError, match="fingerprint must be a valid SHA256 hash"):
         sut.delete("short")
-    
+
     # Test invalid fingerprint characters
     with pytest.raises(ValueError, match="fingerprint must contain only hexadecimal characters"):
         sut.delete("z" * 64)
@@ -332,9 +343,9 @@ def test_get_stats(sut: PromptCache):
     # Add some test data
     sut.put("prompt1", "adapter1", "model1", {}, {"response": "test1"})
     sut.put("prompt2", "adapter2", "model2", {}, {"response": "test2"})
-    
+
     stats = sut.get_stats()
-    
+
     assert isinstance(stats, dict)
     assert "total_entries" in stats
     assert "active_entries" in stats
@@ -342,7 +353,7 @@ def test_get_stats(sut: PromptCache):
     assert "total_size_bytes" in stats
     assert "adapter_breakdown" in stats
     assert "db_path" in stats
-    
+
     assert stats["total_entries"] >= 2
     assert stats["active_entries"] >= 2
     assert stats["total_size_bytes"] > 0
