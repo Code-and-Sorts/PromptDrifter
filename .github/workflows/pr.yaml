@@ -14,6 +14,25 @@ jobs:
       artifact-name: 'python-package-dist'
       update-version-for-pr: true
 
+  docs-build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: ⤵️ Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🔧 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20
+        cache: npm
+        cache-dependency-path: 'docs/package-lock.json'
+
+    - name: 📦 Install dependencies
+      run: cd docs && npm ci
+
+    - name: 🏗️ Build docs
+      run: cd docs && npm run build
+
   publish-to-testpypi:
     needs: build-and-test
     uses: ./.github/workflows/shared-publish-package.yaml
