@@ -35,9 +35,12 @@ version-bump: ## 📦 Bump version (usage: make version-bump VERSION=0.0.3)
 	@echo "📦 Bumping version to $(VERSION)..."
 	@sed -i '' 's/version = "[0-9]*\.[0-9]*\.[0-9]*"/version = "$(VERSION)"/' pyproject.toml
 	@sed -i '' 's/return "[0-9]*\.[0-9]*\.[0-9]*"/return "$(VERSION)"/' src/promptdrifter/cli.py
+	@echo "🔄 Updating uv lock file..."
+	@uv lock
 	@echo "✅ Version bumped to $(VERSION)"
 	@echo "📝 Updated files:"
 	@echo "  - pyproject.toml"
 	@echo "  - src/promptdrifter/cli.py"
+	@echo "  - uv.lock"
 
 .PHONY: test-unit test-integration test-all lint lint-fix version-bump help
