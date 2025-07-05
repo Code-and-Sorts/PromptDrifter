@@ -52,7 +52,7 @@ def auto_patch_httpx_client():
     mock_client = MagicMock(spec=httpx.AsyncClient)
     mock_client.post = AsyncMock()
     mock_client.aclose = AsyncMock()
-    with patch("promptdrifter.adapters.qwen.httpx.AsyncClient", return_value=mock_client) as patched_client:
+    with patch("promptdrifter.adapters.qwen.get_shared_client", return_value=mock_client) as patched_client:
         yield patched_client
 
 
@@ -77,13 +77,6 @@ def adapter(adapter_config_data, monkeypatch, auto_patch_httpx_client):
         max_tokens=adapter_config_data["max_tokens"]
     )
     adapter_instance = QwenAdapter(config=config)
-    auto_patch_httpx_client.assert_called_once_with(
-        base_url=adapter_config_data["base_url"],
-        headers={
-            "Authorization": f"Bearer {adapter_config_data['api_key']}",
-            "Content-Type": "application/json",
-        }
-    )
     return adapter_instance
 
 
@@ -124,10 +117,6 @@ async def test_qwen_adapter_init_with_qwen_env_var(monkeypatch, auto_patch_httpx
     monkeypatch.delenv("DASHSCOPE_API_KEY", raising=False)
     adapter_instance = QwenAdapter()
     assert adapter_instance.config.api_key == "qwen_env_key"
-    auto_patch_httpx_client.assert_called_with(
-        base_url=QWEN_API_BASE_URL,
-        headers={"Authorization": "Bearer qwen_env_key", "Content-Type": "application/json"}
-    )
 
 
 async def test_qwen_adapter_init_with_dashscope_env_var(monkeypatch, auto_patch_httpx_client):
@@ -135,10 +124,6 @@ async def test_qwen_adapter_init_with_dashscope_env_var(monkeypatch, auto_patch_
     monkeypatch.setenv("DASHSCOPE_API_KEY", "dash_env_key")
     adapter_instance = QwenAdapter()
     assert adapter_instance.config.api_key == "dash_env_key"
-    auto_patch_httpx_client.assert_called_with(
-        base_url=QWEN_API_BASE_URL,
-        headers={"Authorization": "Bearer dash_env_key", "Content-Type": "application/json"}
-    )
 
 
 async def test_qwen_adapter_init_api_key_priority(monkeypatch, auto_patch_httpx_client):
@@ -178,10 +163,6 @@ async def test_qwen_adapter_init_with_config_object(monkeypatch, auto_patch_http
     )
     adapter_instance = QwenAdapter(config=config)
     assert adapter_instance.config is config
-    auto_patch_httpx_client.assert_called_with(
-        base_url="cfg_q_url",
-        headers={"Authorization": "Bearer cfg_q_key", "Content-Type": "application/json"}
-    )
 
 
 async def test_execute_successful(adapter, auto_patch_httpx_client):
@@ -299,4 +280,5 @@ async def test_close_client(adapter, auto_patch_httpx_client):
     mock_client = auto_patch_httpx_client.return_value
     mock_client.is_closed = False
     await adapter.close()
-    mock_client.aclose.assert_called_once()
+    # With shared client manager, we don't close the client directly
+    assert adapter._client is None

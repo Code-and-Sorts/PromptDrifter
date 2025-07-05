@@ -21,7 +21,7 @@ on:
 jobs:
   publish-package:
     runs-on: macos-latest
-    environment: ${{ inputs.is-test-pypi && 'testpypi' || 'pypi' }}
+    environment: ${{ inputs.is-test-pypi && 'testpypi' || 'pypi-prod' }}
     env:
       pypi-repository: ${{ inputs.is-test-pypi && 'testpypi' || 'pypi' }}
     permissions:

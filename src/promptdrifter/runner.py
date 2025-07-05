@@ -1,6 +1,6 @@
 import asyncio
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Type
+from typing import Any, Dict, List, Optional
 
 from jinja2 import Template
 from rich.console import Console
@@ -8,31 +8,10 @@ from rich.table import Table
 
 from promptdrifter.models.config import TestCase
 
+from .adapter_manager import get_adapter_manager
 from .adapters.base import Adapter
-from .adapters.claude import ClaudeAdapter
-from .adapters.deepseek import DeepSeekAdapter
-from .adapters.gemini import GeminiAdapter
-from .adapters.grok import GrokAdapter
-from .adapters.mistral import MistralAdapter
-from .adapters.ollama import OllamaAdapter
-from .adapters.openai import OpenAIAdapter
-from .adapters.qwen import QwenAdapter
-
-# from .adapters.llama import LlamaAdapter
 from .cache import PromptCache
 from .yaml_loader import YamlFileLoader
-
-ADAPTER_REGISTRY: Dict[str, Type[Adapter]] = {
-    "claude": ClaudeAdapter,
-    "deepseek": DeepSeekAdapter,
-    "gemini": GeminiAdapter,
-    "grok": GrokAdapter,
-    "mistral": MistralAdapter,
-    "openai": OpenAIAdapter,
-    "ollama": OllamaAdapter,
-    "qwen": QwenAdapter,
-    # "llama": LlamaAdapter,
-}
 
 
 class Runner:
@@ -43,6 +22,7 @@ class Runner:
         config_dir: Path,
         cache_db_path: Optional[Path] = None,
         use_cache: bool = True,
+        max_concurrent_prompt_tests: int = 10,
         openai_api_key: Optional[str] = None,
         gemini_api_key: Optional[str] = None,
         qwen_api_key: Optional[str] = None,
@@ -64,62 +44,64 @@ class Runner:
         self.console = Console()
         self.results: List[Dict[str, Any]] = []
         self.overall_success = True
-        self.cli_openai_key = openai_api_key
-        self.cli_gemini_key = gemini_api_key
-        self.cli_qwen_key = qwen_api_key
-        self.cli_claude_key = claude_api_key
-        self.cli_grok_key = grok_api_key
-        self.cli_deepseek_key = deepseek_api_key
-        self.cli_mistral_key = mistral_api_key
-        # self.cli_llama_key = llama_api_key
+
+        # Store API keys for adapter manager
+        self.api_keys = {
+            "openai": openai_api_key,
+            "gemini": gemini_api_key,
+            "qwen": qwen_api_key,
+            "claude": claude_api_key,
+            "grok": grok_api_key,
+            "deepseek": deepseek_api_key,
+            "mistral": mistral_api_key,
+        }
+
+        # Initialize high-performance adapter manager
+        self.adapter_manager = get_adapter_manager()
+
+        # Configure concurrency limits for prompt test execution
+        self.max_concurrent_prompt_tests = max_concurrent_prompt_tests
+        self._semaphore = asyncio.Semaphore(max_concurrent_prompt_tests)
 
     async def close_cache_connection(self):
         """Closes the database connection if cache is enabled and connection exists."""
         if self.cache and hasattr(self.cache, "close"):
             self.cache.close()
 
-    def _get_adapter_instance(self, adapter_name: str, base_url: Optional[str] = None) -> Optional[Adapter]:
-        """Retrieves an initialized adapter instance from the registry."""
-        adapter_class = ADAPTER_REGISTRY.get(adapter_name.lower())
-        if adapter_class:
-            try:
-                api_key_to_pass = None
-                if adapter_name.lower() == "openai" and self.cli_openai_key:
-                    api_key_to_pass = self.cli_openai_key
-                elif adapter_name.lower() == "gemini" and self.cli_gemini_key:
-                    api_key_to_pass = self.cli_gemini_key
-                elif adapter_name.lower() == "qwen" and self.cli_qwen_key:
-                    api_key_to_pass = self.cli_qwen_key
-                elif adapter_name.lower() == "claude" and self.cli_claude_key:
-                    api_key_to_pass = self.cli_claude_key
-                elif adapter_name.lower() == "grok" and self.cli_grok_key:
-                    api_key_to_pass = self.cli_grok_key
-                elif adapter_name.lower() == "deepseek" and self.cli_deepseek_key:
-                    api_key_to_pass = self.cli_deepseek_key
-                elif adapter_name.lower() == "mistral" and self.cli_mistral_key:
-                    api_key_to_pass = self.cli_mistral_key
-                # elif adapter_name.lower() == "llama" and self.cli_llama_key:
-                #     api_key_to_pass = self.cli_llama_key
+        # Close all adapter connections
+        await self.adapter_manager.close_all_adapters()
 
-                adapter_init_params = adapter_class.__init__.__code__.co_varnames
-                can_pass_base_url = 'base_url' in adapter_init_params
+    async def _get_adapter_instance(self, adapter_name: str, base_url: Optional[str] = None) -> Optional[Adapter]:
+        """Retrieves an initialized adapter instance using the optimized adapter manager."""
+        adapter_name = adapter_name.lower()
+        api_key = self.api_keys.get(adapter_name)
 
-                config_class = getattr(adapter_class, 'config_class', None)
-                if config_class:
-                    config = config_class(
-                        api_key=api_key_to_pass,
-                        base_url=base_url if can_pass_base_url else None
-                    )
-                    return adapter_class(config=config)
-                else:
-                    return adapter_class()
-            except Exception as e:
-                self.console.print(
-                    f"[bold red]Error initializing adapter '{adapter_name}': {e}[/bold red]"
-                )
-                return None
-        self.console.print(f"[bold red]Unknown adapter: {adapter_name}[/bold red]")
-        return None
+        try:
+            adapter = await self.adapter_manager.get_adapter(
+                adapter_type=adapter_name,
+                api_key=api_key,
+                base_url=base_url
+            )
+
+            if adapter is None:
+                self.console.print(f"[bold red]Unknown adapter: {adapter_name}[/bold red]")
+
+            return adapter
+
+        except Exception as e:
+            self.console.print(
+                f"[bold red]Error initializing adapter '{adapter_name}': {e}[/bold red]"
+            )
+            return None
+
+    async def _run_single_test_case_with_semaphore(
+        self,
+        test_case_path: Path,
+        test_case_model: TestCase,
+    ) -> List[Dict[str, Any]]:
+        """Wrapper for _run_single_test_case with concurrency control."""
+        async with self._semaphore:
+            return await self._run_single_test_case(test_case_path, test_case_model)
 
     async def _run_single_test_case(
         self,
@@ -195,7 +177,7 @@ class Runner:
 
             base_url = all_adapter_params.get("base_url")
 
-            adapter_instance = self._get_adapter_instance(adapter_name, base_url)
+            adapter_instance = await self._get_adapter_instance(adapter_name, base_url)
             if adapter_instance is None:
                 current_run_details["reason"] = (
                     f"Adapter '{adapter_name}' not found or failed to initialize."
@@ -344,9 +326,6 @@ class Runner:
                 else:
                     all_adapter_results.append(result)
 
-            close_tasks = [instance.close() for instance in adapter_instances if hasattr(instance, "close")]
-            if close_tasks:
-                await asyncio.gather(*close_tasks, return_exceptions=True)
 
         return all_adapter_results
 
@@ -487,12 +466,29 @@ class Runner:
                 config_model = self.yaml_loader.load_and_validate_yaml(test_file_path)
 
                 if config_model and config_model.tests:
-                    for test_case_model in config_model.tests:
-                        results = await self._run_single_test_case(
-                            test_file_path, test_case_model
-                        )
-                        self.results.extend(results)
-                        ran_any_test = True
+                    tasks = [
+                        self._run_single_test_case_with_semaphore(test_file_path, test_case_model)
+                        for test_case_model in config_model.tests
+                    ]
+
+                    test_results = await asyncio.gather(*tasks, return_exceptions=True)
+
+                    for result in test_results:
+                        if isinstance(result, Exception):
+                            error_result = {
+                                "file": str(test_file_path.name),
+                                "id": "PARALLEL_EXECUTION_ERROR",
+                                "adapter": "N/A",
+                                "model": "N/A",
+                                "status": "ERROR",
+                                "reason": f"Parallel execution error: {str(result)}",
+                            }
+                            self.results.append(error_result)
+                            self.overall_success = False
+                        else:
+                            self.results.extend(result)
+
+                    ran_any_test = True
                 elif not config_model.tests:
                     self.console.print(
                         f"[yellow]Warning: No tests found in {test_file_path} (version: {config_model.version if config_model else 'N/A'}).[/yellow]"

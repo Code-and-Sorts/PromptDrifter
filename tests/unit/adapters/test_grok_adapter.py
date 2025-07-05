@@ -14,13 +14,34 @@ from promptdrifter.config.adapter_settings import (
 
 pytestmark = pytest.mark.asyncio
 
+@pytest.fixture
+def mock_response():
+    response = MagicMock(spec=httpx.Response)
+    response.status_code = 200
+    response.raise_for_status = MagicMock()
+    response.json = MagicMock()
+    return response
+
+@pytest.fixture
+def mock_httpx_client():
+    client = MagicMock(spec=httpx.AsyncClient)
+    client.post = AsyncMock()
+    client.aclose = AsyncMock()
+    return client
+
 @pytest.fixture(autouse=True)
-def auto_patch_httpx_client():
-    mock_client_instance = MagicMock(spec=httpx.AsyncClient)
-    mock_client_instance.post = AsyncMock()
-    mock_client_instance.aclose = AsyncMock()
-    with patch("promptdrifter.adapters.grok.httpx.AsyncClient", return_value=mock_client_instance) as patched_client:
-        yield patched_client
+def patch_shared_client(mock_httpx_client):
+    async_mock = AsyncMock(return_value=mock_httpx_client)
+    with patch(
+        "promptdrifter.adapters.grok.get_shared_client",
+        async_mock,
+    ) as patched_get_shared_client:
+        yield patched_get_shared_client
+
+@pytest.fixture
+def auto_patch_httpx_client(mock_httpx_client):
+    """Compatibility fixture to maintain test interface"""
+    return MagicMock(return_value=mock_httpx_client)
 
 @pytest.fixture
 def adapter_config_data():
@@ -186,7 +207,8 @@ async def test_execute_request_error(adapter, auto_patch_httpx_client):
     assert error_message in result.error
     assert result.raw_response == {"error_detail": error_message}
 
-async def test_close_client(adapter, auto_patch_httpx_client):
-    mock_client = auto_patch_httpx_client.return_value
+async def test_close_client(adapter):
+    # Test that close method completes without error
+    # With shared client manager, we don't close individual clients
     await adapter.close()
-    mock_client.aclose.assert_called_once()
+    assert adapter._client is None
