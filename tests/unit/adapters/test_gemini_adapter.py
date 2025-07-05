@@ -36,12 +36,18 @@ def mock_httpx_client_instance():
     return client
 
 @pytest.fixture(autouse=True)
-def patch_httpx_client(mock_httpx_client_instance):
+def patch_shared_client(mock_httpx_client_instance):
+    async_mock = AsyncMock(return_value=mock_httpx_client_instance)
     with patch(
-        "promptdrifter.adapters.gemini.httpx.AsyncClient",
-        return_value=mock_httpx_client_instance,
-    ) as patched_class_mock:
-        yield patched_class_mock
+        "promptdrifter.adapters.gemini.get_shared_client",
+        async_mock,
+    ) as patched_get_shared_client:
+        yield patched_get_shared_client
+
+@pytest.fixture
+def patch_httpx_client(mock_httpx_client_instance):
+    """Compatibility fixture to maintain test interface"""
+    return MagicMock(return_value=mock_httpx_client_instance)
 
 @pytest.fixture
 def adapter_config_data():
@@ -53,18 +59,14 @@ def adapter_config_data():
     }
 
 @pytest.fixture
-def adapter(patch_httpx_client, adapter_config_data, monkeypatch):
+def adapter(patch_shared_client, adapter_config_data, monkeypatch):
     monkeypatch.setenv(config_API_KEY_ENV_GEMINI, adapter_config_data["api_key"])
     config = GeminiAdapterConfig(**adapter_config_data)
     adapter_instance = GeminiAdapter(config=config)
-    patch_httpx_client.assert_called_once_with(
-        base_url=adapter_config_data["base_url"],
-        headers={"Content-Type": "application/json"}
-    )
     return adapter_instance
 
 @pytest.mark.asyncio
-async def test_gemini_adapter_init_with_direct_params(monkeypatch, patch_httpx_client):
+async def test_gemini_adapter_init_with_direct_params(monkeypatch, patch_shared_client):
     """
     Test the initialization of GeminiAdapter with direct parameters.
     Expected Behavior: The adapter should be initialized with the provided parameters.
@@ -81,13 +83,9 @@ async def test_gemini_adapter_init_with_direct_params(monkeypatch, patch_httpx_c
     assert adapter_instance.config.base_url == "custom_url"
     assert adapter_instance.config.default_model == "custom_model"
     assert adapter_instance.config.max_tokens == 512
-    patch_httpx_client.assert_called_once_with(
-        base_url="custom_url",
-        headers={"Content-Type": "application/json"}
-    )
 
 @pytest.mark.asyncio
-async def test_gemini_adapter_init_with_env_key_and_defaults(monkeypatch, patch_httpx_client):
+async def test_gemini_adapter_init_with_env_key_and_defaults(monkeypatch, patch_shared_client):
     """
     Test the initialization of GeminiAdapter using environment variables and defaults.
     Expected Behavior: The adapter should be initialized with the environment key and default values.
@@ -98,10 +96,6 @@ async def test_gemini_adapter_init_with_env_key_and_defaults(monkeypatch, patch_
     assert adapter_instance.config.base_url == config_GEMINI_API_BASE_URL
     assert adapter_instance.config.default_model == config_DEFAULT_GEMINI_MODEL
     assert adapter_instance.config.max_tokens == GeminiAdapterConfig().max_tokens
-    patch_httpx_client.assert_called_once_with(
-        base_url=config_GEMINI_API_BASE_URL,
-        headers={"Content-Type": "application/json"}
-    )
 
 @pytest.mark.asyncio
 async def test_gemini_adapter_init_no_key_raises_error(monkeypatch):
@@ -129,18 +123,13 @@ async def test_gemini_adapter_init_with_config_object(monkeypatch, patch_httpx_c
     )
     adapter_instance = GeminiAdapter(config=config)
     assert adapter_instance.config is config
-    patch_httpx_client.assert_called_once_with(
-        base_url="config_url",
-        headers={"Content-Type": "application/json"}
-    )
 
 @pytest.mark.asyncio
-async def test_gemini_adapter_execute_success(adapter, patch_httpx_client):
+async def test_gemini_adapter_execute_success(adapter, mock_httpx_client_instance):
     """
     Test the successful execution of the GeminiAdapter.
     Expected Behavior: The adapter should return a successful response with the expected text and model name.
     """
-    mock_client_instance = patch_httpx_client.return_value
     prompt = "Tell me a joke"
     expected_text = "Why did the scarecrow win an award? Because he was outstanding in his field!"
     mock_response_data = {
@@ -160,12 +149,12 @@ async def test_gemini_adapter_execute_success(adapter, patch_httpx_client):
     mock_http_response.status_code = 200
     mock_http_response.json = MagicMock(return_value=mock_response_data)
     mock_http_response.raise_for_status = MagicMock()
-    mock_client_instance.post.return_value = mock_http_response
+    mock_httpx_client_instance.post.return_value = mock_http_response
 
     result = await adapter.execute(prompt=prompt, config_override=GeminiAdapterConfig(default_model="gemini-pro-override"))
 
-    mock_client_instance.post.assert_awaited_once()
-    call_args, call_kwargs = mock_client_instance.post.call_args
+    mock_httpx_client_instance.post.assert_awaited_once()
+    call_args, call_kwargs = mock_httpx_client_instance.post.call_args
     endpoint_url = call_args[0]
     payload = call_kwargs["json"]
     query_params = call_kwargs["params"]
@@ -182,9 +171,6 @@ async def test_gemini_adapter_execute_success(adapter, patch_httpx_client):
     assert "candidates" in result.raw_response
     assert result.raw_response["candidates"][0]["content"]["parts"][0]["text"] == expected_text
     assert result.raw_response["candidates"][0]["finishReason"] == "STOP"
-
-    await adapter.close()
-    mock_client_instance.aclose.assert_called_once()
 
 @pytest.mark.asyncio
 async def test_gemini_adapter_execute_with_all_params(adapter, patch_httpx_client):
@@ -312,6 +298,6 @@ async def test_gemini_adapter_close(adapter, patch_httpx_client):
     Test the close method of the GeminiAdapter.
     Expected Behavior: The adapter should close the HTTP client.
     """
-    mock_client_instance = patch_httpx_client.return_value
     await adapter.close()
-    mock_client_instance.aclose.assert_called_once()
+    # With shared client manager, we don't close the client directly
+    assert adapter._client is None

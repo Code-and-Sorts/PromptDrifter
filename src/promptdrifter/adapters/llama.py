@@ -11,6 +11,7 @@ from ..config.adapter_settings import (
     DEFAULT_LLAMA_MODEL,
     LLAMA_API_BASE_URL,
 )
+from ..http_client_manager import get_shared_client
 from .base import Adapter, BaseAdapterConfig
 from .models import (
     LlamaErrorResponse,
@@ -88,10 +89,16 @@ class LlamaAdapter(Adapter):
         config: Optional[LlamaAdapterConfig] = None,
     ):
         self.config = config or LlamaAdapterConfig()
-        self.client = httpx.AsyncClient(
-            base_url=self.config.base_url,
-            headers=self.config.get_headers(),
-        )
+        self._client = None
+
+    async def _get_client(self) -> httpx.AsyncClient:
+        """Get shared HTTP client with connection pooling."""
+        if self._client is None:
+            self._client = await get_shared_client(
+                base_url=self.config.base_url,
+                headers=self.config.get_headers()
+            )
+        return self._client
 
     async def execute(
         self,
@@ -107,7 +114,8 @@ class LlamaAdapter(Adapter):
         endpoint = "/chat/completions"
         response = LlamaResponse(model_name=selected_model)
         try:
-            http_response = await self.client.post(
+            client = await self._get_client()
+            http_response = await client.post(
                 endpoint,
                 json=payload,
                 timeout=60.0
@@ -138,8 +146,8 @@ class LlamaAdapter(Adapter):
         return response
 
     async def close(self):
-        """Close the underlying HTTPX client."""
-        await self.client.aclose()
+        """Close method - HTTP connections managed by shared client manager."""
+        self._client = None
 
     def _extract_error_message(self, response):
         try:

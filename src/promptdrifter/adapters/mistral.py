@@ -11,6 +11,7 @@ from ..config.adapter_settings import (
     DEFAULT_MISTRAL_MODEL,
     MISTRAL_API_BASE_URL,
 )
+from ..http_client_manager import get_shared_client
 from .base import Adapter, BaseAdapterConfig
 from .models import (
     MistralErrorResponse,
@@ -88,10 +89,16 @@ class MistralAdapter(Adapter):
         config: Optional[MistralAdapterConfig] = None,
     ):
         self.config = config or MistralAdapterConfig()
-        self.client = httpx.AsyncClient(
-            base_url=self.config.base_url,
-            headers=self.config.get_headers(),
-        )
+        self._client = None
+
+    async def _get_client(self) -> httpx.AsyncClient:
+        """Get shared HTTP client with connection pooling."""
+        if self._client is None:
+            self._client = await get_shared_client(
+                base_url=self.config.base_url,
+                headers=self.config.get_headers()
+            )
+        return self._client
 
     async def execute(
         self,
@@ -104,7 +111,8 @@ class MistralAdapter(Adapter):
         payload = self.config.get_payload(prompt, config_override)
         response = MistralResponse(model_name=selected_model)
         try:
-            http_response = await self.client.post(
+            client = await self._get_client()
+            http_response = await client.post(
                 endpoint,
                 json=payload,
                 timeout=60.0,
@@ -135,8 +143,8 @@ class MistralAdapter(Adapter):
         return response
 
     async def close(self):
-        """Close the underlying HTTPX client."""
-        await self.client.aclose()
+        """Close method - HTTP connections managed by shared client manager."""
+        self._client = None
 
     def _extract_error_message(self, response):
         try:

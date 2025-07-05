@@ -2,11 +2,13 @@ import json
 from typing import Any, AsyncGenerator, Dict, Optional
 
 import httpx
+from rich.console import Console
 
 from ..config.adapter_settings import (
     DEFAULT_OLLAMA_BASE_URL,
     DEFAULT_OLLAMA_MODEL,
 )
+from ..http_client_manager import get_shared_client
 from .base import Adapter, BaseAdapterConfig
 from .models import (
     OllamaErrorResponse,
@@ -15,6 +17,8 @@ from .models import (
     OllamaRawResponse,
     OllamaResponse,
 )
+
+console = Console()
 
 
 class OllamaAdapterConfig(BaseAdapterConfig):
@@ -62,7 +66,16 @@ class OllamaAdapter(Adapter):
         config: Optional[OllamaAdapterConfig] = None,
     ):
         self.config = config or OllamaAdapterConfig()
-        self.client = httpx.AsyncClient(base_url=self.config.base_url)
+        self._client = None
+
+    async def _get_client(self) -> httpx.AsyncClient:
+        """Get shared HTTP client with connection pooling."""
+        if self._client is None:
+            self._client = await get_shared_client(
+                base_url=self.config.base_url,
+                headers=self.config.get_headers()
+            )
+        return self._client
 
     async def execute(
         self,
@@ -79,7 +92,8 @@ class OllamaAdapter(Adapter):
 
         try:
             if stream:
-                async with self.client.stream(
+                client = await self._get_client()
+                async with client.stream(
                     "POST", "/api/generate", json=payload, timeout=120.0
                 ) as http_response:
                     http_response.raise_for_status()
@@ -113,7 +127,8 @@ class OllamaAdapter(Adapter):
                         response.finish_reason = "stream_ended_without_done_flag" # Or some other indicator
 
             else: # Non-streaming case
-                http_response = await self.client.post(
+                client = await self._get_client()
+                http_response = await client.post(
                     "/api/generate", json=payload, timeout=120.0
                 )
                 http_response.raise_for_status()
@@ -141,6 +156,7 @@ class OllamaAdapter(Adapter):
             response.text_response = None
             response.finish_reason = "error"
         except Exception as e:
+            console.print_exception()
             response.error = f"An unexpected error occurred with Ollama: {e}"
             response.raw_response = {"error_detail": str(e)}
             response.text_response = None
@@ -148,8 +164,8 @@ class OllamaAdapter(Adapter):
         return response
 
     async def close(self):
-        """Close the underlying HTTPX client."""
-        await self.client.aclose()
+        """Close method - HTTP connections managed by shared client manager."""
+        self._client = None
 
     def _extract_ollama_error_message(self, response: httpx.Response) -> str:
         try:

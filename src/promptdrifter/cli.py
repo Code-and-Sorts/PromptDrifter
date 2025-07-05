@@ -176,6 +176,7 @@ async def _run_async(
     no_cache: bool,
     cache_db: Optional[Path],
     config_dir: Path,
+    max_concurrent_prompt_tests: int,
     openai_api_key: Optional[str],
     gemini_api_key: Optional[str],
     qwen_api_key: Optional[str],
@@ -239,6 +240,7 @@ async def _run_async(
             config_dir=config_dir,
             cache_db_path=cache_db,
             use_cache=not no_cache,
+            max_concurrent_prompt_tests=max_concurrent_prompt_tests,
             openai_api_key=openai_api_key,
             gemini_api_key=gemini_api_key,
             qwen_api_key=qwen_api_key,
@@ -277,6 +279,9 @@ def run(
     ),
     config_dir: Path = typer.Option(
         Path("."), "--config-dir", "-c", help="Directory containing config files"
+    ),
+    max_concurrent_prompt_tests: int = typer.Option(
+        10, "--max-concurrent", help="Maximum number of concurrent prompt tests to run"
     ),
     openai_api_key: Optional[str] = typer.Option(
         None,
@@ -342,6 +347,7 @@ def run(
             no_cache,
             cache_db,
             config_dir,
+            max_concurrent_prompt_tests,
             openai_api_key,
             gemini_api_key,
             qwen_api_key,

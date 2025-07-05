@@ -12,6 +12,7 @@ from ..config.adapter_settings import (
     CLAUDE_API_VERSION,
     DEFAULT_CLAUDE_MODEL,
 )
+from ..http_client_manager import get_shared_client
 from .base import Adapter, BaseAdapterConfig
 from .models import (
     ClaudeErrorResponse,
@@ -90,11 +91,16 @@ class ClaudeAdapter(Adapter):
         config: Optional[ClaudeAdapterConfig] = None,
     ):
         self.config = config or ClaudeAdapterConfig()
+        self._client = None
 
-        self.client = httpx.AsyncClient(
-            base_url=self.config.base_url,
-            headers=self.config.get_headers(),
-        )
+    async def _get_client(self) -> httpx.AsyncClient:
+        """Get shared HTTP client with connection pooling."""
+        if self._client is None:
+            self._client = await get_shared_client(
+                base_url=self.config.base_url,
+                headers=self.config.get_headers()
+            )
+        return self._client
 
     async def execute(
         self,
@@ -112,7 +118,8 @@ class ClaudeAdapter(Adapter):
         response = ClaudeResponse(model_name=selected_model)
 
         try:
-            http_response = await self.client.post(
+            client = await self._get_client()
+            http_response = await client.post(
                 endpoint,
                 json=payload,
                 timeout=60.0
@@ -148,8 +155,8 @@ class ClaudeAdapter(Adapter):
         return response
 
     async def close(self):
-        """Close the underlying HTTPX client."""
-        await self.client.aclose()
+        """Close method - HTTP connections managed by shared client manager."""
+        self._client = None
 
     def _extract_error_message(self, response) -> str:
         try:

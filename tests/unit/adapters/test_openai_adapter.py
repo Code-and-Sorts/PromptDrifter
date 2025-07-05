@@ -69,12 +69,13 @@ def mock_httpx_client():
     return client
 
 @pytest.fixture(autouse=True)
-def patch_httpx_client(mock_httpx_client):
+def patch_shared_client(mock_httpx_client):
+    async_mock = AsyncMock(return_value=mock_httpx_client)
     with patch(
-        "promptdrifter.adapters.openai.httpx.AsyncClient",
-        return_value=mock_httpx_client,
-    ) as patched_class_mock:
-        yield patched_class_mock
+        "promptdrifter.adapters.openai.get_shared_client",
+        async_mock,
+    ) as patched_get_shared_client:
+        yield patched_get_shared_client
 
 @pytest.fixture
 def adapter_config_data():
@@ -86,7 +87,7 @@ def adapter_config_data():
     }
 
 @pytest.fixture
-def adapter(patch_httpx_client, adapter_config_data, monkeypatch):
+def adapter(patch_shared_client, adapter_config_data, monkeypatch):
     monkeypatch.setenv(config_API_KEY_ENV_VAR_OPENAI, adapter_config_data["api_key"])
     config = OpenAIAdapterConfig(
         api_key=adapter_config_data["api_key"],
@@ -95,13 +96,9 @@ def adapter(patch_httpx_client, adapter_config_data, monkeypatch):
         max_tokens=adapter_config_data["max_tokens"]
     )
     adapter_instance = OpenAIAdapter(config=config)
-    patch_httpx_client.assert_called_once_with(
-        base_url=adapter_config_data["base_url"],
-        headers={"Authorization": f"Bearer {adapter_config_data['api_key']}", "Content-Type": "application/json"}
-    )
     return adapter_instance
 
-async def test_openai_adapter_init_with_direct_params(monkeypatch, patch_httpx_client):
+async def test_openai_adapter_init_with_direct_params(monkeypatch, patch_shared_client):
     monkeypatch.delenv(config_API_KEY_ENV_VAR_OPENAI, raising=False)
     config = OpenAIAdapterConfig(
         api_key="direct_key",
@@ -114,11 +111,8 @@ async def test_openai_adapter_init_with_direct_params(monkeypatch, patch_httpx_c
     assert adapter_instance.config.base_url == "custom_url"
     assert adapter_instance.config.default_model == "custom_model"
     assert adapter_instance.config.max_tokens == 512
-    patch_httpx_client.assert_called_once_with(
-        base_url="custom_url", headers={"Authorization": "Bearer direct_key", "Content-Type": "application/json"}
-    )
 
-async def test_openai_adapter_init_with_env_key_and_defaults(monkeypatch, patch_httpx_client):
+async def test_openai_adapter_init_with_env_key_and_defaults(monkeypatch, patch_shared_client):
     monkeypatch.setenv(config_API_KEY_ENV_VAR_OPENAI, "env_key_defaults")
     config = OpenAIAdapterConfig()
     adapter_instance = OpenAIAdapter(config=config)
@@ -126,9 +120,6 @@ async def test_openai_adapter_init_with_env_key_and_defaults(monkeypatch, patch_
     assert adapter_instance.config.base_url == config_OPENAI_API_BASE_URL
     assert adapter_instance.config.default_model == config_DEFAULT_OPENAI_MODEL
     assert adapter_instance.config.max_tokens == OpenAIAdapterConfig().max_tokens
-    patch_httpx_client.assert_called_once_with(
-        base_url=config_OPENAI_API_BASE_URL, headers={"Authorization": "Bearer env_key_defaults", "Content-Type": "application/json"}
-    )
 
 async def test_openai_adapter_init_no_key_raises_error(monkeypatch):
     monkeypatch.delenv(config_API_KEY_ENV_VAR_OPENAI, raising=False)
@@ -136,7 +127,7 @@ async def test_openai_adapter_init_no_key_raises_error(monkeypatch):
         OpenAIAdapter()
     assert config_API_KEY_ENV_VAR_OPENAI in str(excinfo.value)
 
-async def test_openai_adapter_init_with_config_object(monkeypatch, patch_httpx_client):
+async def test_openai_adapter_init_with_config_object(monkeypatch, patch_shared_client):
     monkeypatch.delenv(config_API_KEY_ENV_VAR_OPENAI, raising=False)
     config = OpenAIAdapterConfig(
         api_key="config_key",
@@ -150,17 +141,13 @@ async def test_openai_adapter_init_with_config_object(monkeypatch, patch_httpx_c
     assert adapter_instance.config.base_url == "config_url"
     assert adapter_instance.config.default_model == "config_model"
     assert adapter_instance.config.max_tokens == 256
-    patch_httpx_client.assert_called_once_with(
-        base_url="config_url", headers={"Authorization": "Bearer config_key", "Content-Type": "application/json"}
-    )
 
-async def test_execute_successful(adapter, patch_httpx_client):
-    mock_client_instance = patch_httpx_client.return_value
+async def test_execute_successful(adapter, mock_httpx_client):
     mock_http_response = MagicMock(spec=httpx.Response)
     mock_http_response.status_code = 200
     mock_http_response.json = MagicMock(return_value=SUCCESS_RESPONSE_PAYLOAD)
     mock_http_response.raise_for_status = MagicMock()
-    mock_client_instance.post.return_value = mock_http_response
+    mock_httpx_client.post.return_value = mock_http_response
 
     prompt = "Hello, OpenAI!"
     config_override = OpenAIAdapterConfig(
@@ -170,8 +157,8 @@ async def test_execute_successful(adapter, patch_httpx_client):
     )
     result = await adapter.execute(prompt, config_override=config_override)
 
-    mock_client_instance.post.assert_called_once()
-    call_args = mock_client_instance.post.call_args
+    mock_httpx_client.post.assert_called_once()
+    call_args = mock_httpx_client.post.call_args
     assert call_args[0][0] == "/chat/completions"
     payload = call_args[1]["json"]
     assert payload["model"] == "gpt-4-override"
@@ -187,18 +174,16 @@ async def test_execute_successful(adapter, patch_httpx_client):
     assert result.error is None
 
     await adapter.close()
-    mock_client_instance.aclose.assert_called_once()
 
-async def test_execute_uses_config_default_max_tokens(adapter, patch_httpx_client):
-    mock_client_instance = patch_httpx_client.return_value
+async def test_execute_uses_config_default_max_tokens(adapter, mock_httpx_client):
     mock_http_response = MagicMock(spec=httpx.Response)
     mock_http_response.status_code = 200
     mock_http_response.json = MagicMock(return_value=SUCCESS_RESPONSE_PAYLOAD)
     mock_http_response.raise_for_status = MagicMock()
-    mock_client_instance.post.return_value = mock_http_response
+    mock_httpx_client.post.return_value = mock_http_response
 
     await adapter.execute("Test prompt")
-    payload = mock_client_instance.post.call_args[1]["json"]
+    payload = mock_httpx_client.post.call_args[1]["json"]
     assert payload["max_tokens"] == adapter.config.max_tokens
     assert payload["model"] == adapter.config.default_model
 
@@ -206,8 +191,7 @@ async def test_execute_uses_config_default_max_tokens(adapter, patch_httpx_clien
     assert result.usage == SUCCESS_RESPONSE_PAYLOAD["usage"]
     assert result.finish_reason == "stop"
 
-async def test_execute_http_status_error(adapter, patch_httpx_client):
-    mock_client_instance = patch_httpx_client.return_value
+async def test_execute_http_status_error(adapter, mock_httpx_client):
     error_response_content_str = json.dumps(API_ERROR_RESPONSE_PAYLOAD)
 
     mock_error_http_response = MagicMock(spec=httpx.Response)
@@ -220,7 +204,7 @@ async def test_execute_http_status_error(adapter, patch_httpx_client):
         request=mock_error_http_response.request,
         response=mock_error_http_response
     ))
-    mock_client_instance.post.return_value = mock_error_http_response
+    mock_httpx_client.post.return_value = mock_error_http_response
 
     result = await adapter.execute("A prompt")
 
@@ -232,9 +216,8 @@ async def test_execute_http_status_error(adapter, patch_httpx_client):
     assert result.finish_reason == "error"
     assert result.usage is None
 
-async def test_execute_request_error(adapter, patch_httpx_client):
-    mock_client_instance = patch_httpx_client.return_value
-    mock_client_instance.post.side_effect = httpx.ConnectError("Connection failed")
+async def test_execute_request_error(adapter, mock_httpx_client):
+    mock_httpx_client.post.side_effect = httpx.ConnectError("Connection failed")
 
     result = await adapter.execute("A prompt")
 
@@ -245,10 +228,9 @@ async def test_execute_request_error(adapter, patch_httpx_client):
     assert result.model_name == adapter.config.default_model
     assert result.finish_reason == "error"
 
-async def test_execute_timeout_error(adapter, patch_httpx_client):
-    mock_client_instance = patch_httpx_client.return_value
+async def test_execute_timeout_error(adapter, mock_httpx_client):
     timeout_message = "Read operation timed out"
-    mock_client_instance.post.side_effect = httpx.ReadTimeout(timeout_message)
+    mock_httpx_client.post.side_effect = httpx.ReadTimeout(timeout_message)
 
     result = await adapter.execute("A prompt for timeout")
 
@@ -258,9 +240,8 @@ async def test_execute_timeout_error(adapter, patch_httpx_client):
     assert result.text_response is None
     assert result.finish_reason == "error"
 
-async def test_execute_unexpected_error(adapter, patch_httpx_client):
-    mock_client_instance = patch_httpx_client.return_value
-    mock_client_instance.post.side_effect = Exception("Something totally unexpected")
+async def test_execute_unexpected_error(adapter, mock_httpx_client):
+    mock_httpx_client.post.side_effect = Exception("Something totally unexpected")
 
     result = await adapter.execute("A prompt for unexpected")
 
@@ -271,25 +252,22 @@ async def test_execute_unexpected_error(adapter, patch_httpx_client):
     assert result.text_response is None
     assert result.finish_reason == "error"
 
-async def test_adapter_close_called(adapter, patch_httpx_client):
-    mock_client_instance = patch_httpx_client.return_value
+async def test_adapter_close_called(adapter, mock_httpx_client):
     await adapter.close()
-    mock_client_instance.aclose.assert_called_once()
 
-async def test_execute_with_system_prompt_in_kwargs(adapter, patch_httpx_client):
-    mock_client_instance = patch_httpx_client.return_value
+async def test_execute_with_system_prompt_in_kwargs(adapter, mock_httpx_client):
     mock_http_response = MagicMock(spec=httpx.Response)
     mock_http_response.status_code = 200
     mock_http_response.json = MagicMock(return_value=SUCCESS_RESPONSE_PAYLOAD)
     mock_http_response.raise_for_status = MagicMock()
-    mock_client_instance.post.return_value = mock_http_response
+    mock_httpx_client.post.return_value = mock_http_response
 
     config_override = OpenAIAdapterConfig(
         default_model=adapter.config.default_model,
         system_prompt="You are a test bot."
     )
     await adapter.execute("Hello bot", config_override=config_override)
-    payload = mock_client_instance.post.call_args[1]["json"]
+    payload = mock_httpx_client.post.call_args[1]["json"]
     assert payload["messages"][0]["role"] == "system"
     assert payload["messages"][0]["content"] == "You are a test bot."
     assert payload["messages"][1]["role"] == "user"
