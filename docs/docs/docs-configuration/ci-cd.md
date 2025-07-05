@@ -4,7 +4,51 @@ Integrating PromptDrifter into your CI/CD pipeline helps you catch prompt drift 
 
 ## GitHub Actions Integration
 
-<!-- TODO: Add GHA docs and links once implemented. -->
+PromptDrifter provides an official GitHub Action that makes it easy to integrate prompt drift detection into your CI/CD workflow.
+
+### Quick Setup
+
+1. **Add the Action to your workflow** (e.g., `.github/workflows/prompt-drift.yml`):
+
+```yaml
+name: Prompt Drift Detection
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  prompt-drift-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Run PromptDrifter
+      uses: Code-and-Sorts/PromptDrifter-action@v0.0.2
+      with:
+        files: 'tests/promptdrifter.yaml'
+        openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+```
+
+2. **Set up your API keys** in GitHub repository secrets:
+   - Go to your repository Settings > Secrets and variables > Actions
+   - Add your LLM provider API keys (e.g., `OPENAI_API_KEY`, `CLAUDE_API_KEY`)
+
+3. **Create your test configuration** file (`tests/promptdrifter.yaml`) with your prompts and expected outputs.
+
+### Action Features
+
+- **Multi-provider Support**: OpenAI, Claude, Gemini, and other supported LLM providers
+- **Secure API Key Handling**: Uses GitHub secrets for secure API key management
+- **Flexible Configuration**: Specify test files, caching behavior, and more
+- **Version Control**: Pin to specific versions or use latest
+
+### Find the Action
+
+The official PromptDrifter GitHub Action is available on the [GitHub Marketplace](https://github.com/marketplace/actions/promptdrifter).
 
 ## Best Practices
 
