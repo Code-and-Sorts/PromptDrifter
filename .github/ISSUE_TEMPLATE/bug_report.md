@@ -2,7 +2,7 @@
 name: Bug report
 about: File a bug report to help us improve PromptDrifter
 title: "[BUG]: "
-labels: bug, triage
+labels: bug, to triage
 assignees: ''
 type: bug
 
