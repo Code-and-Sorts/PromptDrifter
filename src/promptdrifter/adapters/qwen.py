@@ -3,12 +3,14 @@ from typing import Any, Dict, Optional
 
 import httpx
 from pydantic import Field, model_validator
+from rich.console import Console
 
 from ..config.adapter_settings import (
     API_KEY_ENV_VAR_QWEN,
     DEFAULT_QWEN_MODEL,
     QWEN_API_BASE_URL,
 )
+from ..http_client_manager import get_shared_client
 from .base import Adapter, BaseAdapterConfig
 from .models.qwen_models import (
     QwenError,
@@ -18,6 +20,8 @@ from .models.qwen_models import (
     QwenResponse,
     QwenStandardResponse,
 )
+
+console = Console()
 
 
 class QwenAdapterConfig(BaseAdapterConfig):
@@ -88,10 +92,16 @@ class QwenAdapter(Adapter):
         config: Optional[QwenAdapterConfig] = None,
     ):
         self.config = config or QwenAdapterConfig()
-        self.client = httpx.AsyncClient(
-            base_url=self.config.base_url,
-            headers=self.config.get_headers(),
-        )
+        self._client = None
+
+    async def _get_client(self) -> httpx.AsyncClient:
+        """Get shared HTTP client with connection pooling."""
+        if self._client is None:
+            self._client = await get_shared_client(
+                base_url=self.config.base_url,
+                headers=self.config.get_headers()
+            )
+        return self._client
 
     async def execute(
         self,
@@ -106,7 +116,8 @@ class QwenAdapter(Adapter):
         response = QwenStandardResponse(model_name=effective_config.default_model)
 
         try:
-            http_response = await self.client.post(endpoint, json=payload, timeout=180.0)
+            client = await self._get_client()
+            http_response = await client.post(endpoint, json=payload, timeout=180.0)
             http_response.raise_for_status()
             raw_response_content = http_response.json()
             response.raw_response = raw_response_content
@@ -169,6 +180,7 @@ class QwenAdapter(Adapter):
             response.raw_response = {"error_detail": str(e)}
             response.finish_reason = "error"
         except Exception as e:
+            console.print_exception()
             response.error = f"An unexpected error occurred with QwenAdapter: {type(e).__name__} - {e}"
             response.raw_response = {"error_detail": str(e)}
             response.finish_reason = "error"
@@ -176,6 +188,6 @@ class QwenAdapter(Adapter):
         return response
 
     async def close(self):
-        """Close the underlying HTTPX client."""
-        if hasattr(self, "client") and not self.client.is_closed:
-            await self.client.aclose()
+        """Close method - HTTP connections managed by shared client manager."""
+        if hasattr(self, "_client") and self._client is not None:
+            self._client = None

@@ -3,12 +3,14 @@ from typing import Any, Dict, Optional
 
 import httpx
 from pydantic import Field, model_validator
+from rich.console import Console
 
 from ..config.adapter_settings import (
     API_KEY_ENV_VAR_GEMINI,
     DEFAULT_GEMINI_MODEL,
     GEMINI_API_BASE_URL,
 )
+from ..http_client_manager import get_shared_client
 from .base import Adapter, BaseAdapterConfig
 from .models.gemini_models import (
     GeminiContent,
@@ -19,6 +21,8 @@ from .models.gemini_models import (
     GeminiResponse,
     StandardResponse,
 )
+
+console = Console()
 
 
 class GeminiAdapterConfig(BaseAdapterConfig):
@@ -82,10 +86,16 @@ class GeminiAdapter(Adapter):
         config: Optional[GeminiAdapterConfig] = None,
     ):
         self.config = config or GeminiAdapterConfig()
-        self.client = httpx.AsyncClient(
-            base_url=self.config.base_url,
-            headers=self.config.get_headers(),
-        )
+        self._client = None
+
+    async def _get_client(self) -> httpx.AsyncClient:
+        """Get shared HTTP client with connection pooling."""
+        if self._client is None:
+            self._client = await get_shared_client(
+                base_url=self.config.base_url,
+                headers=self.config.get_headers()
+            )
+        return self._client
 
     async def execute(
         self,
@@ -101,7 +111,8 @@ class GeminiAdapter(Adapter):
         response = StandardResponse(model_name=effective_model)
 
         try:
-            api_response = await self.client.post(
+            client = await self._get_client()
+            api_response = await client.post(
                 endpoint, params=params, json=payload, timeout=60.0
             )
             api_response.raise_for_status()
@@ -143,6 +154,7 @@ class GeminiAdapter(Adapter):
             response.finish_reason = "error"
 
         except Exception as e:
+            console.print_exception()
             response.error = f"An unexpected error occurred: {str(e)}"
             response.raw_response = {"error_detail": str(e)}
             response.finish_reason = "error"
@@ -150,5 +162,5 @@ class GeminiAdapter(Adapter):
         return response
 
     async def close(self):
-        """Close the underlying httpx client."""
-        await self.client.aclose()
+        """Close method - HTTP connections managed by shared client manager."""
+        self._client = None
