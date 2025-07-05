@@ -6,21 +6,21 @@ import httpx
 from pydantic import Field, model_validator
 from rich.console import Console
 
-from promptdrifter.adapters.base import Adapter, BaseAdapterConfig
-from promptdrifter.adapters.models import (
+from ..config.adapter_settings import (
+    API_KEY_ENV_VAR_DEEPSEEK,
+    DEEPSEEK_API_BASE_URL,
+    DEFAULT_DEEPSEEK_MODEL,
+)
+from ..http_client_manager import get_shared_client
+from .base import Adapter, BaseAdapterConfig
+from .models import (
     DeepSeekErrorResponse,
     DeepSeekMessage,
     DeepSeekPayload,
     DeepSeekRawResponse,
     DeepSeekResponse,
 )
-from promptdrifter.adapters.models.deepseek_models import DeepSeekHeaders
-from promptdrifter.config.adapter_settings import (
-    API_KEY_ENV_VAR_DEEPSEEK,
-    DEEPSEEK_API_BASE_URL,
-    DEFAULT_DEEPSEEK_MODEL,
-)
-from promptdrifter.http_client_manager import get_shared_client
+from .models.deepseek_models import DeepSeekHeaders
 
 console = Console()
 

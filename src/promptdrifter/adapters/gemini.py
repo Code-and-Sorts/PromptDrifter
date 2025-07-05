@@ -3,6 +3,7 @@ from typing import Any, Dict, Optional
 
 import httpx
 from pydantic import Field, model_validator
+from rich.console import Console
 
 from ..config.adapter_settings import (
     API_KEY_ENV_VAR_GEMINI,
@@ -20,6 +21,8 @@ from .models.gemini_models import (
     GeminiResponse,
     StandardResponse,
 )
+
+console = Console()
 
 
 class GeminiAdapterConfig(BaseAdapterConfig):
@@ -151,6 +154,7 @@ class GeminiAdapter(Adapter):
             response.finish_reason = "error"
 
         except Exception as e:
+            console.print_exception()
             response.error = f"An unexpected error occurred: {str(e)}"
             response.raw_response = {"error_detail": str(e)}
             response.finish_reason = "error"

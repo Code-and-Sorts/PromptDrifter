@@ -2,6 +2,7 @@ import json
 from typing import Any, AsyncGenerator, Dict, Optional
 
 import httpx
+from rich.console import Console
 
 from ..config.adapter_settings import (
     DEFAULT_OLLAMA_BASE_URL,
@@ -16,6 +17,8 @@ from .models import (
     OllamaRawResponse,
     OllamaResponse,
 )
+
+console = Console()
 
 
 class OllamaAdapterConfig(BaseAdapterConfig):
@@ -153,6 +156,7 @@ class OllamaAdapter(Adapter):
             response.text_response = None
             response.finish_reason = "error"
         except Exception as e:
+            console.print_exception()
             response.error = f"An unexpected error occurred with Ollama: {e}"
             response.raw_response = {"error_detail": str(e)}
             response.text_response = None

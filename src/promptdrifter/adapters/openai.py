@@ -3,6 +3,7 @@ from typing import Any, Dict, Optional
 
 import httpx
 from pydantic import Field, model_validator
+from rich.console import Console
 
 from ..config.adapter_settings import (
     API_KEY_ENV_VAR_OPENAI,
@@ -12,6 +13,8 @@ from ..config.adapter_settings import (
 from ..http_client_manager import get_shared_client
 from .base import Adapter, BaseAdapterConfig
 from .models.openai_models import OpenAIHeaders, StandardResponse
+
+console = Console()
 
 
 class OpenAIAdapterConfig(BaseAdapterConfig):
@@ -128,6 +131,7 @@ class OpenAIAdapter(Adapter):
             response.raw_response = {"error_detail": str(e)}
             response.finish_reason = "error"
         except Exception as e:
+            console.print_exception()
             response.error = f"An unexpected error occurred: {str(e)}"
             response.raw_response = {"error_detail": str(e)}
             response.finish_reason = "error"

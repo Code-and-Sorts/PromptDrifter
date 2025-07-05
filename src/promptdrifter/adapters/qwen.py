@@ -3,6 +3,7 @@ from typing import Any, Dict, Optional
 
 import httpx
 from pydantic import Field, model_validator
+from rich.console import Console
 
 from ..config.adapter_settings import (
     API_KEY_ENV_VAR_QWEN,
@@ -19,6 +20,8 @@ from .models.qwen_models import (
     QwenResponse,
     QwenStandardResponse,
 )
+
+console = Console()
 
 
 class QwenAdapterConfig(BaseAdapterConfig):
@@ -177,6 +180,7 @@ class QwenAdapter(Adapter):
             response.raw_response = {"error_detail": str(e)}
             response.finish_reason = "error"
         except Exception as e:
+            console.print_exception()
             response.error = f"An unexpected error occurred with QwenAdapter: {type(e).__name__} - {e}"
             response.raw_response = {"error_detail": str(e)}
             response.finish_reason = "error"
