@@ -185,12 +185,42 @@ Automate your prompt drift detection by integrating PromptDrifter directly into 
 
 We provide a reusable GitHub Action that makes it easy to run your PromptDrifter tests on every push or pull request.
 
-➡️ **Find the PromptDrifter GitHub Action and usage instructions here: [CodeAndSorts/promptdrifter-action](https://github.com/CodeAndSorts/promptdrifter-action)** (Replace this URL with the actual one once the action is published in its own repository or on the GitHub Marketplace).
+➡️ **Find the PromptDrifter GitHub Action here: [PromptDrifter on GitHub Marketplace](https://github.com/marketplace/actions/promptdrifter)**
+
+### Basic Usage
+
+Add this to your workflow file (e.g., `.github/workflows/prompt-drift.yml`):
+
+```yaml
+name: Prompt Drift Detection
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  prompt-drift-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Run PromptDrifter
+      uses: Code-and-Sorts/PromptDrifter-action@v0.0.2
+      with:
+        files: 'tests/promptdrifter.yaml'
+        openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+```
+
+### Features
 
 This action allows you to:
-*   Install a specific version of PromptDrifter or use the latest.
-*   Specify your test files and configurations.
-*   Control caching behavior.
+*   Install a specific version of PromptDrifter or use the latest
+*   Specify your test files and configurations
+*   Support multiple LLM providers (OpenAI, Claude, Gemini, etc.)
+*   Secure API key handling via GitHub secrets
 
 By using the action, you can ensure that any changes to your LLM's responses that violate your defined tests will automatically flag your CI builds, preventing unexpected issues from reaching production.
 
