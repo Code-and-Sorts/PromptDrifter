@@ -26,4 +26,18 @@ lint-fix: ## 🪄 Runs linter with auto-fix (ruff check --fix)
 	uv run ruff check --fix .
 	@echo "🎉 Linting and fixing finished."
 
-.PHONY: test-unit test-integration test-all lint lint-fix help
+version-bump: ## 📦 Bump version (usage: make version-bump VERSION=0.0.3)
+	@if [ -z "$(VERSION)" ]; then \
+		echo "❌ Error: VERSION parameter is required"; \
+		echo "Usage: make version-bump VERSION=0.0.3"; \
+		exit 1; \
+	fi
+	@echo "📦 Bumping version to $(VERSION)..."
+	@sed -i '' 's/version = "[0-9]*\.[0-9]*\.[0-9]*"/version = "$(VERSION)"/' pyproject.toml
+	@sed -i '' 's/return "[0-9]*\.[0-9]*\.[0-9]*"/return "$(VERSION)"/' src/promptdrifter/cli.py
+	@echo "✅ Version bumped to $(VERSION)"
+	@echo "📝 Updated files:"
+	@echo "  - pyproject.toml"
+	@echo "  - src/promptdrifter/cli.py"
+
+.PHONY: test-unit test-integration test-all lint lint-fix version-bump help
