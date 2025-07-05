@@ -40,7 +40,7 @@ def get_version():
                         return version_raw
         return importlib.metadata.version("promptdrifter")
     except Exception:
-        return "0.0.1"
+        return "0.0.2"
 
 
 @app.callback(invoke_without_command=True)
@@ -133,7 +133,7 @@ def init(
     try:
         sample_config_content = (
             importlib.resources.files("promptdrifter")
-            .joinpath("schema", "v0.1", "sample.yaml")
+            .joinpath("schema", "latest", "sample.yaml")
             .read_text()
         )
     except FileNotFoundError:

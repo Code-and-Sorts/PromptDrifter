@@ -1,28 +1,53 @@
 ---
 name: Bug report
-about: File a bug report.
+about: File a bug report to help us improve PromptDrifter
 title: "[BUG]: "
 labels: bug, to triage
 assignees: ''
+type: bug
 
 ---
 
-✌🏻 Hey there and thank you for using **PromptDifter**!
+<!--
+Thank you for using PromptDrifter! 🎉
 
-📋 Do the checklist before filing an issue:
+Before filing a bug report, please check:
+- Have a usage question? Ask in Discussions: https://github.com/Code-and-Sorts/PromptDrifter/discussions
+- Have an idea for a feature? Use the feature request template instead
+- Search existing issues to avoid duplicates
 
-- [ ] Have a usage question? Ask your question in [Discussions](https://github.com/Code-and-Sorts/PromptDrifter/discussions).
-- [ ] Have an idea for a feature? Post as a feature request instead of a bug.
+Please provide the information below to help us understand and fix the bug.
+-->
 
+## Bug Description
+<!-- A clear and concise description of what the bug is -->
 
-None of the above, create a bug report.
-------------------------------------------------------------------
+## Steps to Reproduce
+1. 
+2. 
+3. 
 
-Make sure to add **all the information needed to understand the bug** so that someone can help. If the info is missing we'll add the 'Needs more information' label and close the issue until there is enough information.
+## Expected Behavior
+<!-- What you expected to happen -->
 
-- [ ] Provide a **minimal code snippet** example that reproduces the bug.
-```python
-# A bug lives here 🐛
+## Actual Behavior
+<!-- What actually happened -->
+
+## Minimal Reproduction
+<!-- Please provide the minimal code/configuration that reproduces the issue -->
+```yaml
+# Your promptdrifter configuration
 ```
-- [ ] Provide **screenshots** where appropriate.
-- [ ] OS type and version (e.g. macOS 15.3).
+
+```bash
+# Commands you ran
+```
+
+## Environment
+- **PromptDrifter version**: <!-- Run: promptdrifter --version -->
+- **Python version**: <!-- Run: python --version -->
+- **Operating System**: <!-- e.g., macOS 14.1, Ubuntu 22.04, Windows 11 -->
+- **Installation method**: <!-- pip, uv, source, etc. -->
+
+## Additional Context
+<!-- Add any other context, screenshots, or logs about the problem -->

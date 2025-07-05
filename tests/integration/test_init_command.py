@@ -77,3 +77,20 @@ def test_init_creates_nested_directory_structure(temp_dir: Path):
 def test_init_command_help():
     result = execute_cli_command(["promptdrifter", CLICommands.INIT, "--help"])
     verify_cli_success(result, "Initialize a new promptdrifter project")
+
+
+def test_init_works_with_packaged_installation(temp_dir: Path):
+    """Test that init works when promptdrifter is installed as a package (not in development mode)."""
+    result = execute_cli_command(
+        ["promptdrifter", CLICommands.INIT, str(temp_dir)],
+        working_directory=temp_dir
+    )
+    verify_cli_success(result, "Successfully created sample configuration")
+
+    config_file = temp_dir / "promptdrifter.yaml"
+    assert config_file.exists()
+
+    config_content = config_file.read_text()
+    assert "version:" in config_content
+    assert "adapters:" in config_content
+    assert "sample-test" in config_content

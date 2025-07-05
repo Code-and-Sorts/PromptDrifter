@@ -101,13 +101,18 @@ def test_run_multiple_valid_yaml_files_no_api_keys(valid_yaml_file: Path, multip
     verify_cli_failure(result)
 
 
-def test_run_shows_security_warning_with_cli_api_key():
+def test_run_shows_security_warning_with_cli_api_key(valid_yaml_file: Path):
+    clean_env = {k: v for k, v in os.environ.items() if not k.endswith('_API_KEY')}
+
     result = execute_cli_command([
         "promptdrifter", CLICommands.RUN,
         "--openai-api-key", "fake-key-for-test",
-        "/nonexistent/file.yaml"
-    ])
-    verify_cli_failure(result, expected_error_contains="SECURITY WARNING")
+        str(valid_yaml_file)
+    ], environment_vars=clean_env)
+
+    combined_output = result.stderr + result.stdout
+    assert "SECURITY WARNING" in combined_output or "shell history" in combined_output, f"Expected security warning in output: {combined_output}"
+    assert result.exit_code == 1
 
 
 def test_run_api_key_from_env_no_warning(valid_yaml_file: Path):
