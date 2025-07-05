@@ -644,7 +644,7 @@ async def test_run_suite_empty_or_non_yaml_files(
 async def test_get_adapter_instance_success(tmp_path):
     runner = Runner(config_dir=tmp_path)
 
-    with patch.object(runner.adapter_manager, 'get_adapter') as mock_get_adapter:
+    with patch.object(runner.adapter_manager, 'get_adapter', new_callable=AsyncMock) as mock_get_adapter:
         mock_adapter = MagicMock(spec=Adapter)
         mock_get_adapter.return_value = mock_adapter
 
@@ -662,7 +662,7 @@ async def test_get_adapter_instance_unknown(tmp_path, runner_dependencies_setup)
     runner = Runner(config_dir=tmp_path)
     runner.console = runner_dependencies_setup["console"]
 
-    with patch.object(runner.adapter_manager, 'get_adapter') as mock_get_adapter:
+    with patch.object(runner.adapter_manager, 'get_adapter', new_callable=AsyncMock) as mock_get_adapter:
         mock_get_adapter.return_value = None
 
         adapter_instance = await runner._get_adapter_instance("completely_unknown_adapter")
@@ -675,7 +675,7 @@ async def test_get_adapter_instance_unknown(tmp_path, runner_dependencies_setup)
 async def test_runner_get_adapter_instance_success_with_api_key(tmp_path):
     runner = Runner(config_dir=tmp_path, openai_api_key="test-key")
 
-    with patch.object(runner.adapter_manager, 'get_adapter') as mock_get_adapter:
+    with patch.object(runner.adapter_manager, 'get_adapter', new_callable=AsyncMock) as mock_get_adapter:
         mock_adapter = MagicMock(spec=Adapter)
         mock_get_adapter.return_value = mock_adapter
 
@@ -692,7 +692,7 @@ async def test_runner_get_adapter_instance_error_handling(tmp_path, runner_depen
     runner = Runner(config_dir=tmp_path)
     runner.console = runner_dependencies_setup["console"]
 
-    with patch.object(runner.adapter_manager, 'get_adapter') as mock_get_adapter:
+    with patch.object(runner.adapter_manager, 'get_adapter', new_callable=AsyncMock) as mock_get_adapter:
         mock_get_adapter.side_effect = Exception("Test error")
 
         instance = await runner._get_adapter_instance("openai")

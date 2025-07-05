@@ -124,7 +124,7 @@ def test_item_expiry(sut: PromptCache):
     response_data = {"data": "this will expire"}
     ttl_short = 1  # 1 second TTL
 
-    with patch('time.time') as mock_time:
+    with patch('promptdrifter.cache.time.time') as mock_time:
         # Start at time 0
         mock_time.return_value = 0
 
@@ -160,7 +160,7 @@ def test_purge_expired(sut: PromptCache):
     response_B = {"data": "B"}
     options_B = {"id": "B"}
 
-    with patch('time.time') as mock_time:
+    with patch('promptdrifter.cache.time.time') as mock_time:
         # Start at time 0
         mock_time.return_value = 0
 
