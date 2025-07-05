@@ -4,6 +4,7 @@ about: File a bug report to help us improve PromptDrifter
 title: "[BUG]: "
 labels: bug, triage
 assignees: ''
+type: bug
 
 ---
 
