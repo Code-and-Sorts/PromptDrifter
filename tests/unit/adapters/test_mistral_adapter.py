@@ -19,7 +19,7 @@ def auto_patch_httpx_client():
     mock_client = MagicMock(spec=httpx.AsyncClient)
     mock_client.post = AsyncMock()
     mock_client.aclose = AsyncMock()
-    with patch("promptdrifter.adapters.mistral.httpx.AsyncClient", return_value=mock_client) as patched_client:
+    with patch("promptdrifter.adapters.mistral.get_shared_client", return_value=mock_client) as patched_client:
         yield patched_client
 
 @pytest.fixture
@@ -66,7 +66,7 @@ def mock_http_response():
 
 @pytest.fixture
 def mock_http_client(mock_http_response):
-    with patch("httpx.AsyncClient") as mock_client:
+    with patch("promptdrifter.adapters.mistral.get_shared_client") as mock_client:
         mock_client.return_value.post = AsyncMock(return_value=mock_http_response)
         yield mock_client
 

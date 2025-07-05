@@ -13,13 +13,34 @@ from promptdrifter.config.adapter_settings import (
 
 pytestmark = pytest.mark.asyncio
 
+@pytest.fixture
+def mock_response():
+    response = MagicMock(spec=httpx.Response)
+    response.status_code = 200
+    response.raise_for_status = MagicMock()
+    response.json = MagicMock()
+    return response
+
+@pytest.fixture
+def mock_httpx_client():
+    client = MagicMock(spec=httpx.AsyncClient)
+    client.post = AsyncMock()
+    client.aclose = AsyncMock()
+    return client
+
 @pytest.fixture(autouse=True)
-def auto_patch_httpx_client():
-    mock_client_instance = MagicMock(spec=httpx.AsyncClient)
-    mock_client_instance.post = AsyncMock()
-    mock_client_instance.aclose = AsyncMock()
-    with patch("promptdrifter.adapters.claude.httpx.AsyncClient", return_value=mock_client_instance) as patched_client:
-        yield patched_client
+def patch_shared_client(mock_httpx_client):
+    async_mock = AsyncMock(return_value=mock_httpx_client)
+    with patch(
+        "promptdrifter.adapters.claude.get_shared_client",
+        async_mock,
+    ) as patched_get_shared_client:
+        yield patched_get_shared_client
+
+@pytest.fixture
+def auto_patch_httpx_client(mock_httpx_client):
+    """Compatibility fixture to maintain test interface"""
+    return MagicMock(return_value=mock_httpx_client)
 
 @pytest.fixture
 def adapter_config_data():
@@ -32,13 +53,13 @@ def adapter_config_data():
     )
 
 @pytest.fixture
-def adapter(adapter_config_data, monkeypatch, auto_patch_httpx_client):
+def adapter(adapter_config_data, monkeypatch, patch_shared_client):
     monkeypatch.setenv(API_KEY_ENV_VAR_CLAUDE, adapter_config_data.api_key)
     config = adapter_config_data
     adapter_instance = ClaudeAdapter(config=config)
     return adapter_instance
 
-async def test_claude_adapter_init_with_direct_params(monkeypatch, auto_patch_httpx_client):
+async def test_claude_adapter_init_with_direct_params(monkeypatch, patch_shared_client):
     monkeypatch.delenv(API_KEY_ENV_VAR_CLAUDE, raising=False)
     config = ClaudeAdapterConfig(
         api_key="direct_claude_key",
@@ -54,7 +75,7 @@ async def test_claude_adapter_init_with_direct_params(monkeypatch, auto_patch_ht
     assert adapter_instance.config.max_tokens == 500
     assert adapter_instance.config.api_version == "2024-01-01"
 
-async def test_claude_adapter_init_with_env_key_and_defaults(monkeypatch, auto_patch_httpx_client):
+async def test_claude_adapter_init_with_env_key_and_defaults(monkeypatch, patch_shared_client):
     monkeypatch.setenv(API_KEY_ENV_VAR_CLAUDE, "env_claude_key")
     adapter_instance = ClaudeAdapter()
     assert adapter_instance.config.api_key == "env_claude_key"
@@ -69,7 +90,7 @@ async def test_claude_adapter_init_no_key_raises_error(monkeypatch):
         ClaudeAdapter()
     assert API_KEY_ENV_VAR_CLAUDE in str(excinfo.value)
 
-async def test_claude_adapter_init_with_config_object(monkeypatch, auto_patch_httpx_client):
+async def test_claude_adapter_init_with_config_object(monkeypatch, patch_shared_client):
     monkeypatch.delenv(API_KEY_ENV_VAR_CLAUDE, raising=False)
     config = ClaudeAdapterConfig(
         api_key="config_claude_key",
@@ -93,13 +114,12 @@ def mock_claude_successful_response_data():
         "usage": {"input_tokens": 12, "output_tokens": 22}
     }
 
-async def test_execute_successful(adapter, auto_patch_httpx_client, mock_claude_successful_response_data):
-    mock_client = auto_patch_httpx_client.return_value
+async def test_execute_successful(adapter, mock_httpx_client, mock_claude_successful_response_data):
     mock_http_response = MagicMock(spec=httpx.Response)
     mock_http_response.status_code = 200
     mock_http_response.json = MagicMock(return_value=mock_claude_successful_response_data)
     mock_http_response.raise_for_status = MagicMock()
-    mock_client.post.return_value = mock_http_response
+    mock_httpx_client.post.return_value = mock_http_response
 
     config_override = ClaudeAdapterConfig(
         default_model="claude-3-haiku-override",
@@ -115,7 +135,7 @@ async def test_execute_successful(adapter, auto_patch_httpx_client, mock_claude_
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0.6
     }
-    mock_client.post.assert_called_once_with(
+    mock_httpx_client.post.assert_called_once_with(
         "/messages",
         json=expected_json_payload,
         timeout=60.0
@@ -125,21 +145,18 @@ async def test_execute_successful(adapter, auto_patch_httpx_client, mock_claude_
     assert result.model_name == "claude-3-haiku-override"
     assert result.finish_reason == mock_claude_successful_response_data.get("stop_reason")
     assert result.error is None
-    await adapter.close()
-    mock_client.aclose.assert_called_once()
 
-async def test_execute_uses_config_defaults(adapter, auto_patch_httpx_client, mock_claude_successful_response_data):
-    mock_client = auto_patch_httpx_client.return_value
+async def test_execute_uses_config_defaults(adapter, mock_httpx_client, mock_claude_successful_response_data):
     mock_http_response = MagicMock(spec=httpx.Response)
     mock_http_response.status_code = 200
     mock_claude_successful_response_data["model"] = adapter.config.default_model
     mock_http_response.json = MagicMock(return_value=mock_claude_successful_response_data)
     mock_http_response.raise_for_status = MagicMock()
-    mock_client.post.return_value = mock_http_response
+    mock_httpx_client.post.return_value = mock_http_response
 
     await adapter.execute("Test prompt for Claude defaults")
 
-    _, call_kwargs = mock_client.post.call_args
+    _, call_kwargs = mock_httpx_client.post.call_args
     payload = call_kwargs["json"]
     assert payload["model"] == adapter.config.default_model
     assert payload["max_tokens"] == adapter.config.max_tokens
@@ -153,9 +170,8 @@ async def test_execute_uses_config_defaults(adapter, auto_patch_httpx_client, mo
     ]
 )
 async def test_execute_http_status_error_json_body(
-    adapter, auto_patch_httpx_client, status_code, error_json, expected_error_part
+    adapter, mock_httpx_client, status_code, error_json, expected_error_part
 ):
-    mock_client = auto_patch_httpx_client.return_value
     mock_error_http_response = MagicMock(spec=httpx.Response)
     mock_error_http_response.status_code = status_code
     mock_error_http_response.json = MagicMock(return_value=error_json)
@@ -164,7 +180,7 @@ async def test_execute_http_status_error_json_body(
     mock_error_http_response.raise_for_status = MagicMock(side_effect=httpx.HTTPStatusError(
         message=f"HTTP {status_code}", request=mock_error_http_response.request, response=mock_error_http_response
     ))
-    mock_client.post.return_value = mock_error_http_response
+    mock_httpx_client.post.return_value = mock_error_http_response
 
     result = await adapter.execute("A failing Claude prompt")
 
@@ -176,17 +192,17 @@ async def test_execute_http_status_error_json_body(
     assert result.model_name == adapter.config.default_model
     assert result.finish_reason == "error"
 
-async def test_execute_request_error(adapter, auto_patch_httpx_client):
-    mock_client = auto_patch_httpx_client.return_value
+async def test_execute_request_error(adapter, mock_httpx_client):
     error_message = "Claude connection error"
-    mock_client.post.side_effect = httpx.ConnectError(error_message)
+    mock_httpx_client.post.side_effect = httpx.ConnectError(error_message)
     result = await adapter.execute("A prompt")
     assert result.error is not None
     assert "HTTP Client Error" in result.error
     assert error_message in result.error
     assert result.raw_response == {"error_detail": error_message}
 
-async def test_close_client(adapter, auto_patch_httpx_client):
-    mock_client = auto_patch_httpx_client.return_value
+async def test_close_client(adapter):
+    # Test that close method completes without error
+    # With shared client manager, we don't close individual clients
     await adapter.close()
-    mock_client.aclose.assert_called_once()
+    assert adapter._client is None

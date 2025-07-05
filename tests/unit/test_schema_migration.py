@@ -43,7 +43,6 @@ def test_migrate_config_unsupported_target():
     assert "No migration path available" in str(excinfo.value)
 
 
-@pytest.mark.skip(reason="This test needs to be reimplemented")
 def test_migrate_config_invalid_source():
     with mock.patch("promptdrifter.schema.migration.validate_config") as mock_validate:
         mock_validate.side_effect = ValidationError("Invalid config")
@@ -54,7 +53,7 @@ def test_migrate_config_invalid_source():
         }
 
         with pytest.raises(ValidationError):
-            migrate_config(config)
+            migrate_config(config, target_version="0.2")
 
 def test_migrate_config_with_migration_function():
     config = {

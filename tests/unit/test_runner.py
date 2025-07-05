@@ -7,7 +7,7 @@ from rich.console import Console
 from promptdrifter.adapters.base import Adapter
 from promptdrifter.cache import PromptCache
 from promptdrifter.models.config import PromptDrifterConfig, TestCase
-from promptdrifter.runner import ADAPTER_REGISTRY, Runner
+from promptdrifter.runner import Runner
 from promptdrifter.yaml_loader import YamlFileLoader
 
 pytestmark = pytest.mark.asyncio
@@ -55,7 +55,7 @@ def runner_dependencies_setup(
     mocker.patch("promptdrifter.runner.PromptCache", return_value=mock_cache)
     mocker.patch("promptdrifter.runner.Console", return_value=mock_console)
 
-    mock_get_adapter_method = MagicMock(return_value=mock_adapter_instance)
+    mock_get_adapter_method = AsyncMock(return_value=mock_adapter_instance)
 
     return {
         "yaml_loader": mock_yaml_loader,
@@ -109,7 +109,6 @@ async def test_run_single_test_case_pass_exact_match(
     assert call_args[0][0] == "Say hello"  # First positional arg is prompt
     assert call_args[1]["config_override"].default_model == "test_model"  # Check config override
     mock_cache.put.assert_called_once()
-    mock_adapter.close.assert_called_once()
 
 
 async def test_run_single_test_case_fail_exact_match(
@@ -141,7 +140,6 @@ async def test_run_single_test_case_fail_exact_match(
     assert result["status"] == "FAIL"
     assert "Exact match failed" in result["reason"]
     assert test_runner.overall_success is False
-    mock_adapter.close.assert_called_once()
 
 
 async def test_run_single_test_case_pass_regex_match(
@@ -170,7 +168,6 @@ async def test_run_single_test_case_pass_regex_match(
     result = results_list[0]
 
     assert result["status"] == "PASS"
-    mock_adapter.close.assert_called_once()
 
 
 async def test_run_single_test_case_cache_hit(
@@ -243,7 +240,6 @@ async def test_run_single_test_case_adapter_error(
     assert result["status"] == "ERROR"
     assert "Adapter error: Something went wrong with LLM" in result["reason"]
     assert test_runner.overall_success is False
-    mock_adapter.close.assert_called_once()
 
 
 async def test_run_single_test_case_execution_exception(
@@ -268,7 +264,6 @@ async def test_run_single_test_case_execution_exception(
     assert result["status"] == "ERROR"
     assert "Adapter execution error: Network issue" in result["reason"]
     assert test_runner.overall_success is False
-    mock_adapter.close.assert_called_once()
 
 
 async def test_run_single_test_case_no_text_response(
@@ -298,7 +293,6 @@ async def test_run_single_test_case_no_text_response(
     assert result["status"] == "FAIL"
     assert "Adapter returned no text_response." in result["reason"]
     assert test_runner.overall_success is False
-    mock_adapter.close.assert_called_once()
 
 
 async def test_run_single_test_case_prompt_templating_error(
@@ -368,7 +362,7 @@ async def test_run_single_test_case_unknown_adapter(
 ):
     get_adapter_mock = runner_dependencies_setup["get_adapter_method_mock"]
 
-    def side_effect_for_get_adapter(adapter_name_called, base_url=None):
+    async def side_effect_for_get_adapter(adapter_name_called, base_url=None):
         if adapter_name_called == "gemini":
             return None
         return runner_dependencies_setup["adapter_instance"]
@@ -469,7 +463,7 @@ async def test_run_single_test_case_multiple_adapters(
     mock_adapter_2_instance.config = mock_config_2
     mock_adapter_2_instance.config.__class__ = mock_config_class_2
 
-    def get_adapter_side_effect(adapter_name, base_url=None):
+    async def get_adapter_side_effect(adapter_name, base_url=None):
         if adapter_name == "openai":
             return mock_adapter_1_instance
         elif adapter_name == "gemini":
@@ -503,7 +497,6 @@ async def test_run_single_test_case_multiple_adapters(
     call_args_1 = mock_adapter_1_instance.execute.call_args
     assert call_args_1[0][0] == "Test all adapters"
     assert call_args_1[1]["config_override"].default_model == "model1"
-    mock_adapter_1_instance.close.assert_called_once()
 
     result_adapter2 = next(r for r in results_list if r["adapter"] == "gemini")
     assert result_adapter2["status"] == "FAIL"
@@ -513,7 +506,6 @@ async def test_run_single_test_case_multiple_adapters(
     call_args_2 = mock_adapter_2_instance.execute.call_args
     assert call_args_2[0][0] == "Test all adapters"
     assert call_args_2[1]["config_override"].default_model == "model2"
-    mock_adapter_2_instance.close.assert_called_once()
 
     assert test_runner.overall_success is False
 
@@ -649,65 +641,67 @@ async def test_run_suite_empty_or_non_yaml_files(
     )
 
 
-@patch.dict(
-    ADAPTER_REGISTRY, {"test_real_adapter": MagicMock(spec=Adapter)}, clear=True
-)
 async def test_get_adapter_instance_success(tmp_path):
     runner = Runner(config_dir=tmp_path)
-    ADAPTER_REGISTRY["test_real_adapter"].return_value = MagicMock(spec=Adapter)
-    adapter_instance = runner._get_adapter_instance("test_real_adapter")
-    assert adapter_instance is not None
-    ADAPTER_REGISTRY["test_real_adapter"].assert_called_once()
+
+    with patch.object(runner.adapter_manager, 'get_adapter', new_callable=AsyncMock) as mock_get_adapter:
+        mock_adapter = MagicMock(spec=Adapter)
+        mock_get_adapter.return_value = mock_adapter
+
+        adapter_instance = await runner._get_adapter_instance("openai")
+
+        assert adapter_instance is not None
+        mock_get_adapter.assert_called_once_with(
+            adapter_type="openai",
+            api_key=None,
+            base_url=None
+        )
 
 
 async def test_get_adapter_instance_unknown(tmp_path, runner_dependencies_setup):
     runner = Runner(config_dir=tmp_path)
     runner.console = runner_dependencies_setup["console"]
-    adapter_instance = runner._get_adapter_instance("completely_unknown_adapter")
-    assert adapter_instance is None
-    runner.console.print.assert_called_with(
-        "[bold red]Unknown adapter: completely_unknown_adapter[/bold red]"
-    )
+
+    with patch.object(runner.adapter_manager, 'get_adapter', new_callable=AsyncMock) as mock_get_adapter:
+        mock_get_adapter.return_value = None
+
+        adapter_instance = await runner._get_adapter_instance("completely_unknown_adapter")
+        assert adapter_instance is None
+        runner.console.print.assert_called_with(
+            "[bold red]Unknown adapter: completely_unknown_adapter[/bold red]"
+        )
 
 
-@patch.dict(
-    ADAPTER_REGISTRY, {"real_adapter_type": MagicMock(spec=Adapter)}, clear=True
-)
-async def test_runner_get_adapter_instance_success_original_method(tmp_path):
-    runner = Runner(config_dir=tmp_path)
-    MockAdapterClass = ADAPTER_REGISTRY["real_adapter_type"]
-    mock_adapter_instance = MagicMock(spec=Adapter)
-    MockAdapterClass.return_value = mock_adapter_instance
-    instance = runner._get_adapter_instance("real_adapter_type")
-    assert instance == mock_adapter_instance
-    MockAdapterClass.assert_called_once()
+async def test_runner_get_adapter_instance_success_with_api_key(tmp_path):
+    runner = Runner(config_dir=tmp_path, openai_api_key="test-key")
+
+    with patch.object(runner.adapter_manager, 'get_adapter', new_callable=AsyncMock) as mock_get_adapter:
+        mock_adapter = MagicMock(spec=Adapter)
+        mock_get_adapter.return_value = mock_adapter
+
+        instance = await runner._get_adapter_instance("openai")
+        assert instance == mock_adapter
+        mock_get_adapter.assert_called_once_with(
+            adapter_type="openai",
+            api_key="test-key",
+            base_url=None
+        )
 
 
-async def test_runner_get_adapter_instance_unknown_original_method(
-    tmp_path, runner_dependencies_setup
-):
+async def test_runner_get_adapter_instance_error_handling(tmp_path, runner_dependencies_setup):
     runner = Runner(config_dir=tmp_path)
     runner.console = runner_dependencies_setup["console"]
-    instance = runner._get_adapter_instance("non_existent_adapter_for_real")
-    assert instance is None
-    runner.console.print.assert_called_with(
-        "[bold red]Unknown adapter: non_existent_adapter_for_real[/bold red]"
-    )
 
+    with patch.object(runner.adapter_manager, 'get_adapter', new_callable=AsyncMock) as mock_get_adapter:
+        mock_get_adapter.side_effect = Exception("Test error")
 
-async def test_runner_get_adapter_instance_init_error_original_method(
-    tmp_path, runner_dependencies_setup
-):
-    MockAdapterWithError = MagicMock(spec=Adapter)
-    MockAdapterWithError.side_effect = Exception("Init failed")
-    with patch.dict(ADAPTER_REGISTRY, {"error_adapter": MockAdapterWithError}):
-        runner = Runner(config_dir=tmp_path)
-        runner.console = runner_dependencies_setup["console"]
-        instance = runner._get_adapter_instance("error_adapter")
+        instance = await runner._get_adapter_instance("openai")
         assert instance is None
         runner.console.print.assert_called_with(
-            "[bold red]Error initializing adapter 'error_adapter': Init failed[/bold red]"
+            "[bold red]Error initializing adapter 'openai': Test error[/bold red]"
         )
+
+
 
 
 async def test_run_single_test_case_prompt_templating(

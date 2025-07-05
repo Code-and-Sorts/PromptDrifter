@@ -3,14 +3,18 @@ from typing import Any, Dict, Optional
 
 import httpx
 from pydantic import Field, model_validator
+from rich.console import Console
 
 from ..config.adapter_settings import (
     API_KEY_ENV_VAR_OPENAI,
     DEFAULT_OPENAI_MODEL,
     OPENAI_API_BASE_URL,
 )
+from ..http_client_manager import get_shared_client
 from .base import Adapter, BaseAdapterConfig
 from .models.openai_models import OpenAIHeaders, StandardResponse
+
+console = Console()
 
 
 class OpenAIAdapterConfig(BaseAdapterConfig):
@@ -75,11 +79,16 @@ class OpenAIAdapter(Adapter):
         config: Optional[OpenAIAdapterConfig] = None,
     ):
         self.config = config or OpenAIAdapterConfig()
+        self._client = None
 
-        self.client = httpx.AsyncClient(
-            base_url=self.config.base_url,
-            headers=self.config.get_headers(),
-        )
+    async def _get_client(self) -> httpx.AsyncClient:
+        """Get shared HTTP client with connection pooling."""
+        if self._client is None:
+            self._client = await get_shared_client(
+                base_url=self.config.base_url,
+                headers=self.config.get_headers()
+            )
+        return self._client
 
     async def execute(
         self,
@@ -91,7 +100,8 @@ class OpenAIAdapter(Adapter):
         model_name = config_override.default_model if config_override else self.config.default_model
         response = StandardResponse(model_name=model_name)
         try:
-            api_response = await self.client.post(
+            client = await self._get_client()
+            api_response = await client.post(
                 "/chat/completions", json=payload, timeout=60.0
             )
             api_response.raise_for_status()
@@ -121,11 +131,12 @@ class OpenAIAdapter(Adapter):
             response.raw_response = {"error_detail": str(e)}
             response.finish_reason = "error"
         except Exception as e:
+            console.print_exception()
             response.error = f"An unexpected error occurred: {str(e)}"
             response.raw_response = {"error_detail": str(e)}
             response.finish_reason = "error"
         return response
 
     async def close(self):
-        """Close the underlying HTTPX client."""
-        await self.client.aclose()
+        """Close method - HTTP connections managed by shared client manager."""
+        self._client = None
