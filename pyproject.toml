@@ -9,7 +9,7 @@ license = {text = "MIT"}
 readme = "scripts/pypi-readme.md"
 requires-python = ">=3.11"
 dependencies = [
-    "typer (>=0.17.4,<0.18.0)",
+    "typer (>=0.19.1,<0.20.0)",
     "rich (>=14.0.0,<15.0.0)",
     "openai (>=1.77.0,<2.0.0)",
     "httpx (>=0.28.1,<0.29.0)",
