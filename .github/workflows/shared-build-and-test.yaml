@@ -64,7 +64,7 @@ jobs:
       run: uv lock --check
 
     - name: ♻️ Cache .venv
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: .venv
         key: ${{ runner.os }}-python-${{ inputs.python-version }}-venv-${{ hashFiles('pyproject.toml', 'scripts/pyproject.toml') }}-${{ hashFiles('uv.lock') }}
@@ -119,7 +119,7 @@ jobs:
       run: uv lock --check
 
     - name: ♻️ Cache .venv
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: .venv
         key: ${{ runner.os }}-python-${{ inputs.python-version }}-venv-${{ hashFiles('pyproject.toml', 'scripts/pyproject.toml') }}-${{ hashFiles('uv.lock') }}
