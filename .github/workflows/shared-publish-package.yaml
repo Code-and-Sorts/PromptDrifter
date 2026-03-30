@@ -37,7 +37,7 @@ jobs:
       uses: astral-sh/setup-uv@v7
 
     - name: ⤵️ Download dist artifacts
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v8
       with:
         name: python-package-dist
         path: dist/
