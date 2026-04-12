@@ -74,6 +74,7 @@ def test_expect_substring_case_insensitive_false():
 
 
 def test_text_similarity_high_score():
+    pytest.importorskip("sentence_transformers", reason="sentence-transformers package required")
     result = execute_cli_command([
         "promptdrifter", CLICommands.TEST_DRIFT_TYPE,
         DriftTypes.TEXT_SIMILARITY, "The quick brown fox", "The quick brown fox"
@@ -83,6 +84,7 @@ def test_text_similarity_high_score():
 
 
 def test_text_similarity_medium_score():
+    pytest.importorskip("sentence_transformers", reason="sentence-transformers package required")
     result = execute_cli_command([
         "promptdrifter", CLICommands.TEST_DRIFT_TYPE,
         DriftTypes.TEXT_SIMILARITY, "The quick brown fox", "The fast brown fox"
@@ -92,6 +94,7 @@ def test_text_similarity_medium_score():
 
 
 def test_text_similarity_low_score():
+    pytest.importorskip("sentence_transformers", reason="sentence-transformers package required")
     result = execute_cli_command([
         "promptdrifter", CLICommands.TEST_DRIFT_TYPE,
         DriftTypes.TEXT_SIMILARITY, "The quick brown fox", "Completely different text"

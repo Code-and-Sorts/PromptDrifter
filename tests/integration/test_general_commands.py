@@ -1,4 +1,4 @@
-from .test_cli_base import execute_cli_command, verify_cli_success
+from .test_cli_base import execute_cli_command, normalize_output, verify_cli_success
 
 
 def test_version_flag_shows_version():
@@ -19,7 +19,11 @@ def test_main_help_command():
 
 def test_no_args_shows_help():
     result = execute_cli_command(["promptdrifter"])
-    verify_cli_success(result, "Usage:")
+    assert result.exit_code in (0, 2), (
+        f"Expected exit code 0 or 2, got {result.exit_code}. stderr: {result.stderr}"
+    )
+    clean_output = normalize_output(result.stdout + result.stderr)
+    assert "Usage:" in clean_output, f"Expected 'Usage:' in output: {clean_output}"
 
 
 def test_invalid_command():

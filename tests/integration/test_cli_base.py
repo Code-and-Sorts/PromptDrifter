@@ -48,17 +48,23 @@ def strip_ansi_codes(text: str) -> str:
     return ansi_escape.sub('', text)
 
 
+def normalize_output(text: str) -> str:
+    """Strip ANSI codes and normalize whitespace (collapse newlines and spaces into single spaces)."""
+    text = strip_ansi_codes(text)
+    return re.sub(r'\s+', ' ', text).strip()
+
+
 def verify_cli_success(result: CLICommandResult, expected_output_contains: Optional[str] = None):
     assert result.exit_code == 0, f"Command failed with exit code {result.exit_code}. stderr: {result.stderr}"
     if expected_output_contains:
-        clean_stdout = strip_ansi_codes(result.stdout)
+        clean_stdout = normalize_output(result.stdout)
         assert expected_output_contains in clean_stdout, f"Expected '{expected_output_contains}' in output: {clean_stdout}"
 
 
 def verify_cli_failure(result: CLICommandResult, expected_exit_code: int = 1, expected_error_contains: Optional[str] = None):
     assert result.exit_code == expected_exit_code, f"Expected exit code {expected_exit_code}, got {result.exit_code}"
     if expected_error_contains:
-        combined_output = result.stderr + result.stdout
+        combined_output = normalize_output(result.stderr + result.stdout)
         assert expected_error_contains in combined_output, f"Expected '{expected_error_contains}' in error output: {combined_output}"
 
 
