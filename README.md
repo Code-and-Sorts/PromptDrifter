@@ -155,16 +155,16 @@ PromptDrifter is designed to be extensible to various Large Language Models thro
 
 | Provider / Model Family | Adapter Status | Details / Model Examples                                                 | Linked Issue |
 | :---------------------- | :------------- | :----------------------------------------------------------------------- | :----------- |
-| **GPT (OpenAI)**        | Available      | `gpt-3.5-turbo`, `gpt-4`, `gpt-4o`, etc.                                 | N/A          |
-| **Azure OpenAI**        | Available      | `gpt-3.5-turbo`, `gpt-4`, `gpt-4o`, etc.                                 | N/A          |
-| **Ollama**              | Available      | `llama3`, `mistral`, `gemma`, etc.                                       | N/A          |
-| **Claude (Anthropic)**  | Available      | `claude-3-7-sonnet`, `claude-3-5-sonnet`, `claude-3-opus`                | N/A          |
-| **Gemini (Google)**     | Available      | `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-2.0-flash-thinking`        | N/A          |
-| **Qwen (Alibaba)**      | Available      | `qwen3-30b-a3b`, `qwq-32b`                                               | N/A          |
-| **Grok (xAI)**          | Available      | `grok-3`, `grok-2`, etc.                                                 | N/A          |
-| **DeepSeek**            | Available      | `deepseek-r1`, `deepseek-v3-0324`, etc.                                  | N/A          |
-| **Mistral**             | Available      | `mistral-small-24b-instruct-2501`, `mistral-small-3.1-24b-instruct-2503` | N/A          |
-| **Llama (Meta)**        | To Do          | `llama-4-maverick`, `llama-4-scout`, etc.                                | [#11](https://github.com/Code-and-Sorts/PromptDrifter/issues/11) |
+| **GPT (OpenAI)**        | ✅ Available   | `gpt-3.5-turbo`, `gpt-4`, `gpt-4o`, etc.                                 | N/A          |
+| **Azure OpenAI**        | ✅ Available   | `gpt-3.5-turbo`, `gpt-4`, `gpt-4o`, etc.                                 | N/A          |
+| **Ollama**              | ✅ Available   | `llama3`, `mistral`, `gemma`, etc.                                       | N/A          |
+| **Claude (Anthropic)**  | ✅ Available   | `claude-3-7-sonnet`, `claude-3-5-sonnet`, `claude-3-opus`                | N/A          |
+| **Gemini (Google)**     | ✅ Available   | `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-2.0-flash-thinking`        | N/A          |
+| **Qwen (Alibaba)**      | ✅ Available   | `qwen3-30b-a3b`, `qwq-32b`                                               | N/A          |
+| **Grok (xAI)**          | ✅ Available   | `grok-3`, `grok-2`, etc.                                                 | N/A          |
+| **DeepSeek**            | ✅ Available   | `deepseek-r1`, `deepseek-v3-0324`, etc.                                  | N/A          |
+| **Mistral**             | ✅ Available   | `mistral-small-24b-instruct-2501`, `mistral-small-3.1-24b-instruct-2503` | N/A          |
+| **Llama (Meta)**        | 📋 To Do       | `llama-4-maverick`, `llama-4-scout`, etc.                                | [#11](https://github.com/Code-and-Sorts/PromptDrifter/issues/11) |
 
 
 If there's a model or provider you'd like to see supported, please [open a feature request](https://github.com/Code-and-Sorts/PromptDrifter/issues/new?assignees=&template=feature_request.md) or consider contributing an adapter!
@@ -173,10 +173,10 @@ If there's a model or provider you'd like to see supported, please [open a featu
 
 | Name | Config key | Description | Installation |
 | :--- | :--------- | :---------- | :----------- |
-| **Exact Match** | `expect_exact` | Output should be an exact match | Core |
-| **Regex** | `expect_regex` | Output should match regex pattern | Core |
-| **Substring** | `expect_substring` | Output should contain the substring | Core |
-| **Substring Case Insensitive** | `expect_substring_case_insensitive` | Case insensitive substring match | Core |
+| **Exact Match** | `expect_exact` | Output should be an exact match | ✅ Core |
+| **Regex** | `expect_regex` | Output should match regex pattern | ✅ Core |
+| **Substring** | `expect_substring` | Output should contain the substring | ✅ Core |
+| **Substring Case Insensitive** | `expect_substring_case_insensitive` | Case insensitive substring match | ✅ Core |
 | **Text Similarity** | `text_similarity` | Semantic similarity using sentence transformers | `pip install 'promptdrifter[similarity]'` |
 
 ## GitHub Action
