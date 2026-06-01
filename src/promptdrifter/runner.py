@@ -24,6 +24,7 @@ class Runner:
         use_cache: bool = True,
         max_concurrent_prompt_tests: int = 10,
         openai_api_key: Optional[str] = None,
+        azure_openai_api_key: Optional[str] = None,
         gemini_api_key: Optional[str] = None,
         qwen_api_key: Optional[str] = None,
         claude_api_key: Optional[str] = None,
@@ -48,6 +49,7 @@ class Runner:
         # Store API keys for adapter manager
         self.api_keys = {
             "openai": openai_api_key,
+            "azure_openai": azure_openai_api_key,
             "gemini": gemini_api_key,
             "qwen": qwen_api_key,
             "claude": claude_api_key,

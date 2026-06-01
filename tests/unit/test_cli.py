@@ -31,6 +31,7 @@ async def test_cli_run_logic_success(mocker, tmp_path):
         config_dir=Path("."),
         max_concurrent_prompt_tests=10,
         openai_api_key=None,
+        azure_openai_api_key=None,
         gemini_api_key=None,
         qwen_api_key=None,
         claude_api_key=None,
@@ -45,6 +46,7 @@ async def test_cli_run_logic_success(mocker, tmp_path):
         use_cache=True,
         max_concurrent_prompt_tests=10,
         openai_api_key=None,
+        azure_openai_api_key=None,
         gemini_api_key=None,
         qwen_api_key=None,
         claude_api_key=None,
@@ -73,6 +75,7 @@ async def test_cli_run_logic_failure_from_suite(mocker, tmp_path):
             config_dir=Path("."),
             max_concurrent_prompt_tests=10,
             openai_api_key=None,
+            azure_openai_api_key=None,
             gemini_api_key=None,
             qwen_api_key=None,
             claude_api_key=None,
@@ -87,6 +90,7 @@ async def test_cli_run_logic_failure_from_suite(mocker, tmp_path):
         use_cache=True,
         max_concurrent_prompt_tests=10,
         openai_api_key=None,
+        azure_openai_api_key=None,
         gemini_api_key=None,
         qwen_api_key=None,
         claude_api_key=None,
@@ -113,6 +117,7 @@ async def test_cli_run_logic_runner_init_exception(mocker, tmp_path, capsys):
             config_dir=Path("."),
             max_concurrent_prompt_tests=10,
             openai_api_key=None,
+            azure_openai_api_key=None,
             gemini_api_key=None,
             qwen_api_key=None,
             claude_api_key=None,
@@ -143,6 +148,7 @@ async def test_cli_run_logic_suite_exception(mocker, tmp_path, capsys):
             config_dir=Path("."),
             max_concurrent_prompt_tests=10,
             openai_api_key=None,
+            azure_openai_api_key=None,
             gemini_api_key=None,
             qwen_api_key=None,
             claude_api_key=None,
@@ -176,6 +182,7 @@ async def test_cli_run_logic_multiple_files(mocker, tmp_path):
         config_dir=Path("."),
         max_concurrent_prompt_tests=10,
         openai_api_key=None,
+        azure_openai_api_key=None,
         gemini_api_key=None,
         qwen_api_key=None,
         claude_api_key=None,
@@ -190,6 +197,7 @@ async def test_cli_run_logic_multiple_files(mocker, tmp_path):
         use_cache=True,
         max_concurrent_prompt_tests=10,
         openai_api_key=None,
+        azure_openai_api_key=None,
         gemini_api_key=None,
         qwen_api_key=None,
         claude_api_key=None,
@@ -213,6 +221,7 @@ async def test_cli_run_logic_file_not_found(mocker, capsys):
             config_dir=Path("."),
             max_concurrent_prompt_tests=10,
             openai_api_key=None,
+            azure_openai_api_key=None,
             gemini_api_key=None,
             qwen_api_key=None,
             claude_api_key=None,
@@ -239,6 +248,7 @@ async def test_cli_run_logic_no_files_provided(mocker, capsys):
             config_dir=Path("."),
             max_concurrent_prompt_tests=10,
             openai_api_key=None,
+            azure_openai_api_key=None,
             gemini_api_key=None,
             qwen_api_key=None,
             claude_api_key=None,
@@ -406,6 +416,7 @@ async def test_cli_run_prints_security_warning(mocker, tmp_path, capsys):
         config_dir=Path("."),
         max_concurrent_prompt_tests=10,
         openai_api_key="cli_key_here",
+        azure_openai_api_key=None,
         gemini_api_key=None,
         qwen_api_key=None,
         claude_api_key=None,
@@ -427,6 +438,7 @@ async def test_cli_run_prints_security_warning(mocker, tmp_path, capsys):
         config_dir=Path("."),
         max_concurrent_prompt_tests=10,
         openai_api_key=None,
+        azure_openai_api_key=None,
         gemini_api_key=None,
         qwen_api_key=None,
         claude_api_key=None,
@@ -480,6 +492,7 @@ def test_run_command_with_api_keys(mocker):
         dummy_config_dir,  # config_dir (positional)
         10,  # max_concurrent_prompt_tests (positional)
         "key1",  # openai_api_key (positional)
+        None,  # azure_openai_api_key (positional)
         "key2",  # gemini_api_key (positional)
         "test_qwen_key",  # qwen_api_key (positional)
         "claude_key",  # claude_api_key (positional)
@@ -511,6 +524,7 @@ def test_run_command_with_api_keys(mocker):
         dummy_config_dir,
         10,  # max_concurrent_prompt_tests
         None,  # No OpenAI key
+        None,  # No Azure OpenAI key
         None,  # No Gemini key
         None,  # No Qwen key
         None,  # No Claude key
@@ -544,7 +558,42 @@ def test_run_command_with_api_keys(mocker):
         dummy_config_dir,
         10,  # max_concurrent_prompt_tests
         None,  # No OpenAI key
+        None,  # No Azure OpenAI key
         "just_gemini_key",  # Only Gemini key provided
+        None,  # No Qwen key
+        None,  # No Claude key
+        None,  # No Grok key
+        None,  # No DeepSeek key
+        None,  # No Mistral key
+        # None,  # No Llama key
+    )
+    mock_run_async.reset_mock()
+
+    result = cli_runner.invoke(
+        app,
+        [
+            "run",
+            str(test_file_path),
+            "--azure-openai-api-key",
+            "azure_key",
+            "--no-cache",
+            "--cache-db",
+            str(dummy_cache_db),
+            "--config-dir",
+            str(dummy_config_dir),
+        ],
+    )
+    assert result.exit_code == 0, strip_ansi(result.stdout)
+
+    mock_run_async.assert_called_once_with(
+        [test_file_path],
+        True,
+        dummy_cache_db,
+        dummy_config_dir,
+        10,  # max_concurrent_prompt_tests
+        None,  # No OpenAI key
+        "azure_key",  # Only Azure OpenAI key provided
+        None,  # No Gemini key
         None,  # No Qwen key
         None,  # No Claude key
         None,  # No Grok key
