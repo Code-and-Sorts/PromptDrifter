@@ -47,11 +47,17 @@ class AzureOpenAIAdapterConfig(BaseAdapterConfig):
         return values
 
     @model_validator(mode="after")
-    def check_api_key_present(self) -> "AzureOpenAIAdapterConfig":
+    def check_required_settings(self) -> "AzureOpenAIAdapterConfig":
         if not self.api_key:
             raise ValueError(
                 f"Azure OpenAI API key not provided. Set the {API_KEY_ENV_VAR_AZURE_OPENAI} environment variable, "
                 f"or pass 'api_key' to the adapter or its config."
+            )
+        if not self.base_url:
+            raise ValueError(
+                f"Azure OpenAI endpoint not provided. Set the {ENDPOINT_ENV_VAR_AZURE_OPENAI} environment variable, "
+                f"or pass 'base_url' to the adapter or its config "
+                f"(e.g. https://your-resource-name.openai.azure.com)."
             )
         return self
 

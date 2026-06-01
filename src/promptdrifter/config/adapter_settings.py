@@ -41,7 +41,9 @@ DEFAULT_DEEPSEEK_MODEL = "deepseek-chat"
 API_KEY_ENV_VAR_DEEPSEEK = "DEEPSEEK_API_KEY"
 
 # Azure OpenAI
-AZURE_OPENAI_API_BASE_URL = "https://YOUR_RESOURCE_NAME.openai.azure.com"
+# No universal endpoint exists; it is per-resource and must be supplied via
+# the AZURE_OPENAI_ENDPOINT env var or the adapter's base_url.
+AZURE_OPENAI_API_BASE_URL = ""
 DEFAULT_AZURE_OPENAI_MODEL = "gpt-4o"
 DEFAULT_AZURE_OPENAI_API_VERSION = "2024-10-21"
 API_KEY_ENV_VAR_AZURE_OPENAI = "AZURE_OPENAI_API_KEY"

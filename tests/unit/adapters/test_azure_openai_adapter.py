@@ -16,13 +16,13 @@ from promptdrifter.config.adapter_settings import (
     API_KEY_ENV_VAR_AZURE_OPENAI as config_API_KEY_ENV_VAR_AZURE_OPENAI,
 )
 from promptdrifter.config.adapter_settings import (
-    AZURE_OPENAI_API_BASE_URL as config_AZURE_OPENAI_API_BASE_URL,
-)
-from promptdrifter.config.adapter_settings import (
     DEFAULT_AZURE_OPENAI_API_VERSION as config_DEFAULT_AZURE_OPENAI_API_VERSION,
 )
 from promptdrifter.config.adapter_settings import (
     DEFAULT_AZURE_OPENAI_MODEL as config_DEFAULT_AZURE_OPENAI_MODEL,
+)
+from promptdrifter.config.adapter_settings import (
+    ENDPOINT_ENV_VAR_AZURE_OPENAI as config_ENDPOINT_ENV_VAR_AZURE_OPENAI,
 )
 
 pytestmark = pytest.mark.asyncio
@@ -80,6 +80,7 @@ def patch_shared_client(mock_httpx_client):
 @pytest.fixture
 def adapter(patch_shared_client, monkeypatch):
     monkeypatch.setenv(config_API_KEY_ENV_VAR_AZURE_OPENAI, TEST_API_KEY)
+    monkeypatch.setenv(config_ENDPOINT_ENV_VAR_AZURE_OPENAI, TEST_ENDPOINT)
     config = AzureOpenAIAdapterConfig(
         api_key=TEST_API_KEY,
         base_url=TEST_ENDPOINT,
@@ -106,21 +107,31 @@ async def test_init_with_direct_params(monkeypatch, patch_shared_client):
     assert adapter_instance.config.max_tokens == 512
 
 
-async def test_init_with_env_key_and_defaults(monkeypatch, patch_shared_client):
+async def test_init_with_env_key_and_endpoint_and_defaults(monkeypatch, patch_shared_client):
     monkeypatch.setenv(config_API_KEY_ENV_VAR_AZURE_OPENAI, "env_key_defaults")
+    monkeypatch.setenv(config_ENDPOINT_ENV_VAR_AZURE_OPENAI, TEST_ENDPOINT)
     config = AzureOpenAIAdapterConfig()
     adapter_instance = AzureOpenAIAdapter(config=config)
     assert adapter_instance.config.api_key == "env_key_defaults"
-    assert adapter_instance.config.base_url == config_AZURE_OPENAI_API_BASE_URL
+    assert adapter_instance.config.base_url == TEST_ENDPOINT
     assert adapter_instance.config.default_model == config_DEFAULT_AZURE_OPENAI_MODEL
     assert adapter_instance.config.api_version == config_DEFAULT_AZURE_OPENAI_API_VERSION
 
 
 async def test_init_no_key_raises_error(monkeypatch):
     monkeypatch.delenv(config_API_KEY_ENV_VAR_AZURE_OPENAI, raising=False)
+    monkeypatch.setenv(config_ENDPOINT_ENV_VAR_AZURE_OPENAI, TEST_ENDPOINT)
     with pytest.raises(ValueError) as excinfo:
         AzureOpenAIAdapter()
     assert config_API_KEY_ENV_VAR_AZURE_OPENAI in str(excinfo.value)
+
+
+async def test_init_no_endpoint_raises_error(monkeypatch):
+    monkeypatch.setenv(config_API_KEY_ENV_VAR_AZURE_OPENAI, TEST_API_KEY)
+    monkeypatch.delenv(config_ENDPOINT_ENV_VAR_AZURE_OPENAI, raising=False)
+    with pytest.raises(ValueError) as excinfo:
+        AzureOpenAIAdapter()
+    assert config_ENDPOINT_ENV_VAR_AZURE_OPENAI in str(excinfo.value)
 
 
 async def test_headers_use_api_key(adapter):
