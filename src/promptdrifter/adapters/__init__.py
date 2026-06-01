@@ -1,3 +1,4 @@
+from .azure_openai import AzureOpenAIAdapter
 from .base import Adapter
 from .claude import ClaudeAdapter
 from .deepseek import DeepSeekAdapter
@@ -12,6 +13,7 @@ from .qwen import QwenAdapter
 __all__ = [
     "Adapter",
     "OpenAIAdapter",
+    "AzureOpenAIAdapter",
     "OllamaAdapter",
     "GeminiAdapter",
     "QwenAdapter",

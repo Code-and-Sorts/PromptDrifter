@@ -98,8 +98,9 @@ class TestAdapterManager:
         return AdapterManager()
 
     def test_adapter_manager_initialization(self, adapter_manager):
-        assert len(adapter_manager._adapter_registry) == 8
+        assert len(adapter_manager._adapter_registry) == 9
         assert "openai" in adapter_manager._adapter_registry
+        assert "azure_openai" in adapter_manager._adapter_registry
         assert "claude" in adapter_manager._adapter_registry
         assert "gemini" in adapter_manager._adapter_registry
         assert "grok" in adapter_manager._adapter_registry
