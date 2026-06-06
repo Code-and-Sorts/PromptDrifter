@@ -11,7 +11,7 @@ requires-python = ">=3.11"
 dependencies = [
     "typer (>=0.26.4,<0.27.0)",
     "rich (>=15.0.0,<15.1.0)",
-    "openai (>=2.38.0,<2.39.0)",
+    "openai (>=2.41.0,<2.42.0)",
     "httpx (>=0.28.1,<0.29.0)",
     "pyyaml (>=6.0.2,<7.0.0)",
     "importlib-resources (>=7.1.0,<7.2.0)",
