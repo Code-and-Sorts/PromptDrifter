@@ -26,7 +26,7 @@ Run all tests in a directory:
 promptdrifter run tests/*.yaml
 ```
 
-<!-- TODO: Add screenshot of running tests with output -->
+{/* TODO: Add screenshot of running tests with output */}
 
 ### Test Statuses
 
@@ -39,7 +39,7 @@ Tests can have the following statuses:
 ⏩ SKIP  - The test was skipped (missing API keys, etc.)
 ```
 
-<!-- TODO: Add screenshot showing different test statuses -->
+{/* TODO: Add screenshot showing different test statuses */}
 
 ### Viewing Failures
 
@@ -55,7 +55,7 @@ The output includes:
 - Specific reason for failure
 - Detailed diff for better comparison
 
-<!-- TODO: Add screenshot of failure output -->
+{/* TODO: Add screenshot of failure output */}
 
 ## Command Options
 
