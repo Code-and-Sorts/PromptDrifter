@@ -15,9 +15,9 @@
 </p>
 
 <p align="center">
-  <a href="#-quick-start">🏃 Quick-Start</a> - <a href="#-why-promptdrifter">❓ Why PromptDrifter?</a> - <a href="#-demo">🎬 Demo</a> - <a href="#-docs">📚 Docs</a>
+  <a href="#quick-start">Quick-Start</a> - <a href="#why-promptdrifter">Why PromptDrifter?</a> - <a href="#demo">Demo</a> - <a href="#docs">Docs</a>
   <br />
-  <a href="https://github.com/Code-and-Sorts/PromptDrifter/issues/new?assignees=&template=bug_report.md">🐛 Bug Report</a> - <a href="https://github.com/Code-and-Sorts/PromptDrifter/issues/new?assignees=&template=feature_request.md">✨ Feature Request</a>
+  <a href="https://github.com/Code-and-Sorts/PromptDrifter/issues/new?assignees=&template=bug_report.md">Bug Report</a> - <a href="https://github.com/Code-and-Sorts/PromptDrifter/issues/new?assignees=&template=feature_request.md">Feature Request</a>
 </p>
 
 ### PromptDrifter is a one-command CI guardrail, open source platform for catching prompt drift and fails if your LLM answers change.
@@ -25,7 +25,7 @@
 > [!IMPORTANT]
 > **Development Notice**: This project is under active development. Breaking changes may occur between versions. Please check the changelog and release notes before updating.
 
-## 🏃 Quick-Start
+## Quick-Start
 
 ### Basic Installation
 ```bash
@@ -58,13 +58,13 @@ This will create a `promptdrifter.yaml` file in your current directory.
     promptdrifter run promptdrifter.yaml
     ```
 
-#### 🏃💨 Sample Run
+#### Sample Run
 
 <p align="center">
   <img src="./docs/static/img/promptdrifter-demo.gif" alt="PromptDrifter Demo" width="700"/>
 </p>
 
-## ❓ Why PromptDrifter?
+## Why PromptDrifter?
 
 The landscape of Large Language Models (LLMs) is one of rapid evolution. While exciting, this constant change introduces a critical challenge for applications relying on them: **prompt drift**.
 
@@ -74,22 +74,22 @@ Over time, updates to LLM versions, or even subtle shifts in their training data
 
 ### Undetected prompt drift can lead to:
 <details>
-<summary>🚨 Unexpected Failures</summary>
+<summary>Unexpected Failures</summary>
 Applications or CI/CD pipelines may break silently or with cryptic errors when LLM outputs deviate from expected formats or content.
 </details>
 
 <details>
-<summary>📉 Degraded User Experience</summary>
+<summary>Degraded User Experience</summary>
 Features relying on consistent LLM responses can malfunction, leading to user frustration.
 </details>
 
 <details>
-<summary>⏱️ Increased Maintenance</summary>
+<summary>Increased Maintenance</summary>
 Engineers spend valuable time diagnosing issues, tracing them back to changed LLM behavior rather addressing features and bugs in code.
 </details>
 
 <details>
-<summary>🚧 Blocked Deployments</summary>
+<summary>Blocked Deployments</summary>
 Uncertainty about LLM stability can slow down development cycles and deployment frequency.
 </details>
 
@@ -97,39 +97,39 @@ Uncertainty about LLM stability can slow down development cycles and deployment 
 
 ### PromptDrifter tackles these challenges head-on by providing:
 <details>
-<summary>🛡️ Automated Guardrails</summary>
+<summary>Automated Guardrails</summary>
 A simple, command-line driven tool to integrate LLM response validation directly into your development and CI/CD workflows.
 </details>
 
 <details>
-<summary>🔍 Early Drift Detection</summary>
+<summary>Early Drift Detection</summary>
 By comparing LLM outputs against version-controlled expected responses or predefined patterns (like regex), **PromptDrifter** catches deviations as soon as they occur.
 </details>
 
 <details>
-<summary>⚙️ Consistent and Reliable Applications</summary>
+<summary>Consistent and Reliable Applications</summary>
 Ensures that your LLM-powered features behave predictably by failing builds when significant response changes are detected, *before* they impact users or production systems.
 </details>
 
 <details>
-<summary>🔌 Model Agnostic Design</summary>
+<summary>Model Agnostic Design</summary>
 Through a flexible adapter system, PromptDrifter can interact with various LLM providers and models (e.g., OpenAI, Ollama, and more to come).
 </details>
 
 <details>
-<summary>📝 Declarative Test Suites</summary>
+<summary>Declarative Test Suites</summary>
 Define your prompt tests in easy-to-understand YAML files, making them simple to create, manage, and version alongside your codebase.
 </details>
 
 <details>
-<summary>😌 Developer Peace of Mind</summary>
+<summary>Developer Peace of Mind</summary>
 Build with greater confidence, knowing you have a safety net that monitors the stability of your critical prompt interactions.
 </details>
 
 > [!NOTE]
 > By making prompt-response testing a straightforward and automated part of your workflow, **PromptDrifter** helps you harness the power of LLMs while mitigating the risks associated with their dynamic nature.
 
-## 🎬 Demo
+## Demo
 
 ### Running with cache
 
@@ -149,13 +149,14 @@ Build with greater confidence, knowing you have a safety net that monitors the s
   <img src="./docs/static/img/promptdrifter-demo-failure.gif" alt="PromptDrifter Demo" width="700"/>
 </p>
 
-## 🤖 Supported LLM Adapters
+## Supported LLM Adapters
 
 PromptDrifter is designed to be extensible to various Large Language Models through its adapter system. Here's a current list of supported and planned adapters:
 
 | Provider / Model Family | Adapter Status | Details / Model Examples                                                 | Linked Issue |
 | :---------------------- | :------------- | :----------------------------------------------------------------------- | :----------- |
 | **GPT (OpenAI)**        | ✅ Available   | `gpt-3.5-turbo`, `gpt-4`, `gpt-4o`, etc.                                 | N/A          |
+| **Azure OpenAI**        | ✅ Available   | `gpt-3.5-turbo`, `gpt-4`, `gpt-4o`, etc.                                 | N/A          |
 | **Ollama**              | ✅ Available   | `llama3`, `mistral`, `gemma`, etc.                                       | N/A          |
 | **Claude (Anthropic)**  | ✅ Available   | `claude-3-7-sonnet`, `claude-3-5-sonnet`, `claude-3-opus`                | N/A          |
 | **Gemini (Google)**     | ✅ Available   | `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-2.0-flash-thinking`        | N/A          |
@@ -163,13 +164,12 @@ PromptDrifter is designed to be extensible to various Large Language Models thro
 | **Grok (xAI)**          | ✅ Available   | `grok-3`, `grok-2`, etc.                                                 | N/A          |
 | **DeepSeek**            | ✅ Available   | `deepseek-r1`, `deepseek-v3-0324`, etc.                                  | N/A          |
 | **Mistral**             | ✅ Available   | `mistral-small-24b-instruct-2501`, `mistral-small-3.1-24b-instruct-2503` | N/A          |
-| **Azure OpenAI**        | 📋 To Do       | `gpt-3.5-turbo`, `gpt-4`, `gpt-4o`, etc.                                 | [#10](https://github.com/Code-and-Sorts/PromptDrifter/issues/10) |
 | **Llama (Meta)**        | 📋 To Do       | `llama-4-maverick`, `llama-4-scout`, etc.                                | [#11](https://github.com/Code-and-Sorts/PromptDrifter/issues/11) |
 
 
 If there's a model or provider you'd like to see supported, please [open a feature request](https://github.com/Code-and-Sorts/PromptDrifter/issues/new?assignees=&template=feature_request.md) or consider contributing an adapter!
 
-## 🧪 Supported Drift Tests
+## Supported Drift Tests
 
 | Name | Config key | Description | Installation |
 | :--- | :--------- | :---------- | :----------- |
@@ -179,13 +179,13 @@ If there's a model or provider you'd like to see supported, please [open a featu
 | **Substring Case Insensitive** | `expect_substring_case_insensitive` | Case insensitive substring match | ✅ Core |
 | **Text Similarity** | `text_similarity` | Semantic similarity using sentence transformers | `pip install 'promptdrifter[similarity]'` |
 
-## ⚙️ GitHub Action
+## GitHub Action
 
 Automate your prompt drift detection by integrating PromptDrifter directly into your GitHub workflows!
 
 We provide a reusable GitHub Action that makes it easy to run your PromptDrifter tests on every push or pull request.
 
-➡️ **Find the PromptDrifter GitHub Action here: [PromptDrifter on GitHub Marketplace](https://github.com/marketplace/actions/promptdrifter)**
+**Find the PromptDrifter GitHub Action here: [PromptDrifter on GitHub Marketplace](https://github.com/marketplace/actions/promptdrifter)**
 
 ### Basic Usage
 
@@ -224,7 +224,7 @@ This action allows you to:
 
 By using the action, you can ensure that any changes to your LLM's responses that violate your defined tests will automatically flag your CI builds, preventing unexpected issues from reaching production.
 
-## 📚 Docs
+## Docs
 
 Our documentation is built with Docusaurus and deployed to GitHub Pages.
 
@@ -238,14 +238,14 @@ The documentation includes:
 
 If you want to contribute to the documentation, see the [docs/README.md](./docs/README.md) file for instructions.
 
-## 🧑‍💻 Contributing
+## Contributing
 
 Follow the [contributing guide](./.github/CONTRIBUTING.md).
 
-## 🔖 Code of Conduct
+## Code of Conduct
 
 Please make sure you read the [Code of Conduct guide](./.github/CODE-OF-CONDUCT.md).
 
-## 📝 Changelog
+## Changelog
 
 - [0.0.x](./changelogs/0.0.x.md)

@@ -9,6 +9,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, Type
 
+from .adapters.azure_openai import AzureOpenAIAdapter
 from .adapters.base import Adapter
 from .adapters.claude import ClaudeAdapter
 from .adapters.deepseek import DeepSeekAdapter
@@ -82,6 +83,7 @@ class AdapterManager:
     def _initialize_registry(self):
         """Initialize adapter registry with metadata."""
         adapter_classes = {
+            "azure_openai": AzureOpenAIAdapter,
             "claude": ClaudeAdapter,
             "deepseek": DeepSeekAdapter,
             "gemini": GeminiAdapter,

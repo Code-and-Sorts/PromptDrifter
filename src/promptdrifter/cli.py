@@ -178,6 +178,7 @@ async def _run_async(
     config_dir: Path,
     max_concurrent_prompt_tests: int,
     openai_api_key: Optional[str],
+    azure_openai_api_key: Optional[str],
     gemini_api_key: Optional[str],
     qwen_api_key: Optional[str],
     claude_api_key: Optional[str],
@@ -189,6 +190,7 @@ async def _run_async(
     """Async implementation of the run command."""
     if (
         (openai_api_key and not is_from_env("openai_api_key", "OPENAI_API_KEY"))
+        or (azure_openai_api_key and not is_from_env("azure_openai_api_key", "AZURE_OPENAI_API_KEY"))
         or (gemini_api_key and not is_from_env("gemini_api_key", "GEMINI_API_KEY"))
         or (qwen_api_key and not is_from_env("qwen_api_key", "QWEN_API_KEY"))
         or (claude_api_key and not is_from_env("claude_api_key", "CLAUDE_API_KEY"))
@@ -242,6 +244,7 @@ async def _run_async(
             use_cache=not no_cache,
             max_concurrent_prompt_tests=max_concurrent_prompt_tests,
             openai_api_key=openai_api_key,
+            azure_openai_api_key=azure_openai_api_key,
             gemini_api_key=gemini_api_key,
             qwen_api_key=qwen_api_key,
             claude_api_key=claude_api_key,
@@ -288,6 +291,13 @@ def run(
         "--openai-api-key",
         help="OpenAI API key. Overrides OPENAI_API_KEY env var. Warning: Exposes key in shell history.",
         envvar="OPENAI_API_KEY",
+        rich_help_panel="API Keys",
+    ),
+    azure_openai_api_key: Optional[str] = typer.Option(
+        None,
+        "--azure-openai-api-key",
+        help="Azure OpenAI API key. Overrides AZURE_OPENAI_API_KEY env var. Warning: Exposes key in shell history.",
+        envvar="AZURE_OPENAI_API_KEY",
         rich_help_panel="API Keys",
     ),
     gemini_api_key: Optional[str] = typer.Option(
@@ -349,6 +359,7 @@ def run(
             config_dir,
             max_concurrent_prompt_tests,
             openai_api_key,
+            azure_openai_api_key,
             gemini_api_key,
             qwen_api_key,
             claude_api_key,

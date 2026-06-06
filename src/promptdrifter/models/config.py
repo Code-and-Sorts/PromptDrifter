@@ -9,7 +9,7 @@ class AdapterConfig(BaseModel):
     )
 
     adapter_type: Literal[
-        "openai", "ollama", "gemini", "qwen", "claude", "grok", "deepseek", "llama", "mistral"
+        "openai", "azure_openai", "ollama", "gemini", "qwen", "claude", "grok", "deepseek", "llama", "mistral"
     ] = Field(
         ..., alias="type"
     )
