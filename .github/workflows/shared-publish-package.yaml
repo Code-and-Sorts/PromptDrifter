@@ -18,6 +18,9 @@ on:
         description: 'The version that was published'
         value: 'published'
 
+permissions:
+  contents: read
+
 jobs:
   publish-package:
     runs-on: macos-latest

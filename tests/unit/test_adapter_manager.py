@@ -1,4 +1,3 @@
-import hashlib
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -8,6 +7,7 @@ from promptdrifter.adapter_manager import (
     AdapterManager,
     AdapterMetadata,
     get_adapter_manager,
+    hash_api_key,
 )
 from promptdrifter.adapters.claude import ClaudeAdapter
 from promptdrifter.adapters.openai import OpenAIAdapter, OpenAIAdapterConfig
@@ -29,12 +29,13 @@ class TestAdapterKey:
 
     def test_adapter_key_from_config(self):
         api_key = "test-api-key"
-        expected_hash = hashlib.sha256(api_key.encode()).hexdigest()[:16]
 
         key = AdapterKey.from_config("OpenAI", api_key, "https://api.openai.com")
 
         assert key.adapter_type == "openai"
-        assert key.api_key_hash == expected_hash
+        assert key.api_key_hash == hash_api_key(api_key)
+        assert key.api_key_hash != api_key
+        assert len(key.api_key_hash) == 16
         assert key.base_url == "https://api.openai.com"
 
     def test_adapter_key_from_config_no_api_key(self):

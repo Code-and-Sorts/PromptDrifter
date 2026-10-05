@@ -59,7 +59,7 @@ dev = [
     "respx (>=0.23.1,<0.24.0)",
 ]
 similarity = [
-    "sentence-transformers>=2.9.0",
+    "sentence-transformers>=5.6.0",
 ]
 
 [tool.ruff]
