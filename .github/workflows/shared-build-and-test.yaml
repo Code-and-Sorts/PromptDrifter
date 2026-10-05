@@ -38,6 +38,9 @@ on:
         description: 'Whether the build was successful'
         value: 'true'
 
+permissions:
+  contents: read
+
 jobs:
   build-and-test:
     runs-on: ${{ matrix.os }}

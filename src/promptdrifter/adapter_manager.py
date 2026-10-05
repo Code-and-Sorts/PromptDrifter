@@ -21,6 +21,16 @@ from .adapters.openai import OpenAIAdapter
 from .adapters.qwen import QwenAdapter
 from .http_client_manager import get_http_client_manager
 
+_API_KEY_HASH_SALT = b"promptdrifter-adapter-key"
+_API_KEY_HASH_ITERATIONS = 10_000
+
+
+def hash_api_key(api_key: str) -> str:
+    """Derive a non-reversible cache identifier for an API key."""
+    return hashlib.pbkdf2_hmac(
+        "sha256", api_key.encode(), _API_KEY_HASH_SALT, _API_KEY_HASH_ITERATIONS
+    ).hex()[:16]
+
 
 @dataclass(frozen=True)
 class AdapterKey:
@@ -35,7 +45,7 @@ class AdapterKey:
         api_key_hash = None
         if api_key:
             # Hash API key for security - don't store raw keys
-            api_key_hash = hashlib.sha256(api_key.encode()).hexdigest()[:16]
+            api_key_hash = hash_api_key(api_key)
 
         return cls(
             adapter_type=adapter_type.lower(),
